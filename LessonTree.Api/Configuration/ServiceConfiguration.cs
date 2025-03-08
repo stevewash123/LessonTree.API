@@ -1,0 +1,112 @@
+﻿using LessonTree.DAL;
+using LessonTree.DAL.Repositories;
+using LessonTree.BLL.Service;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.AspNetCore.Identity;
+using LessonTree.API.Filters;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using LessonTree.DAL.Domain;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc.Formatters;
+using System.Text.Json.Serialization.Metadata;
+using System.Text.Json;
+
+namespace LessonTree.API.Configuration
+{
+    public static class ServiceConfiguration
+    {
+        public static void ConfigureServices(WebApplicationBuilder builder)
+        {
+            builder.Services.AddEntityFrameworkSqlite()
+                .AddDbContext<LessonTreeContext>(options =>
+                    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            builder.Services.AddIdentity<User, IdentityRole<int>>()
+                .AddEntityFrameworkStores<LessonTreeContext>()
+                .AddDefaultTokenProviders();
+
+            builder.Services.AddTransient<IUserRepository, UserRepository>();
+            builder.Services.AddTransient<ICourseRepository, CourseRepository>();
+            builder.Services.AddTransient<ITopicRepository, TopicRepository>();
+            builder.Services.AddTransient<ISubTopicRepository, SubTopicRepository>();
+            builder.Services.AddTransient<ILessonRepository, LessonRepository>();
+            builder.Services.AddTransient<IStandardRepository, StandardRepository>(); ;
+            builder.Services.AddTransient<IDocumentRepository, DocumentRepository>();
+
+            builder.Services.AddTransient<IUserService, UserService>();
+            builder.Services.AddTransient<ICourseService, CourseService>();
+            builder.Services.AddTransient<ITopicService, TopicService>();
+            builder.Services.AddTransient<ISubTopicService, SubTopicService>();
+            builder.Services.AddTransient<ILessonService, LessonService>();
+            builder.Services.AddTransient<IStandardService, StandardService>();
+            builder.Services.AddTransient<IDocumentService, DocumentService>();
+
+            builder.Services.AddHealthChecks()
+                .AddCheck("self", () => HealthCheckResult.Healthy(builder.Configuration["HealthChecks:Checks:0:Description"]))
+                .AddDbContextCheck<LessonTreeContext>(
+                    builder.Configuration["HealthChecks:Checks:1:Name"],
+                    failureStatus: Enum.Parse<HealthStatus>(builder.Configuration["HealthChecks:Checks:1:FailureStatus"] ?? "Unhealthy"));
+
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                    ValidAudience = builder.Configuration["Jwt:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(builder.Configuration["Jwt:Key"]))
+                };
+            });
+
+            builder.Services.AddAuthorization();
+
+            builder.Services.AddCors(options =>
+            {
+                var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? Array.Empty<string>();
+                options.AddPolicy("AllowSwaggerAndUI", policy =>
+                {
+                    policy.WithOrigins(origins)
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials()
+                          .SetIsOriginAllowedToAllowWildcardSubdomains();
+                });
+            });
+
+            builder.Services.AddMemoryCache(); // Keep MemoryCache for other uses
+
+            builder.Services.AddScoped<RequestLoggingFilter>();
+            builder.Services.AddControllers(options =>
+            {
+                options.Filters.Add<RequestLoggingFilter>();
+                options.OutputFormatters.Insert(0, new SystemTextJsonOutputFormatter(new JsonSerializerOptions
+                {
+                    ReferenceHandler = ReferenceHandler.Preserve, // Handle circular references
+                    MaxDepth = 64, // Increase max depth if needed (default is 32)
+                    WriteIndented = true, // Optional: Make JSON readable for debugging
+                    TypeInfoResolver = new DefaultJsonTypeInfoResolver(), // Required for .NET 8
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+                }));
+            });
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new() { Title = "LessonTree API", Version = "v1" });
+            });
+
+            builder.Services.AddAutoMapper(typeof(MappingProfile)); // Specify the type containing mappings
+        }
+    }
+}

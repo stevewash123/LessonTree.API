@@ -1,0 +1,13 @@
+# Ignore Visual Studio temporary files
+.vs/
+
+# Ignore build output directories
+bin/
+obj/
+
+# Ignore user-specific files
+*.user
+*.suo
+
+# Ignore sensitive files (if applicable)
+appsettings.json

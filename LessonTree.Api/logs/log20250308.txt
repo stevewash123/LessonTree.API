@@ -1,0 +1,8 @@
+[2025-03-08 07:10:55 DBG] An 'IServiceProvider' was created for internal use by Entity Framework.
+[2025-03-08 07:10:55 WRN] 'AddEntityFramework*' was called on the service provider, but 'UseInternalServiceProvider' wasn't called in the DbContext options configuration. Consider removing the 'AddEntityFramework*' call, as in most cases it's not needed and may cause conflicts with other products and services registered in the same service provider.
+[2025-03-08 07:10:55 DBG] The index {'LessonId'} was not created on entity type 'LessonDocument' as the properties are already covered by the index {'LessonId', 'DocumentId'}.
+[2025-03-08 07:10:55 DBG] The index {'LessonId'} was not created on entity type 'LessonStandard' as the properties are already covered by the index {'LessonId', 'StandardId'}.
+[2025-03-08 07:10:55 DBG] The index {'UserId'} was not created on entity type 'IdentityUserRole<int>' as the properties are already covered by the index {'UserId', 'RoleId'}.
+[2025-03-08 07:10:55 DBG] The index {'UserId'} was not created on entity type 'IdentityUserToken<int>' as the properties are already covered by the index {'UserId', 'LoginProvider', 'Name'}.
+[2025-03-08 07:10:55 DBG] Entity Framework Core 8.0.2 initialized 'LessonTreeContext' using provider 'Microsoft.EntityFrameworkCore.Sqlite:8.0.0' with options: None
+[2025-03-08 07:10:55 DBG] 'LessonTreeContext' disposed.
