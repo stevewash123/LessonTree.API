@@ -11,13 +11,15 @@ namespace LessonTree.BLL.Service
     {
         private readonly ITopicRepository _topicRepository;
         private readonly ICourseRepository _courseRepository;
+        private readonly ISubTopicRepository _subTopicRepository;
         private readonly ILogger<TopicService> _logger;
         private readonly IMapper _mapper;
 
-        public TopicService(ITopicRepository topicRepository, ICourseRepository courseRepository, ILogger<TopicService> logger, IMapper mapper)
+        public TopicService(ITopicRepository topicRepository, ICourseRepository courseRepository, ISubTopicRepository subTopicRepository, ILogger<TopicService> logger, IMapper mapper)
         {
             _topicRepository = topicRepository;
             _courseRepository = courseRepository;
+            _subTopicRepository = subTopicRepository;
             _logger = logger;
             _mapper = mapper;
         }
@@ -46,6 +48,12 @@ namespace LessonTree.BLL.Service
             _logger.LogDebug("Adding topic: {Title}", topicCreateResource.Title);
             var topic = _mapper.Map<Topic>(topicCreateResource);
             _topicRepository.Add(topic);
+            var defaultSubTopic = new SubTopic
+            {
+                Title = "Default SubTopic",
+                TopicId = topic.Id
+            };
+            _subTopicRepository.Add(defaultSubTopic);
             _logger.LogInformation("Topic added with ID: {TopicId}", topic.Id);
         }
 
@@ -105,6 +113,7 @@ namespace LessonTree.BLL.Service
                 Title = originalTopic.Title,
                 Description = originalTopic.Description,
                 CourseId = newCourseId,
+                HasSubTopics = originalTopic.HasSubTopics, // Preserve the original HasSubTopics value
                 SubTopics = originalTopic.SubTopics.Select(originalSubTopic => new SubTopic
                 {
                     Title = originalSubTopic.Title,

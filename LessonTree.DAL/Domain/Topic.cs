@@ -7,6 +7,7 @@
         public string Description { get; set; }
         public int CourseId { get; set; }
         public virtual Course Course { get; set; }
-        public virtual List<SubTopic> SubTopics { get; set; } = new List<SubTopic>();
+        public virtual List<SubTopic> SubTopics { get; set; } = new List<SubTopic>(); 
+        public bool HasSubTopics { get; set; } = false; 
     }
 }

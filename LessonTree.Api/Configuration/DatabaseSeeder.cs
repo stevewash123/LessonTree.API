@@ -20,6 +20,7 @@ namespace LessonTree.API.Configuration
                 logger.LogInformation("Applying migrations to LessonTree.db...");
                 context.Database.Migrate();
 
+                // Seed Roles
                 string[] roles = { "FreeUser", "PaidUser", "Admin" };
                 foreach (var role in roles)
                 {
@@ -30,6 +31,7 @@ namespace LessonTree.API.Configuration
                     }
                 }
 
+                // Seed Admin User
                 string adminUsername = "admin";
                 string adminPassword = "Admin123!";
                 var adminUser = await userManager.FindByNameAsync(adminUsername);
@@ -49,6 +51,7 @@ namespace LessonTree.API.Configuration
                     }
                 }
 
+                // Seed Test Data in Development Mode
                 if (env.IsDevelopment() && !context.Courses.Any())
                 {
                     logger.LogInformation("Seeding test data for Courses, Topics, SubTopics, Lessons, Standards, and Documents in Development mode...");
@@ -79,8 +82,8 @@ namespace LessonTree.API.Configuration
                                                     Content = "Overview of Shakespeare's life and works.",
                                                     LastDateTaught = DateTime.Now.AddYears(-1),
                                                     Level = "9th Grade",
-                                                    Objective = "Understand Shakespeare's influence.",
-                                                    Materials = "Textbook, handouts",
+                                                    Objective = null, // Null for boundary testing
+                                                    Materials = null, // Null for boundary testing
                                                     ClassTime = "45 minutes",
                                                     Methods = "Lecture, discussion",
                                                     SpecialNeeds = "Visual aids for hearing impaired",
@@ -89,14 +92,14 @@ namespace LessonTree.API.Configuration
                                                 new Lesson
                                                 {
                                                     Title = "Romeo and Juliet",
-                                                    Content = null,
+                                                    Content = null, // Null for boundary testing
                                                     LastDateTaught = DateTime.Now.AddMonths(-6),
                                                     Level = "10th Grade",
                                                     Objective = "Analyze themes in Romeo and Juliet.",
                                                     Materials = "Play script",
                                                     ClassTime = "60 minutes",
                                                     Methods = "Reading, group work",
-                                                    SpecialNeeds = null,
+                                                    SpecialNeeds = null, // Null for boundary testing
                                                     Assessment = "Essay"
                                                 }
                                             }
@@ -105,41 +108,13 @@ namespace LessonTree.API.Configuration
                                         {
                                             Title = "American Literature",
                                             Description = "Key works from American authors.",
-                                            Lessons = new List<Lesson>
-                                            {
-                                                new Lesson
-                                                {
-                                                    Title = "The Great Gatsby - Overview",
-                                                    Content = "Summary of the novel.",
-                                                    LastDateTaught = DateTime.Now.AddMonths(-3),
-                                                    Level = null,
-                                                    Objective = "Identify main characters and plot.",
-                                                    Materials = "Novel, notes",
-                                                    ClassTime = "50 minutes",
-                                                    Methods = "Lecture",
-                                                    SpecialNeeds = "Extra time for dyslexic students",
-                                                    Assessment = "Discussion participation"
-                                                },
-                                                new Lesson
-                                                {
-                                                    Title = "The Great Gatsby - Themes",
-                                                    Content = "Exploration of themes like the American Dream.",
-                                                    LastDateTaught = DateTime.Now,
-                                                    Level = "11th Grade",
-                                                    Objective = null,
-                                                    Materials = null,
-                                                    ClassTime = null,
-                                                    Methods = null,
-                                                    SpecialNeeds = null,
-                                                    Assessment = null
-                                                }
-                                            }
+                                            Lessons = new List<Lesson>() // Empty Lessons array
                                         },
                                         new SubTopic
                                         {
                                             Title = "Poetry",
                                             Description = "Study of poetic forms and techniques.",
-                                            Lessons = new List<Lesson>()
+                                            Lessons = new List<Lesson>() // Empty Lessons array
                                         }
                                     }
                                 },
@@ -147,49 +122,13 @@ namespace LessonTree.API.Configuration
                                 {
                                     Title = "Grammar",
                                     Description = "Mastering English grammar rules.",
-                                    SubTopics = new List<SubTopic>
-                                    {
-                                        new SubTopic
-                                        {
-                                            Title = "Sentence Structure",
-                                            Description = "Understanding clauses and phrases.",
-                                            Lessons = new List<Lesson>
-                                            {
-                                                new Lesson
-                                                {
-                                                    Title = "Simple Sentences",
-                                                    Content = "Definition and examples.",
-                                                    LastDateTaught = DateTime.Now.AddYears(-2),
-                                                    Level = "9th Grade",
-                                                    Objective = "Construct simple sentences.",
-                                                    Materials = "Worksheets",
-                                                    ClassTime = "30 minutes",
-                                                    Methods = "Practice exercises",
-                                                    SpecialNeeds = "Simplified instructions",
-                                                    Assessment = "Worksheet completion"
-                                                },
-                                                new Lesson
-                                                {
-                                                    Title = "Compound Sentences",
-                                                    Content = "Using conjunctions to join clauses.",
-                                                    LastDateTaught = DateTime.Now.AddMonths(-1),
-                                                    Level = "10th Grade",
-                                                    Objective = "Use conjunctions effectively.",
-                                                    Materials = "Textbook",
-                                                    ClassTime = "40 minutes",
-                                                    Methods = "Group activities",
-                                                    SpecialNeeds = null,
-                                                    Assessment = "Peer review"
-                                                }
-                                            }
-                                        }
-                                    }
+                                    SubTopics = new List<SubTopic>() // Empty SubTopics array
                                 },
                                 new Topic
                                 {
                                     Title = "Writing",
                                     Description = "Developing writing skills.",
-                                    SubTopics = new List<SubTopic>()
+                                    SubTopics = new List<SubTopic>() // Empty SubTopics array
                                 }
                             }
                         },
@@ -203,112 +142,13 @@ namespace LessonTree.API.Configuration
                                 {
                                     Title = "Biology",
                                     Description = "Study of living organisms.",
-                                    SubTopics = new List<SubTopic>
-                                    {
-                                        new SubTopic
-                                        {
-                                            Title = "Cell Biology",
-                                            Description = "Structure and function of cells.",
-                                            Lessons = new List<Lesson>
-                                            {
-                                                new Lesson
-                                                {
-                                                    Title = "Cell Structure",
-                                                    Content = "Parts of a cell.",
-                                                    LastDateTaught = DateTime.Now.AddYears(-1),
-                                                    Level = "10th Grade",
-                                                    Objective = "Identify cell organelles.",
-                                                    Materials = "Microscope, slides",
-                                                    ClassTime = "60 minutes",
-                                                    Methods = "Lab work",
-                                                    SpecialNeeds = "Magnified images",
-                                                    Assessment = "Lab report"
-                                                },
-                                                new Lesson
-                                                {
-                                                    Title = "Cell Function",
-                                                    Content = "How cells work.",
-                                                    LastDateTaught = DateTime.Now.AddMonths(-2),
-                                                    Level = "10th Grade",
-                                                    Objective = "Explain cell processes.",
-                                                    Materials = "Textbook, videos",
-                                                    ClassTime = "45 minutes",
-                                                    Methods = "Lecture, multimedia",
-                                                    SpecialNeeds = null,
-                                                    Assessment = "Quiz"
-                                                }
-                                            }
-                                        },
-                                        new SubTopic
-                                        {
-                                            Title = "Genetics",
-                                            Description = "Inheritance and DNA.",
-                                            Lessons = new List<Lesson>()
-                                        }
-                                    }
+                                    SubTopics = new List<SubTopic>() // Empty SubTopics array
                                 },
                                 new Topic
                                 {
                                     Title = "Chemistry",
                                     Description = "Fundamentals of matter and reactions.",
-                                    SubTopics = new List<SubTopic>
-                                    {
-                                        new SubTopic
-                                        {
-                                            Title = "Atomic Structure",
-                                            Description = "Atoms and elements.",
-                                            Lessons = new List<Lesson>
-                                            {
-                                                new Lesson
-                                                {
-                                                    Title = "Periodic Table",
-                                                    Content = "Organization of elements.",
-                                                    LastDateTaught = DateTime.Now.AddYears(-3),
-                                                    Level = "11th Grade",
-                                                    Objective = "Understand periodic trends.",
-                                                    Materials = "Periodic table chart",
-                                                    ClassTime = "50 minutes",
-                                                    Methods = "Interactive discussion",
-                                                    SpecialNeeds = "Color-coded charts",
-                                                    Assessment = "Group presentation"
-                                                }
-                                            }
-                                        },
-                                        new SubTopic
-                                        {
-                                            Title = "Reactions",
-                                            Description = "Chemical changes and equations.",
-                                            Lessons = new List<Lesson>
-                                            {
-                                                new Lesson
-                                                {
-                                                    Title = "Balancing Equations",
-                                                    Content = "How to balance chemical equations.",
-                                                    LastDateTaught = DateTime.Now.AddMonths(-4),
-                                                    Level = "11th Grade",
-                                                    Objective = "Balance simple equations.",
-                                                    Materials = "Worksheet",
-                                                    ClassTime = "40 minutes",
-                                                    Methods = "Practice problems",
-                                                    SpecialNeeds = null,
-                                                    Assessment = "Homework"
-                                                },
-                                                new Lesson
-                                                {
-                                                    Title = "Acids and Bases",
-                                                    Content = "Properties and reactions.",
-                                                    LastDateTaught = DateTime.Now,
-                                                    Level = "12th Grade",
-                                                    Objective = "Differentiate acids and bases.",
-                                                    Materials = "Lab equipment",
-                                                    ClassTime = "60 minutes",
-                                                    Methods = "Experimentation",
-                                                    SpecialNeeds = "Safety precautions",
-                                                    Assessment = "Lab report"
-                                                }
-                                            }
-                                        }
-                                    }
+                                    SubTopics = new List<SubTopic>() // Empty SubTopics array
                                 }
                             }
                         },
@@ -316,13 +156,13 @@ namespace LessonTree.API.Configuration
                         {
                             Title = "High School Math",
                             Description = "Mathematics course with no topics yet.",
-                            Topics = new List<Topic>()
+                            Topics = new List<Topic>() // Empty Topics array
                         }
                     };
                     context.Courses.AddRange(courses);
                     await context.SaveChangesAsync();
 
-                    // Updated Standards with Description and StandardType
+                    // Seed Standards
                     var literatureTopic = courses[0].Topics.First(t => t.Title == "Literature");
                     var biologyTopic = courses[1].Topics.First(t => t.Title == "Biology");
 
@@ -353,7 +193,7 @@ namespace LessonTree.API.Configuration
                     context.Standards.AddRange(standards);
                     await context.SaveChangesAsync();
 
-                    // Create Documents
+                    // Seed Documents
                     var documents = new List<Document>
                     {
                         new Document { FileName = "Lesson Plan Template.docx", ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document", Blob = null },
@@ -364,32 +204,21 @@ namespace LessonTree.API.Configuration
                     await context.SaveChangesAsync();
 
                     // Link Standards and Documents to Lessons
-                    var lessonIntroShakespeare = courses[0].Topics[0].SubTopics[0].Lessons[0];
-                    var lessonRomeoJuliet = courses[0].Topics[0].SubTopics[0].Lessons[1];
-                    var lessonGatsbyOverview = courses[0].Topics[0].SubTopics[1].Lessons[0];
-                    var lessonCellStructure = courses[1].Topics[0].SubTopics[0].Lessons[0];
-                    var lessonSimpleSentences = courses[0].Topics[1].SubTopics[0].Lessons[0];
-                    var lessonBalancingEquations = courses[1].Topics[1].SubTopics[1].Lessons[0];
-                    var lessonAcidsBases = courses[1].Topics[1].SubTopics[1].Lessons[1];
+                    var lessonIntroShakespeare = literatureTopic.SubTopics[0].Lessons[0];
+                    var lessonRomeoJuliet = literatureTopic.SubTopics[0].Lessons[1];
 
                     var lessonStandards = new List<LessonStandard>
                     {
                         new LessonStandard { LessonId = lessonIntroShakespeare.Id, StandardId = standards[0].Id },
                         new LessonStandard { LessonId = lessonRomeoJuliet.Id, StandardId = standards[0].Id },
-                        new LessonStandard { LessonId = lessonRomeoJuliet.Id, StandardId = standards[1].Id },
-                        new LessonStandard { LessonId = lessonGatsbyOverview.Id, StandardId = standards[1].Id },
-                        new LessonStandard { LessonId = lessonCellStructure.Id, StandardId = standards[2].Id }
+                        new LessonStandard { LessonId = lessonRomeoJuliet.Id, StandardId = standards[1].Id }
                     };
                     context.LessonStandards.AddRange(lessonStandards);
 
                     var lessonDocuments = new List<LessonDocument>
                     {
                         new LessonDocument { LessonId = lessonIntroShakespeare.Id, DocumentId = documents[0].Id },
-                        new LessonDocument { LessonId = lessonRomeoJuliet.Id, DocumentId = documents[1].Id },
-                        new LessonDocument { LessonId = lessonCellStructure.Id, DocumentId = documents[0].Id },
-                        new LessonDocument { LessonId = lessonSimpleSentences.Id, DocumentId = documents[2].Id },
-                        new LessonDocument { LessonId = lessonBalancingEquations.Id, DocumentId = documents[1].Id },
-                        new LessonDocument { LessonId = lessonAcidsBases.Id, DocumentId = documents[2].Id }
+                        new LessonDocument { LessonId = lessonRomeoJuliet.Id, DocumentId = documents[1].Id }
                     };
                     context.LessonDocuments.AddRange(lessonDocuments);
 
