@@ -1,0 +1,1719 @@
+﻿{
+  "info": {
+    "name": "LessonTree API Collection",
+    "description": "Postman Collection for LessonTree API with response tests, token fetching, DELETE pre-creation, UPDATE restoration, and extensive logging",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "console.log('Pre-request: Starting token fetch');",
+          "pm.sendRequest({",
+          "    url: 'https://localhost:7238/account/login',",
+          "    method: 'POST',",
+          "    header: {",
+          "        'accept': '*/*',",
+          "        'Content-Type': 'application/json'",
+          "    },",
+          "    body: {",
+          "        mode: 'raw',",
+          "        raw: JSON.stringify({ id: 0, username: 'admin', password: 'Admin123!' })",
+          "    }",
+          "}, function (err, res) {",
+          "    if (err) {",
+          "        console.error('Pre-request: Error fetching token:', err);",
+          "        pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer FAILED_TOKEN' });",
+          "        return;",
+          "    }",
+          "    console.log('Pre-request: Token fetch response status:', res.code);",
+          "    if (res.code !== 200) {",
+          "        console.error('Pre-request: Token fetch failed with status:', res.code, 'Response body:', res.text());",
+          "        pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer FAILED_TOKEN' });",
+          "        return;",
+          "    }",
+          "    try {",
+          "        var jsonData = res.json();",
+          "        console.log('Pre-request: Token fetch response body:', jsonData);",
+          "        if (!jsonData.token) {",
+          "            console.error('Pre-request: Token not found in response');",
+          "            pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer FAILED_TOKEN' });",
+          "            return;",
+          "        }",
+          "        pm.variables.set('jwtToken', jsonData.token);",
+          "        pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer ' + pm.variables.get('jwtToken') });",
+          "        console.log('Pre-request: Token set in header:', pm.request.headers.get('Authorization'));",
+          "        pm.sendRequest({",
+          "            url: 'https://localhost:7238/api/admin/reset-and-reseed',",
+          "            method: 'POST',",
+          "            header: {",
+          "                'Content-Type': 'application/json',",
+          "                'Authorization': 'Bearer ' + pm.variables.get('jwtToken')",
+          "            }",
+          "        }, (err, res) => {",
+          "            if (err) {",
+          "                console.log('Error resetting and reseeding: ', err);",
+          "            } else if (res.code !== 200) {",
+          "                console.log('Reset and reseed failed: ', res.status, res.text());",
+          "            } else {",
+          "                console.log('Database reset and reseeded successfully.');",
+          "            }",
+          "        });",
+          "    } catch (e) {",
+          "        console.error('Pre-request: Error parsing token response:', e.message, 'Response body:', res.text());",
+          "        pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer FAILED_TOKEN' });",
+          "    }",
+          "});"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Course Controller",
+      "item": [
+        {
+          "name": "Get All Courses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Get All Courses');",
+                  "",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(200);",
+                  "        console.log('Test: Status code is 200 - PASSED');",
+                  "    } catch (e) {",
+                  "        console.log('Test: Status code is not 200 - FAILED. Expected 200, got', pm.response.code);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Courses length is at least 3\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Response body:', jsonData);",
+                  "    var courses = jsonData.$values || [];",
+                  "    console.log('Test: Extracted courses array:', courses);",
+                  "    try {",
+                  "        pm.expect(courses.length).to.be.at.least(3);",
+                  "        console.log('Test: Courses length is at least 3 - PASSED');",
+                  "    } catch (e) {",
+                  "        console.log('Test: Courses length is less than 3 - FAILED. Length:', courses.length);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"First course title is High School English\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    var courses = jsonData.$values || [];",
+                  "    try {",
+                  "        pm.expect(courses[0].title).to.equal(\"High School English\");",
+                  "        console.log('Test: First course title is \"High School English\" - PASSED');",
+                  "    } catch (e) {",
+                  "        console.log('Test: First course title is not \"High School English\" - FAILED. Title:', courses[0].title);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "console.log('Test: Completed tests for Get All Courses');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://localhost:7238/api/Course",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "Course" ]
+            }
+          }
+        },
+        {
+          "name": "Get Course by ID (High School English)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Get Course by ID');",
+                  "",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(200);",
+                  "        console.log('Test: Status code is 200 - PASSED');",
+                  "    } catch (e) {",
+                  "        console.log('Test: Status code is not 200 - FAILED. Expected 200, got', pm.response.code);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Course ID is 1\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    try {",
+                  "        pm.expect(jsonData.id).to.equal(1);",
+                  "        console.log('Test: Course ID is 1 - PASSED');",
+                  "    } catch (e) {",
+                  "        console.log('Test: Course ID is not 1 - FAILED. ID:', jsonData.id);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Course title is High School English\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    try {",
+                  "        pm.expect(jsonData.title).to.equal(\"High School English\");",
+                  "        console.log('Test: Course title is \"High School English\" - PASSED');",
+                  "    } catch (e) {",
+                  "        console.log('Test: Course title is not \"High School English\" - FAILED. Title:', jsonData.title);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Course description is correct\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    try {",
+                  "        pm.expect(jsonData.description).to.equal(\"A comprehensive English course for high school students.\");",
+                  "        console.log('Test: Course description is correct - PASSED');",
+                  "    } catch (e) {",
+                  "        console.log('Test: Course description is incorrect - FAILED. Description:', jsonData.description);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "console.log('Test: Completed tests for Get Course by ID');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://localhost:7238/api/Course/1",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "Course", "1" ]
+            }
+          }
+        },
+        {
+          "name": "Add Course",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Add Course');",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Response contains new course\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Response body:', jsonData);",
+                  "    pm.expect(jsonData.title).to.equal(\"New Course\");",
+                  "    pm.expect(jsonData.description).to.equal(\"A new test course.\");",
+                  "    console.log('Test: New course title:', jsonData.title, 'Description:', jsonData.description);",
+                  "});",
+                  "console.log('Test: Completed tests for Add Course');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"Title\":\"New Course\",\"Description\":\"A new test course.\"}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/Course",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "Course" ]
+            }
+          }
+        },
+        {
+          "name": "Update Course (High School English)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Update Course');",
+                  "pm.test(\"Status code is 204\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "console.log('Test: Completed tests for Update Course');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "postrequest",
+              "script": {
+                "exec": [
+                  "console.log('Post-request: Starting restoration for High School English');",
+                  "pm.sendRequest({",
+                  "    url: 'https://localhost:7238/api/Course/1',",
+                  "    method: 'PUT',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + pm.variables.get('jwtToken'),",
+                  "        'Content-Type': 'application/json'",
+                  "    },",
+                  "    body: {",
+                  "        mode: 'raw',",
+                  "        raw: JSON.stringify({ Id: 1, Title: 'High School English', Description: 'A comprehensive English course for high school students.' })",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    if (err) {",
+                  "        console.error('Post-request: Error restoring course:', err);",
+                  "        return;",
+                  "    }",
+                  "    console.log('Post-request: Restoration response status:', res.code);",
+                  "    if (res.code === 204) {",
+                  "        console.log('Post-request: Course restored successfully');",
+                  "    } else {",
+                  "        console.error('Post-request: Restoration failed with status:', res.code);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"Id\":1,\"Title\":\"Updated High School English\",\"Description\":\"Updated comprehensive English course.\"}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/Course/1",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "Course", "1" ]
+            }
+          }
+        },
+        {
+          "name": "Delete Course (High School Math)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Delete Course');",
+                  "pm.test(\"Status code is 204\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "console.log('Test: Completed tests for Delete Course');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "https://localhost:7238/api/Course/3",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "Course", "3" ]
+            }
+          }
+        },
+        {
+          "name": "Get All Topics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Get All Topics');",
+                  "pm.test('Status code is 200', function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(200);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "pm.test('Response contains at least 5 topics', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Full response body:', JSON.stringify(jsonData, null, 2));",
+                  "    var topics = jsonData.$values || [];",
+                  "    console.log('Test: Extracted topics array:', topics);",
+                  "    try {",
+                  "        pm.expect(topics.length, 'Assertion failed: Expected at least 5 topics').to.be.at.least(5);",
+                  "        pm.expect(topics[0].id, 'Assertion failed: Expected first topic ID to be 1').to.equal(1);",
+                  "        pm.expect(topics[0].title, 'Assertion failed: Expected first topic title to be Literature').to.equal('Literature');",
+                  "        pm.expect(topics[0].description, 'Assertion failed: Expected description to match').to.equal('Exploring classic and modern literary works.');",
+                  "        console.log('Test: First topic details - ID:', topics[0].id, 'Title:', topics[0].title);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "console.log('Test: Completed tests for Get All Topics');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://localhost:7238/api/Topic",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "7238",
+              "path": [
+                "api",
+                "Topic"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Topic by ID (Literature)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Get Topic by ID');",
+                  "pm.test('Status code is 200', function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(200);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "pm.test('Response contains Literature topic', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Full response body:', JSON.stringify(jsonData, null, 2));",
+                  "    try {",
+                  "        pm.expect(jsonData.id, 'Assertion failed: Expected id to be 1').to.equal(1);",
+                  "        pm.expect(jsonData.title, 'Assertion failed: Expected title to be Literature').to.equal('Literature');",
+                  "        pm.expect(jsonData.description, 'Assertion failed: Expected description to match').to.equal('Exploring classic and modern literary works.');",
+                  "        pm.expect(jsonData.hasSubTopics, 'Assertion failed: Expected hasSubTopics to be true').to.be.true;",
+                  "        var subTopics = jsonData.subTopics.$values || [];",
+                  "        pm.expect(subTopics.length, 'Assertion failed: Expected at least 1 subtopic').to.be.at.least(1);",
+                  "        console.log('Test: Topic details - ID:', jsonData.id, 'Title:', jsonData.title, 'SubTopics:', subTopics);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "console.log('Test: Completed tests for Get Topic by ID');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://localhost:7238/api/Topic/1",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "7238",
+              "path": [
+                "api",
+                "Topic",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Topic (default HasSubTopics=false)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Full response body:', JSON.stringify(pm.response.json(), null, 2));",
+                  "",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    try {",
+                  "        pm.expect(pm.response.code, \"Expected status code to be 201\").to.equal(201);",
+                  "        console.log(\"Assertion passed: Status code is 201\");",
+                  "    } catch (e) {",
+                  "        console.log(\"Assertion failed:\", e.message, \"Actual status:\", pm.response.code);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Title is Chemistry\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    try {",
+                  "        pm.expect(jsonData.title, \"Expected title to be Chemistry\").to.equal(\"Chemistry\");",
+                  "        console.log(\"Assertion passed: Title is Chemistry\");",
+                  "    } catch (e) {",
+                  "        console.log(\"Assertion failed:\", e.message, \"Actual title:\", jsonData.title);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Description is correct\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    try {",
+                  "        pm.expect(jsonData.description, \"Expected description to be Fundamentals of matter and reactions.\").to.equal(\"Fundamentals of matter and reactions.\");",
+                  "        console.log(\"Assertion passed: Description is correct\");",
+                  "    } catch (e) {",
+                  "        console.log(\"Assertion failed:\", e.message, \"Actual description:\", jsonData.description);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"HasSubTopics is false\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    try {",
+                  "        pm.expect(jsonData.hasSubTopics, \"Expected hasSubTopics to be false\").to.be.false;",
+                  "        console.log(\"Assertion passed: HasSubTopics is false\");",
+                  "    } catch (e) {",
+                  "        console.log(\"Assertion failed:\", e.message, \"Actual value:\", jsonData.hasSubTopics);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"CourseId is 2\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    try {",
+                  "        pm.expect(jsonData.courseId, \"Expected courseId to be 2\").to.equal(2);",
+                  "        console.log(\"Assertion passed: CourseId is 2\");",
+                  "    } catch (e) {",
+                  "        console.log(\"Assertion failed:\", e.message, \"Actual courseId:\", jsonData.courseId);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"No subtopics present\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    var subTopics = jsonData.subTopics.$values || [];",
+                  "    try {",
+                  "        pm.expect(subTopics.length, \"Expected no subtopics\").to.equal(0);",
+                  "        console.log(\"Assertion passed: No subtopics present\");",
+                  "    } catch (e) {",
+                  "        console.log(\"Assertion failed:\", e.message, \"Number of subtopics:\", subTopics.length);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "var subTopics = jsonData.subTopics.$values || [];",
+                  "console.log('Test: New topic details - Title:', jsonData.title, 'Description:', jsonData.description, 'SubTopics:', subTopics);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"Title\":\"Chemistry\",\"Description\":\"Fundamentals of matter and reactions.\",\"HasSubTopics\":false,\"CourseId\":2}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/Topic",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "7238",
+              "path": [
+                "api",
+                "Topic"
+              ]
+            }
+          }
+        },                
+        {
+          "name": "Update Topic (Grammar)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "console.log('Test: Starting tests for Update Topic (Grammar)');",
+                  "pm.test('Status code is 204', function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(204);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message, 'Full response:', pm.response.text());",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "pm.test('Verify topic update via follow-up GET', function () {",
+                  "    var jwtToken = pm.variables.get('jwtToken');",
+                  "    pm.sendRequest({",
+                  "        url: 'https://localhost:7238/api/Topic/2',",
+                  "        method: 'GET',",
+                  "        header: {'Authorization': 'Bearer ' + jwtToken}",
+                  "    }, function (err, res) {",
+                  "        if (err) {",
+                  "            console.error('Error in follow-up GET:', err);",
+                  "            throw err;",
+                  "        }",
+                  "        console.log('Follow-up GET response status:', res.code, 'Body:', res.text());",
+                  "        try {",
+                  "            pm.expect(res.code, 'Assertion failed: Expected follow-up GET to return 200').to.equal(200);",
+                  "            var jsonData = res.json();",
+                  "            pm.expect(jsonData.title, 'Assertion failed: Expected title to be Updated Grammar').to.equal('Updated Grammar');",
+                  "            pm.expect(jsonData.description, 'Assertion failed: Expected description to be Updated grammar rules.').to.equal('Updated grammar rules.');",
+                  "            pm.expect(jsonData.hasSubTopics, 'Assertion failed: Expected hasSubTopics to be false').to.be.false;",
+                  "        } catch (e) {",
+                  "            console.error('Assertion failure details:', e.message, 'Response:', res.text());",
+                  "            throw e;",
+                  "        }",
+                  "    });",
+                  "});",
+                  "console.log('Test: Completed tests for Update Topic (Grammar)');"
+                ]
+              }
+            },
+            {
+              "listen": "postrequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "console.log('Post-request: Starting restoration for Grammar');",
+                  "pm.sendRequest({",
+                  "    url: 'https://localhost:7238/api/Topic/2',",
+                  "    method: 'PUT',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + pm.variables.get('jwtToken'),",
+                  "        'Content-Type': 'application/json'",
+                  "    },",
+                  "    body: {",
+                  "        mode: 'raw',",
+                  "        raw: JSON.stringify({ Id: 2, Title: 'Grammar', Description: 'Mastering English grammar rules.', HasSubTopics: false, CourseId: 1 })",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    if (err) {",
+                  "        console.error('Post-request: Error restoring topic:', err);",
+                  "        return;",
+                  "    }",
+                  "    console.log('Post-request: Restoration response status:', res.code, 'Response body:', res.text());",
+                  "    if (res.code === 204) {",
+                  "        console.log('Post-request: Topic restored successfully');",
+                  "    } else {",
+                  "        console.error('Post-request: Restoration failed with status:', res.code);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"Id\":2,\"Title\":\"Updated Grammar\",\"Description\":\"Updated grammar rules.\",\"HasSubTopics\":false,\"CourseId\":1}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/Topic/2",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "7238",
+              "path": [
+                "api",
+                "Topic",
+                "2"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Topic ",
+          "event": [
+
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "console.log('Test: Starting tests for Delete Topic');",
+                  "",
+                  "pm.test('Status code is 204', function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(204);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message, 'Full response:', pm.response.text());",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test('Verify topic deletion via follow-up GET', function () {",
+                  "    var jwtToken = pm.variables.get('jwtToken');",
+                  "    pm.sendRequest({",
+                  "        url: 'https://localhost:7238/api/Topic/1',",
+                  "        method: 'GET',",
+                  "        header: {'Authorization': 'Bearer ' + jwtToken}",
+                  "    }, function (err, res) {",
+                  "        if (err) {",
+                  "            console.error('Error in follow-up GET:', err);",
+                  "            throw err;",
+                  "        }",
+                  "        console.log('Follow-up GET response status:', res.code, 'Body:', res.text());",
+                  "        try {",
+                  "            pm.expect(res.code, 'Assertion failed: Expected follow-up GET to return 404').to.equal(404);",
+                  "        } catch (e) {",
+                  "            console.error('Assertion failure details:', e.message, 'Response:', res.text());",
+                  "            throw e;",
+                  "        }",
+                  "    });",
+                  "});",
+                  "",
+                  "console.log('Test: Completed tests for Delete Topic (Chemistry)');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "https://localhost:7238/api/Topic/1",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "7238",
+              "path": [
+                "api",
+                "Topic",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Move Topic - Literature to High School Science",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Move Topic');",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Verify move\", function () {",
+                  "    pm.sendRequest({",
+                  "        url: 'https://localhost:7238/api/Topic/1',",
+                  "        method: 'GET',",
+                  "        header: { 'Authorization': 'Bearer ' + pm.variables.get('jwtToken') }",
+                  "    }, function (err, res) {",
+                  "        if (err) {",
+                  "            console.error('Test: Error verifying move:', err);",
+                  "            return;",
+                  "        }",
+                  "        console.log('Test: Verification response status:', res.code);",
+                  "        if (res.code === 200) {",
+                  "            var jsonData = res.json();",
+                  "            console.log('Test: Verification response body:', jsonData);",
+                  "            pm.expect(jsonData.courseId).to.equal(2);",
+                  "            pm.expect(jsonData.title).to.equal(\"Literature\");",
+                  "        }",
+                  "    });",
+                  "});",
+                  "console.log('Test: Completed tests for Move Topic');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"topicId\":1,\"newCourseId\":2}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/Topic/move",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "7238",
+              "path": [
+                "api",
+                "Topic",
+                "move"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Copy Topic - Literature to High School Science (HasSubTopics = true)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Copy Topic with HasSubTopics = true');",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Verify copy\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Response body:', jsonData);",
+                  "    pm.expect(jsonData.title).to.equal(\"Literature\");",
+                  "    pm.expect(jsonData.courseId).to.equal(2);",
+                  "    pm.expect(jsonData.id).to.be.above(1);",
+                  "    pm.expect(jsonData.hasSubTopics).to.be.true;",
+                  "    pm.expect(jsonData.subTopics.$values.length).to.equal(3);",
+                  "    console.log('Test: Copied Topic ID:', jsonData.id, 'Title:', jsonData.title);",
+                  "});",
+                  "console.log('Test: Completed tests for Copy Topic with HasSubTopics = true');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"topicId\":1,\"newCourseId\":2}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/Topic/copy",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "Topic", "copy" ]
+            }
+          }
+        },
+        {
+          "name": "Copy Topic - Grammar to High School Science (HasSubTopics = false)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Copy Topic with HasSubTopics = false');",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Verify copy\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Response body:', jsonData);",
+                  "    pm.expect(jsonData.title).to.equal(\"Grammar\");",
+                  "    pm.expect(jsonData.courseId).to.equal(2);",
+                  "    pm.expect(jsonData.id).to.be.above(2);",
+                  "    pm.expect(jsonData.hasSubTopics).to.be.false;",
+                  "    pm.expect(jsonData.subTopics.$values.length).to.equal(0);",
+                  "    pm.expect(jsonData.lessons.$values.length).to.equal(2);",
+                  "    console.log('Test: Copied Topic ID:', jsonData.id, 'Title:', jsonData.title);",
+                  "});",
+                  "console.log('Test: Completed tests for Copy Topic with HasSubTopics = false');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"topicId\":2,\"newCourseId\":2}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/Topic/copy",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "Topic", "copy" ]
+            }
+          }
+        },
+        {
+          "name": "Get All SubTopics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Get All SubTopics');",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(200);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "pm.test(\"Response contains at least 5 subtopics\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Response body:', jsonData);",
+                  "    var subTopics = jsonData.$values || [];",
+                  "    console.log('Test: Extracted subtopics array:', subTopics);",
+                  "    try {",
+                  "        pm.expect(subTopics.length, 'Assertion failed: Expected at least 5 subtopics').to.be.at.least(5);",
+                  "        pm.expect(subTopics[0].title, 'Assertion failed: Expected first subtopic title to be Shakespeare').to.equal(\"Shakespeare\");",
+                  "        console.log('Test: First subtopic title:', subTopics[0].title);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "console.log('Test: Completed tests for Get All SubTopics');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://localhost:7238/api/SubTopic",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "SubTopic" ]
+            }
+          }
+        },
+        {
+          "name": "Get SubTopic by ID (Shakespeare)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Get SubTopic by ID');",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(200);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "pm.test(\"Response contains Shakespeare subtopic\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Response body:', jsonData);",
+                  "    try {",
+                  "        pm.expect(jsonData.id, 'Assertion failed: Expected id to be 1').to.equal(1);",
+                  "        pm.expect(jsonData.title, 'Assertion failed: Expected title to be Shakespeare').to.equal(\"Shakespeare\");",
+                  "        pm.expect(jsonData.description, 'Assertion failed: Expected description to match').to.equal(\"Study of Shakespeare's plays and sonnets.\");",
+                  "        pm.expect(jsonData.isDefault, 'Assertion failed: Expected isDefault to be true').to.be.true;",
+                  "        console.log('Test: SubTopic ID:', jsonData.id, 'Title:', jsonData.title, 'IsDefault:', jsonData.isDefault);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "console.log('Test: Completed tests for Get SubTopic by ID');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "https://localhost:7238/api/SubTopic/1",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "SubTopic", "1" ]
+            }
+          }
+        },
+        {
+          "name": "Add SubTopic",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Add SubTopic');",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(201);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "pm.test(\"Response contains new subtopic\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Response body:', jsonData);",
+                  "    try {",
+                  "        pm.expect(jsonData.title, 'Assertion failed: Expected title to be New SubTopic').to.equal(\"New SubTopic\");",
+                  "        pm.expect(jsonData.description, 'Assertion failed: Expected description to be A new subtopic.').to.equal(\"A new subtopic.\");",
+                  "        pm.expect(jsonData.isDefault, 'Assertion failed: Expected isDefault to be false').to.be.false;",
+                  "        pm.expect(jsonData.topicId, 'Assertion failed: Expected topicId to be 1').to.equal(1);",
+                  "        console.log('Test: New subtopic title:', jsonData.title, 'Description:', jsonData.description, 'IsDefault:', jsonData.isDefault);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "console.log('Test: Completed tests for Add SubTopic');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"Title\":\"New SubTopic\",\"Description\":\"A new subtopic.\",\"IsDefault\":false,\"TopicId\":1}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/SubTopic",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "SubTopic" ]
+            }
+          }
+        },
+        {
+          "name": "Update SubTopic (American Literature)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Update SubTopic');",
+                  "pm.test(\"Status code is 204\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(204);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "console.log('Test: Completed tests for Update SubTopic');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "postrequest",
+              "script": {
+                "exec": [
+                  "console.log('Post-request: Starting restoration for American Literature');",
+                  "pm.sendRequest({",
+                  "    url: 'https://localhost:7238/api/SubTopic/2',",
+                  "    method: 'PUT',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + pm.variables.get('jwtToken'),",
+                  "        'Content-Type': 'application/json'",
+                  "    },",
+                  "    body: {",
+                  "        mode: 'raw',",
+                  "        raw: JSON.stringify({ Id: 2, Title: 'American Literature', Description: 'Key works from American authors.', IsDefault: false, TopicId: 1 })",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    if (err) {",
+                  "        console.error('Post-request: Error restoring subtopic:', err);",
+                  "        return;",
+                  "    }",
+                  "    console.log('Post-request: Restoration response status:', res.code);",
+                  "    if (res.code === 204) {",
+                  "        console.log('Post-request: SubTopic restored successfully');",
+                  "    } else {",
+                  "        console.error('Post-request: Restoration failed with status:', res.code);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"Id\":2,\"Title\":\"Updated American Lit\",\"Description\":\"Updated key works.\",\"IsDefault\":false,\"TopicId\":1}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/SubTopic/2",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "SubTopic", "2" ]
+            }
+          }
+        },
+        {
+          "name": "Delete SubTopic (Punctuation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Delete SubTopic');",
+                  "pm.test(\"Status code is 204\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(204);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "console.log('Test: Completed tests for Delete SubTopic');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "https://localhost:7238/api/SubTopic/4",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "SubTopic", "4" ]
+            }
+          }
+        },
+        {
+          "name": "Move SubTopic - To Topic with HasSubTopics = true",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Move SubTopic to HasSubTopics = true');",
+                  "pm.test('Status code is 200', function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Verify move', function () {",
+                  "    console.log('Test: Sending verification request for SubTopic 2');",
+                  "    pm.sendRequest({",
+                  "        url: 'https://localhost:7238/api/SubTopic/2',",
+                  "        method: 'GET',",
+                  "        header: { 'Authorization': 'Bearer ' + pm.variables.get('jwtToken') }",
+                  "    }, function (err, res) {",
+                  "        console.log('Test: Inside sendRequest callback');",
+                  "        if (err) {",
+                  "            console.error('Test: Error verifying move:', err);",
+                  "            throw new Error('Failed to verify move');",
+                  "        }",
+                  "        console.log('Test: Verification response status:', res.code);",
+                  "        if (res.code === 200) {",
+                  "            console.log('Test: Parsing response');",
+                  "            var jsonData = res.json();",
+                  "            console.log('Test: Verification response body:', jsonData);",
+                  "            console.log('Test: Checking topicId');",
+                  "            pm.expect(jsonData.topicId).to.equal(3);",
+                  "            console.log('Test: Checking title');",
+                  "            pm.expect(jsonData.title).to.equal('American Literature');",
+                  "        } else {",
+                  "            console.error('Test: Unexpected status code during verification:', res.code);",
+                  "            throw new Error('SubTopic 2 should exist after move');",
+                  "        }",
+                  "    });",
+                  "});",
+                  "console.log('Test: Completed tests for Move SubTopic to HasSubTopics = true');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subTopicId\":2,\"newTopicId\":3}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/SubTopic/move",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "SubTopic", "move" ]
+            }
+          }
+        },
+        {
+          "name": "Move SubTopic - To Topic with HasSubTopics = false",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Move SubTopic to HasSubTopics = false');",
+                  "pm.test('Status code is 200', function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Verify move and deletion', function () {",
+                  "    pm.sendRequest({",
+                  "        url: 'https://localhost:7238/api/SubTopic/2',",
+                  "        method: 'GET',",
+                  "        header: { 'Authorization': 'Bearer ' + pm.variables.get('jwtToken') }",
+                  "    }, function (err, res) {",
+                  "        if (err) {",
+                  "            console.error('Test: Error verifying move:', err);",
+                  "            throw new Error('Failed to verify move');",
+                  "        }",
+                  "        console.log('Test: Verification response status:', res.code);",
+                  "        if (res.code === 404) {",
+                  "            console.log('Test: SubTopic 2 deleted successfully');",
+                  "        } else {",
+                  "            console.error('Test: SubTopic 2 should be deleted, got status:', res.code);",
+                  "            throw new Error('SubTopic 2 should be deleted');",
+                  "        }",
+                  "    });",
+                  "    pm.sendRequest({",
+                  "        url: 'https://localhost:7238/api/SubTopic/4',",
+                  "        method: 'GET',",
+                  "        header: { 'Authorization': 'Bearer ' + pm.variables.get('jwtToken') }",
+                  "    }, function (err, res) {",
+                  "        if (err) {",
+                  "            console.error('Test: Error verifying subtopic:', err);",
+                  "            throw new Error('Failed to verify subtopic');",
+                  "        }",
+                  "        console.log('Test: SubTopic verification response status:', res.code);",
+                  "        if (res.code === 200) {",
+                  "            var jsonData = res.json();",
+                  "            console.log('Test: SubTopic response body:', jsonData);",
+                  "            pm.expect(jsonData.lessons.$values.length).to.be.at.least(2);",
+                  "        } else {",
+                  "            console.error('Test: Unexpected status code during subtopic verification:', res.code);",
+                  "            throw new Error('Failed to retrieve subtopic');",
+                  "        }",
+                  "    });",
+                  "});",
+                  "console.log('Test: Completed tests for Move SubTopic to HasSubTopics = false');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subTopicId\":2,\"newTopicId\":2}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/SubTopic/move",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "SubTopic", "move" ]
+            }
+          }
+        },
+        {
+          "name": "Copy SubTopic - To Topic with HasSubTopics = true",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Copy SubTopic to HasSubTopics = true');",
+                  "pm.test('Status code is 201', function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Verify copy', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Response body:', jsonData);",
+                  "    pm.expect(jsonData.title).to.equal('American Literature');",
+                  "    pm.expect(jsonData.topicId).to.equal(3);",
+                  "    pm.expect(jsonData.id).to.be.above(2);",
+                  "    console.log('Test: Copied SubTopic ID:', jsonData.id, 'Title:', jsonData.title);",
+                  "});",
+                  "console.log('Test: Completed tests for Copy SubTopic to HasSubTopics = true');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subTopicId\":2,\"newTopicId\":3}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/SubTopic/copy",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "SubTopic", "copy" ]
+            }
+          }
+        },
+        {
+          "name": "Copy SubTopic - To Topic with HasSubTopics = false",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Copy SubTopic to HasSubTopics = false');",
+                  "pm.test('Status code is 201', function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Verify copy to default subtopic', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Full Response body:', JSON.stringify(jsonData));",
+                  "    pm.expect(jsonData.id).to.equal(4);",
+                  "    pm.expect(jsonData.title).to.equal('Default SubTopic');",
+                  "    pm.sendRequest({",
+                  "        url: 'https://localhost:7238/api/SubTopic/4',",
+                  "        method: 'GET',",
+                  "        header: { 'Authorization': 'Bearer ' + pm.variables.get('jwtToken') }",
+                  "    }, function (err, res) {",
+                  "        if (err) {",
+                  "            console.error('Test: Error verifying lessons:', err);",
+                  "            throw new Error('Failed to verify lessons');",
+                  "        }",
+                  "        console.log('Test: Lessons verification response status:', res.code);",
+                  "        if (res.code === 200) {",
+                  "            var subTopicData = res.json();",
+                  "            console.log('Test: SubTopic response body:', JSON.stringify(subTopicData));",
+                  "            pm.expect(subTopicData.lessons.$values.length).to.be.at.least(2);",
+                  "        } else {",
+                  "            console.error('Test: Unexpected status code during lessons verification:', res.code);",
+                  "            throw new Error('Failed to retrieve subtopic');",
+                  "        }",
+                  "    });",
+                  "});",
+                  "console.log('Test: Completed tests for Copy SubTopic to HasSubTopics = false');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"subTopicId\":2,\"newTopicId\":2}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/SubTopic/copy",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "SubTopic", "copy" ]
+            }
+          }
+        },
+        {
+          "name": "Get All Lessons",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Get All Lessons');",
+                  "pm.test('Status code is 200', function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Get All Lessons returns lessons', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Full response body:', jsonData);",
+                  "    var lessons = jsonData.$values || jsonData || [];",
+                  "    console.log('Test: Extracted lessons:', lessons);",
+                  "    pm.expect(lessons).to.be.an('array', 'Response is not an array');",
+                  "    pm.expect(lessons.length).to.be.at.least(1, 'No lessons returned');",
+                  "    pm.expect(lessons[0].title || lessons[0].Title).to.equal('The Great Gatsby', 'First lesson title mismatch');",
+                  "    pm.expect(lessons[0].objective || lessons[0].Objective).to.equal('Understand themes and symbolism.', 'First lesson objective mismatch');",
+                  "    console.log('Test: First lesson:', lessons[0]);",
+                  "});",
+                  "console.log('Test: Completed tests for Get All Lessons');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "https://localhost:7238/api/Lesson",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "Lesson" ]
+            }
+          }
+        },
+        {
+          "name": "Add Lesson",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Add Lesson');",
+                  "pm.test('Status code is 201', function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Lesson is added successfully', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    console.log('Test: Full response body:', jsonData);",
+                  "    pm.expect(jsonData.title || jsonData.Title).to.equal('New Lesson', 'Title mismatch');",
+                  "    pm.expect(jsonData.objective || jsonData.Objective).to.equal('A new test lesson.', 'Objective mismatch');",
+                  "    pm.expect(jsonData.subTopicId || jsonData.SubTopicId).to.equal(2, 'SubTopicId mismatch');",
+                  "    console.log('Test: Added lesson:', jsonData);",
+                  "});",
+                  "console.log('Test: Completed tests for Add Lesson');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}",
+                "type": "string"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "string"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"Title\":\"New Lesson\",\"Objective\":\"A new test lesson.\",\"SubTopicId\":2}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/Lesson",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "Lesson" ]
+            }
+          }
+        },
+        {
+          "name": "Update Lesson",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Update Lesson');",
+                  "pm.test('Status code is 204', function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(204);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        console.log('Test: Response body on failure:', pm.response.text());",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "console.log('Test: Completed tests for Update Lesson');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "postrequest",
+              "script": {
+                "exec": [
+                  "console.log('Post-request: Starting restoration for The Great Gatsby lesson');",
+                  "pm.sendRequest({",
+                  "    url: 'https://localhost:7238/api/Lesson/1',",
+                  "    method: 'PUT',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + pm.variables.get('jwtToken'),",
+                  "        'Content-Type': 'application/json'",
+                  "    },",
+                  "    body: {",
+                  "        mode: 'raw',",
+                  "        raw: JSON.stringify({ Id: 1, Title: 'The Great Gatsby', Objective: 'Understand themes and symbolism.', SubTopicId: 2 })",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    if (err) {",
+                  "        console.error('Post-request: Error restoring lesson:', err);",
+                  "        return;",
+                  "    }",
+                  "    console.log('Post-request: Restoration response status:', res.code);",
+                  "    if (res.code === 204) {",
+                  "        console.log('Post-request: Lesson restored successfully');",
+                  "    } else {",
+                  "        console.error('Post-request: Restoration failed with status:', res.code, 'Response body:', res.text());",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"Id\":1,\"Title\":\"Updated Lesson\",\"Objective\":\"Updated objective.\",\"SubTopicId\":2}"
+            },
+            "url": {
+              "raw": "https://localhost:7238/api/Lesson/1",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "Lesson", "1" ]
+            }
+          }
+        },
+        {
+          "name": "Delete Lesson",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.sendRequest({",
+                  "    url: 'https://localhost:7238/api/Lesson',",
+                  "    method: 'POST',",
+                  "    header: {",
+                  "        'Authorization': 'Bearer ' + pm.variables.get('jwtToken'),",
+                  "        'Content-Type': 'application/json'",
+                  "    },",
+                  "    body: {",
+                  "        mode: 'raw',",
+                  "        raw: JSON.stringify({",
+                  "            Title: 'Delete Test Lesson',",
+                  "            Objective: 'Lesson for deletion test.',",
+                  "            SubTopicId: 2",
+                  "        })",
+                  "    }",
+                  "}, function (err, res) {",
+                  "    if (err) {",
+                  "        console.error('Error creating lesson:', err);",
+                  "        return;",
+                  "    }",
+                  "    if (res.code !== 201) {",
+                  "        console.error('Failed to create lesson with status:', res.code);",
+                  "        return;",
+                  "    }",
+                  "    var jsonData = res.json();",
+                  "    if (jsonData.id) {",
+                  "        pm.variables.set('deleteLessonId', jsonData.id);",
+                  "        console.log('Set deleteLessonId to:', jsonData.id);",
+                  "    } else {",
+                  "        console.error('Lesson ID not found in response');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Delete Lesson');",
+                  "pm.test('Status code is 204', function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(204);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        console.log('Test: Response body on failure:', pm.response.text());",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "console.log('Test: Completed tests for Delete Lesson');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "https://localhost:7238/api/Lesson/{{deleteLessonId}}",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "Lesson", "{{deleteLessonId}}" ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

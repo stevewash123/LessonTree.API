@@ -10,9 +10,9 @@ namespace LessonTree.DAL.Repositories
     public interface ITopicRepository
     {
         IQueryable<Topic> GetAll(Func<IQueryable<Topic>, IQueryable<Topic>> include = null);
-        Topic GetById(int id, Func<IQueryable<Topic>, IQueryable<Topic>> include = null);
-        void Add(Topic topic);
-        void Update(Topic topic);
-        void Delete(int id);
+        Task<Topic> GetByIdAsync(int id, Func<IQueryable<Topic>, IQueryable<Topic>> include = null);
+        Task<int> AddAsync(Topic topic); // Changed return type to Task<int>
+        Task UpdateAsync(Topic topic);
+        Task DeleteAsync(int id);
     }
 }

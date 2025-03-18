@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,8 +13,11 @@ namespace LessonTree.Models.DTO
         public string NodeId { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
-        public CourseResource Course { get; set; }
-        public List<SubTopicResource> SubTopics { get; set; } 
+        public Boolean HasSubTopics { get; set; }
+        public int CourseId { get; set; }
+        public List<SubTopicResource>? SubTopics { get; set; }
+        public List<LessonResource>? Lessons { get; set; }
+
     }
 
     public class TopicCreateResource
@@ -28,7 +32,7 @@ namespace LessonTree.Models.DTO
         public int Id { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
-        public int CourseId { get; set; }
+        public bool HasSubTopics { get; set; }
     }
 
     public class TopicMoveResource

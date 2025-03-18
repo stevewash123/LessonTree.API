@@ -15,7 +15,47 @@ namespace LessonTree.DAL.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
+            modelBuilder.HasAnnotation("ProductVersion", "8.0.2");
+
+            modelBuilder.Entity("LessonTree.DAL.Domain.Attachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("Blob")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.Property<string>("ContentType")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GoogleDocId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GoogleDocUrl")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Shared")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Attachments");
+                });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Course", b =>
                 {
@@ -24,7 +64,6 @@ namespace LessonTree.DAL.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
@@ -36,29 +75,6 @@ namespace LessonTree.DAL.Migrations
                     b.ToTable("Courses");
                 });
 
-            modelBuilder.Entity("LessonTree.DAL.Domain.Document", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<byte[]>("Blob")
-                        .IsRequired()
-                        .HasColumnType("BLOB");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Documents");
-                });
-
             modelBuilder.Entity("LessonTree.DAL.Domain.Lesson", b =>
                 {
                     b.Property<int>("Id")
@@ -66,35 +82,22 @@ namespace LessonTree.DAL.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Assessment")
-                        .IsRequired()
                         .HasMaxLength(250)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ClassTime")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("LastDateTaught")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Level")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Materials")
-                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Methods")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
@@ -104,7 +107,6 @@ namespace LessonTree.DAL.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("SpecialNeeds")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
@@ -123,19 +125,19 @@ namespace LessonTree.DAL.Migrations
                     b.ToTable("Lessons");
                 });
 
-            modelBuilder.Entity("LessonTree.DAL.Domain.LessonDocument", b =>
+            modelBuilder.Entity("LessonTree.DAL.Domain.LessonAttachment", b =>
                 {
                     b.Property<int>("LessonId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("DocumentId")
+                    b.Property<int>("AttachmentId")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("LessonId", "DocumentId");
+                    b.HasKey("LessonId", "AttachmentId");
 
-                    b.HasIndex("DocumentId");
+                    b.HasIndex("AttachmentId");
 
-                    b.ToTable("LessonDocuments");
+                    b.ToTable("LessonAttachments");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.LessonStandard", b =>
@@ -190,6 +192,9 @@ namespace LessonTree.DAL.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -199,7 +204,9 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TopicId");
+                    b.HasIndex("TopicId", "IsDefault")
+                        .IsUnique()
+                        .HasFilter("IsDefault = 1");
 
                     b.ToTable("SubTopics");
                 });
@@ -214,7 +221,6 @@ namespace LessonTree.DAL.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("HasSubTopics")
@@ -433,21 +439,21 @@ namespace LessonTree.DAL.Migrations
                     b.Navigation("SubTopic");
                 });
 
-            modelBuilder.Entity("LessonTree.DAL.Domain.LessonDocument", b =>
+            modelBuilder.Entity("LessonTree.DAL.Domain.LessonAttachment", b =>
                 {
-                    b.HasOne("LessonTree.DAL.Domain.Document", "Document")
-                        .WithMany("LessonDocuments")
-                        .HasForeignKey("DocumentId")
+                    b.HasOne("LessonTree.DAL.Domain.Attachment", "Attachment")
+                        .WithMany("LessonAttachments")
+                        .HasForeignKey("AttachmentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("LessonTree.DAL.Domain.Lesson", "Lesson")
-                        .WithMany("LessonDocuments")
+                        .WithMany("LessonAttachments")
                         .HasForeignKey("LessonId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Document");
+                    b.Navigation("Attachment");
 
                     b.Navigation("Lesson");
                 });
@@ -555,19 +561,19 @@ namespace LessonTree.DAL.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("LessonTree.DAL.Domain.Attachment", b =>
+                {
+                    b.Navigation("LessonAttachments");
+                });
+
             modelBuilder.Entity("LessonTree.DAL.Domain.Course", b =>
                 {
                     b.Navigation("Topics");
                 });
 
-            modelBuilder.Entity("LessonTree.DAL.Domain.Document", b =>
-                {
-                    b.Navigation("LessonDocuments");
-                });
-
             modelBuilder.Entity("LessonTree.DAL.Domain.Lesson", b =>
                 {
-                    b.Navigation("LessonDocuments");
+                    b.Navigation("LessonAttachments");
 
                     b.Navigation("LessonStandards");
                 });

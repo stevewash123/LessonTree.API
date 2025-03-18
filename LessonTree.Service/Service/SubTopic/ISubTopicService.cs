@@ -6,12 +6,12 @@ namespace LessonTree.BLL.Service
 {
     public interface ISubTopicService
     {
-        SubTopicResource GetById(int id);
-        List<SubTopicResource> GetAll();
-        void Add(SubTopicCreateResource subTopicCreateResource);
-        void Update(SubTopicUpdateResource subTopicUpdateResource);
-        void Delete(int id);
-        void MoveSubTopic(int subTopicId, int newTopicId);
-        SubTopicResource CopySubTopic(int subTopicId, int newTopicId);
+        Task<SubTopicResource> GetByIdAsync(int id);
+        Task<List<SubTopicResource>> GetAllAsync();
+        Task<int> AddAsync(SubTopicCreateResource subTopicCreateResource);
+        Task UpdateAsync(SubTopicUpdateResource subTopicUpdateResource);
+        Task DeleteAsync(int id);
+        Task MoveSubTopic(int subTopicId, int newTopicId);
+        Task<SubTopicResource> CopySubTopicAsync(int subTopicId, int newTopicId);
     }
 }

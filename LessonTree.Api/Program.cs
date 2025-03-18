@@ -8,6 +8,25 @@ using Serilog;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+#if DEBUG
+try
+{
+    string logDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+    if (Directory.Exists(logDirectory))
+    {
+        var logFiles = Directory.EnumerateFiles(logDirectory, "log*.txt");
+        foreach (var file in logFiles)
+        {
+            File.Delete(file);
+            Console.WriteLine($"Deleted log file: {file}");
+        }
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Error deleting log files: {ex.Message}");
+}
+#endif
 
 // Ensure the logs directory exists
 var logsPath = Path.Combine(Directory.GetCurrentDirectory(), "logs");
@@ -43,23 +62,41 @@ ServiceConfiguration.ConfigureServices(builder);
 // Configure JSON serialization to handle circular references
 builder.Services.Configure<JsonOptions>(options =>
 {
-//    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve; // Handle circular references
-//    options.JsonSerializerOptions.MaxDepth = 64; // Increase max depth if needed (default is 32)
-//    options.JsonSerializerOptions.WriteIndented = true; // Optional: Make JSON readable for debugging
+    // options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve; // Handle circular references
+    // options.JsonSerializerOptions.MaxDepth = 64; // Increase max depth if needed (default is 32)
+    // options.JsonSerializerOptions.WriteIndented = true; // Optional: Make JSON readable for debugging
 });
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Starting application with logs directory: {LogsPath}", logsPath);
-    var context = scope.ServiceProvider.GetRequiredService<LessonTreeContext>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
-    var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+var logger = app.Services.GetRequiredService<ILogger<Program>>(); // Moved logger outside scope
 
-    await DatabaseSeeder.SeedDatabaseAsync(context, userManager, roleManager, logger, env);
+if (args.Contains("--seed"))
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<LessonTreeContext>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
+        var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+
+        logger.LogInformation("Seeding database...");
+        try
+        {
+            await DatabaseSeeder.SeedDatabaseAsync(context, userManager, roleManager, logger, env);
+            logger.LogInformation("Database seeding completed.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to seed database: {Message}", ex.Message);
+            // Optionally, exit the application if seeding is critical
+            // Environment.Exit(1);
+        }
+    }
+}
+else
+{
+    logger.LogInformation("Starting API without seeding...");
 }
 
 MiddlewareConfiguration.ConfigureMiddleware(app);

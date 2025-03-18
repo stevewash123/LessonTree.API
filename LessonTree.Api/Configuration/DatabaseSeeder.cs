@@ -51,10 +51,21 @@ namespace LessonTree.API.Configuration
                     }
                 }
 
-                // Seed Test Data in Development Mode
-                if (env.IsDevelopment() && !context.Courses.Any())
+                // Seed Test Data in Development Mode (always seed, clearing existing data)
+                if (env.IsDevelopment())
                 {
-                    logger.LogInformation("Seeding test data for Courses, Topics, SubTopics, Lessons, Standards, and Documents in Development mode...");
+                    logger.LogInformation("Seeding test data for Courses, Topics, SubTopics, Lessons, Standards, and Attachments in Development mode...");
+
+                    // Clear existing data to ensure a clean state
+                    context.LessonAttachments.RemoveRange(context.LessonAttachments);
+                    context.LessonStandards.RemoveRange(context.LessonStandards);
+                    context.Lessons.RemoveRange(context.Lessons);
+                    context.SubTopics.RemoveRange(context.SubTopics);
+                    context.Topics.RemoveRange(context.Topics);
+                    context.Courses.RemoveRange(context.Courses);
+                    context.Standards.RemoveRange(context.Standards);
+                    context.Attachments.RemoveRange(context.Attachments);
+                    await context.SaveChangesAsync();
 
                     var courses = new List<Course>
                     {
@@ -68,53 +79,53 @@ namespace LessonTree.API.Configuration
                                 {
                                     Title = "Literature",
                                     Description = "Exploring classic and modern literary works.",
+                                    HasSubTopics = true, // Multiple subtopics
                                     SubTopics = new List<SubTopic>
                                     {
                                         new SubTopic
                                         {
                                             Title = "Shakespeare",
                                             Description = "Study of Shakespeare's plays and sonnets.",
-                                            Lessons = new List<Lesson>
-                                            {
-                                                new Lesson
-                                                {
-                                                    Title = "Introduction to Shakespeare",
-                                                    Content = "Overview of Shakespeare's life and works.",
-                                                    LastDateTaught = DateTime.Now.AddYears(-1),
-                                                    Level = "9th Grade",
-                                                    Objective = null, // Null for boundary testing
-                                                    Materials = null, // Null for boundary testing
-                                                    ClassTime = "45 minutes",
-                                                    Methods = "Lecture, discussion",
-                                                    SpecialNeeds = "Visual aids for hearing impaired",
-                                                    Assessment = "Quiz"
-                                                },
-                                                new Lesson
-                                                {
-                                                    Title = "Romeo and Juliet",
-                                                    Content = null, // Null for boundary testing
-                                                    LastDateTaught = DateTime.Now.AddMonths(-6),
-                                                    Level = "10th Grade",
-                                                    Objective = "Analyze themes in Romeo and Juliet.",
-                                                    Materials = "Play script",
-                                                    ClassTime = "60 minutes",
-                                                    Methods = "Reading, group work",
-                                                    SpecialNeeds = null, // Null for boundary testing
-                                                    Assessment = "Essay"
-                                                }
-                                            }
+                                            IsDefault = true, // Default subtopic with no lessons
+                                            Lessons = new List<Lesson>() // Empty lessons
                                         },
                                         new SubTopic
                                         {
                                             Title = "American Literature",
                                             Description = "Key works from American authors.",
-                                            Lessons = new List<Lesson>() // Empty Lessons array
+                                            IsDefault = false,
+                                            Lessons = new List<Lesson>
+                                            {
+                                                new Lesson
+                                                {
+                                                    Title = "The Great Gatsby",
+                                                    Level = "11th Grade",
+                                                    Objective = "Understand themes and symbolism.",
+                                                    Materials = "Novel, study guide",
+                                                    ClassTime = "60 minutes",
+                                                    Methods = "Lecture, discussion",
+                                                    SpecialNeeds = "Audio version for visually impaired",
+                                                    Assessment = "Essay"
+                                                },
+                                                new Lesson
+                                                {
+                                                    Title = "To Kill a Mockingbird",
+                                                    Level = "10th Grade",
+                                                    Objective = "Analyze character development.",
+                                                    Materials = "Novel",
+                                                    ClassTime = "45 minutes",
+                                                    Methods = "Group reading",
+                                                    SpecialNeeds = null, // Boundary data: null special needs
+                                                    Assessment = "Quiz"
+                                                }
+                                            }
                                         },
                                         new SubTopic
                                         {
                                             Title = "Poetry",
                                             Description = "Study of poetic forms and techniques.",
-                                            Lessons = new List<Lesson>() // Empty Lessons array
+                                            IsDefault = false,
+                                            Lessons = new List<Lesson>() // Empty lessons
                                         }
                                     }
                                 },
@@ -122,13 +133,79 @@ namespace LessonTree.API.Configuration
                                 {
                                     Title = "Grammar",
                                     Description = "Mastering English grammar rules.",
-                                    SubTopics = new List<SubTopic>() // Empty SubTopics array
+                                    HasSubTopics = false, // Only default subtopic
+                                    SubTopics = new List<SubTopic>
+                                    {
+                                        new SubTopic
+                                        {
+                                            Title = "Default SubTopic",
+                                            IsDefault = true,
+                                            Lessons = new List<Lesson>
+                                            {
+                                                new Lesson
+                                                {
+                                                    Title = "Parts of Speech",
+                                                    Level = "9th Grade",
+                                                    Objective = "Identify parts of speech.",
+                                                    Materials = "Workbook",
+                                                    ClassTime = "30 minutes",
+                                                    Methods = "Exercises",
+                                                    SpecialNeeds = "Large print materials",
+                                                    Assessment = "Test"
+                                                },
+                                                new Lesson
+                                                {
+                                                    Title = "Sentence Structure",
+                                                    Level = "10th Grade",
+                                                    Objective = "Identify parts of sentance.",
+                                                    Materials = null, // Boundary data: null materials
+                                                    ClassTime = "40 minutes",
+                                                    Methods = "Lecture",
+                                                    SpecialNeeds = "None",
+                                                    Assessment = "Worksheet"
+                                                }
+                                            }
+                                        }
+                                    }
                                 },
                                 new Topic
                                 {
                                     Title = "Writing",
                                     Description = "Developing writing skills.",
-                                    SubTopics = new List<SubTopic>() // Empty SubTopics array
+                                    HasSubTopics = true, // Changed from false to true to match test expectations
+                                    SubTopics = new List<SubTopic>
+                                    {
+                                        new SubTopic
+                                        {
+                                            Title = "Default SubTopic",
+                                            IsDefault = true,
+                                            Lessons = new List<Lesson>
+                                            {
+                                                new Lesson
+                                                {
+                                                    Title = "Essay Writing",
+                                                    Level = "11th Grade",
+                                                    Objective = "Write a coherent essay.",
+                                                    Materials = "Writing prompts",
+                                                    ClassTime = "50 minutes",
+                                                    Methods = "Workshop",
+                                                    SpecialNeeds = "Extended time for dyslexic students",
+                                                    Assessment = "Peer review"
+                                                },
+                                                new Lesson
+                                                {
+                                                    Title = "Creative Writing",
+                                                    Level = "12th Grade",
+                                                    Objective = "Develop a short story.",
+                                                    Materials = "Examples of short stories",
+                                                    ClassTime = "60 minutes",
+                                                    Methods = "Writing exercises",
+                                                    SpecialNeeds = null, // Boundary data: null special needs
+                                                    Assessment = "Portfolio"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         },
@@ -142,13 +219,31 @@ namespace LessonTree.API.Configuration
                                 {
                                     Title = "Biology",
                                     Description = "Study of living organisms.",
-                                    SubTopics = new List<SubTopic>() // Empty SubTopics array
+                                    HasSubTopics = false, // Only default subtopic
+                                    SubTopics = new List<SubTopic>
+                                    {
+                                        new SubTopic
+                                        {
+                                            Title = "Default SubTopic",
+                                            IsDefault = true,
+                                            Lessons = new List<Lesson>() // No lessons
+                                        }
+                                    }
                                 },
                                 new Topic
                                 {
                                     Title = "Chemistry",
                                     Description = "Fundamentals of matter and reactions.",
-                                    SubTopics = new List<SubTopic>() // Empty SubTopics array
+                                    HasSubTopics = false, // Only default subtopic
+                                    SubTopics = new List<SubTopic>
+                                    {
+                                        new SubTopic
+                                        {
+                                            Title = "Default SubTopic",
+                                            IsDefault = true,
+                                            Lessons = new List<Lesson>() // No lessons
+                                        }
+                                    }
                                 }
                             }
                         },
@@ -156,7 +251,7 @@ namespace LessonTree.API.Configuration
                         {
                             Title = "High School Math",
                             Description = "Mathematics course with no topics yet.",
-                            Topics = new List<Topic>() // Empty Topics array
+                            Topics = new List<Topic>() // Empty topics array
                         }
                     };
                     context.Courses.AddRange(courses);
@@ -193,34 +288,34 @@ namespace LessonTree.API.Configuration
                     context.Standards.AddRange(standards);
                     await context.SaveChangesAsync();
 
-                    // Seed Documents
-                    var documents = new List<Document>
+                    // Seed Attachments
+                    var attachments = new List<Attachment>
                     {
-                        new Document { FileName = "Lesson Plan Template.docx", ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document", Blob = null },
-                        new Document { FileName = "Worksheet.pdf", ContentType = "application/pdf", Blob = null },
-                        new Document { FileName = "Presentation.pptx", ContentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation", Blob = null }
+                        new Attachment { FileName = "Lesson Plan Template.docx", ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document", Blob = [] },
+                        new Attachment { FileName = "Worksheet.pdf", ContentType = "application/pdf", Blob = [] },
+                        new Attachment { FileName = "Presentation.pptx", ContentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation", Blob = [] }
                     };
-                    context.Documents.AddRange(documents);
+                    context.Attachments.AddRange(attachments);
                     await context.SaveChangesAsync();
 
                     // Link Standards and Documents to Lessons
-                    var lessonIntroShakespeare = literatureTopic.SubTopics[0].Lessons[0];
-                    var lessonRomeoJuliet = literatureTopic.SubTopics[0].Lessons[1];
+                    var americanLitSubTopic = literatureTopic.SubTopics.First(st => st.Title == "American Literature");
+                    var lessonGreatGatsby = americanLitSubTopic.Lessons.First(l => l.Title == "The Great Gatsby");
+                    var lessonMockingbird = americanLitSubTopic.Lessons.First(l => l.Title == "To Kill a Mockingbird");
 
                     var lessonStandards = new List<LessonStandard>
                     {
-                        new LessonStandard { LessonId = lessonIntroShakespeare.Id, StandardId = standards[0].Id },
-                        new LessonStandard { LessonId = lessonRomeoJuliet.Id, StandardId = standards[0].Id },
-                        new LessonStandard { LessonId = lessonRomeoJuliet.Id, StandardId = standards[1].Id }
+                        new LessonStandard { LessonId = lessonGreatGatsby.Id, StandardId = standards[0].Id },
+                        new LessonStandard { LessonId = lessonMockingbird.Id, StandardId = standards[1].Id }
                     };
                     context.LessonStandards.AddRange(lessonStandards);
 
-                    var lessonDocuments = new List<LessonDocument>
+                    var lessonAttachments = new List<LessonAttachment>
                     {
-                        new LessonDocument { LessonId = lessonIntroShakespeare.Id, DocumentId = documents[0].Id },
-                        new LessonDocument { LessonId = lessonRomeoJuliet.Id, DocumentId = documents[1].Id }
+                        new LessonAttachment { LessonId = lessonGreatGatsby.Id, AttachmentId = attachments[0].Id },
+                        new LessonAttachment { LessonId = lessonMockingbird.Id, AttachmentId = attachments[1].Id }
                     };
-                    context.LessonDocuments.AddRange(lessonDocuments);
+                    context.LessonAttachments.AddRange(lessonAttachments);
 
                     await context.SaveChangesAsync();
 

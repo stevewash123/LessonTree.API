@@ -1,0 +1,122 @@
+{
+  "info": {
+    "name": "LessonTree API Isolated Test",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "console.log('Pre-request: Starting token fetch');",
+          "pm.sendRequest({",
+          "    url: 'https://localhost:7238/account/login',",
+          "    method: 'POST',",
+          "    header: {",
+          "        'accept': '*/*',",
+          "        'Content-Type': 'application/json'",
+          "    },",
+          "    body: {",
+          "        mode: 'raw',",
+          "        raw: JSON.stringify({ id: 0, username: 'admin', password: 'Admin123!' })",
+          "    }",
+          "}, function (err, res) {",
+          "    if (err) {",
+          "        console.error('Pre-request: Error fetching token:', err);",
+          "        pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer FAILED_TOKEN' });",
+          "        return;",
+          "    }",
+          "    console.log('Pre-request: Token fetch response status:', res.code);",
+          "    if (res.code !== 200) {",
+          "        console.error('Pre-request: Token fetch failed with status:', res.code, 'Response body:', res.text());",
+          "        pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer FAILED_TOKEN' });",
+          "        return;",
+          "    }",
+          "    try {",
+          "        var jsonData = res.json();",
+          "        console.log('Pre-request: Token fetch response body:', jsonData);",
+          "        if (!jsonData.token) {",
+          "            console.error('Pre-request: Token not found in response');",
+          "            pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer FAILED_TOKEN' });",
+          "            return;",
+          "        }",
+          "        pm.variables.set('jwtToken', jsonData.token);",
+          "        pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer ' + pm.variables.get('jwtToken') });",
+          "        console.log('Pre-request: Token set in header:', pm.request.headers.get('Authorization'));",
+          "        pm.sendRequest({",
+          "            url: 'https://localhost:7238/api/admin/reset-and-reseed',",
+          "            method: 'POST',",
+          "            header: {",
+          "                'Content-Type': 'application/json',",
+          "                'Authorization': 'Bearer ' + pm.variables.get('jwtToken')",
+          "            }",
+          "        }, (err, res) => {",
+          "            if (err) {",
+          "                console.log('Error resetting and reseeding: ', err);",
+          "            } else if (res.code !== 200) {",
+          "                console.log('Reset and reseed failed: ', res.status, res.text());",
+          "            } else {",
+          "                console.log('Database reset and reseeded successfully.');",
+          "            }",
+          "        });",
+          "    } catch (e) {",
+          "        console.error('Pre-request: Error parsing token response:', e.message, 'Response body:', res.text());",
+          "        pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer FAILED_TOKEN' });",
+          "    }",
+          "});"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Copy SubTopic - To Topic with HasSubTopics = true",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "console.log('Test: Starting tests for Copy SubTopic to HasSubTopics = true');",
+              "pm.test('Status code is 201', function () {",
+              "    console.log('Test: Checking status code:', pm.response.code);",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test('Verify copy', function () {",
+              "    var jsonData = pm.response.json();",
+              "    console.log('Test: Response body:', jsonData);",
+              "    pm.expect(jsonData.title).to.equal('American Literature');",
+              "    pm.expect(jsonData.topicId).to.equal(3);",
+              "    pm.expect(jsonData.id).to.be.above(2);",
+              "    console.log('Test: Copied SubTopic ID:', jsonData.id, 'Title:', jsonData.title);",
+              "});",
+              "console.log('Test: Completed tests for Copy SubTopic to HasSubTopics = true');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"subTopicId\":2,\"newTopicId\":3}"
+        },
+        "url": {
+          "raw": "https://localhost:7238/api/SubTopic/copy",
+          "protocol": "https",
+          "host": [ "localhost" ],
+          "port": "7238",
+          "path": [ "api", "SubTopic", "copy" ]
+        }
+      }
+    }
+  ]
+}

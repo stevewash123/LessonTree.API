@@ -11,8 +11,10 @@ namespace LessonTree.Models.DTO
         public int Id { get; set; }
         public string NodeId { get; set; }
         public string Title { get; set; }
-        public string Description { get; set; }        
-        public TopicResource Topic { get; set; }
+        public string Description { get; set; }
+        public int TopicId { get; set; }
+        public int CourseId { get; set; }
+        public Boolean IsDefault { get; set; }
         public List<LessonResource> Lessons { get; set; }
     }
     public class SubTopicCreateResource // New
@@ -27,7 +29,6 @@ namespace LessonTree.Models.DTO
         public int Id { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
-        public int TopicId { get; set; }
     }
 
     public class SubTopicMoveResource

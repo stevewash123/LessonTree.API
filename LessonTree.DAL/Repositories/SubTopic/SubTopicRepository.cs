@@ -1,5 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 using LessonTree.DAL.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -28,7 +29,7 @@ namespace LessonTree.DAL.Repositories
             return query;
         }
 
-        public SubTopic GetById(int id, Func<IQueryable<SubTopic>, IQueryable<SubTopic>> include = null)
+        public async Task<SubTopic> GetByIdAsync(int id, Func<IQueryable<SubTopic>, IQueryable<SubTopic>> include = null)
         {
             _logger.LogDebug("Retrieving subtopic by ID: {SubTopicId}", id);
             IQueryable<SubTopic> query = _context.SubTopics;
@@ -36,37 +37,41 @@ namespace LessonTree.DAL.Repositories
             {
                 query = include(query);
             }
-            var subTopic = query.FirstOrDefault(st => st.Id == id) ?? new SubTopic(); // Default to empty SubTopic if not found
+            var subTopic = await query.FirstOrDefaultAsync(st => st.Id == id);
             if (subTopic == null)
+            {
                 _logger.LogWarning("SubTopic with ID {SubTopicId} not found", id);
-            return subTopic;
+            }
+            return subTopic; // Return null if not found, instead of new SubTopic()
         }
 
-        public void Add(SubTopic subTopic)
+        public async Task<int> AddAsync(SubTopic subTopic)
         {
             _logger.LogDebug("Adding subtopic: {Title}", subTopic.Title);
             _context.SubTopics.Add(subTopic);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             _logger.LogInformation("Added subtopic with ID: {SubTopicId}, Title: {Title}", subTopic.Id, subTopic.Title);
+            return subTopic.Id;
         }
 
-        public void Update(SubTopic subTopic)
+        public async Task UpdateAsync(SubTopic subTopic)
         {
             _logger.LogDebug("Updating subtopic: {Title}", subTopic.Title);
+            _logger.LogDebug("Updating SubTopic {Id} with TopicId {TopicId}, IsDefault {IsDefault}", subTopic.Id, subTopic.TopicId, subTopic.IsDefault);
             _context.SubTopics.Update(subTopic);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             _logger.LogInformation("Updated subtopic with ID: {SubTopicId}, Title: {Title}", subTopic.Id, subTopic.Title);
         }
 
-        public void Delete(int id)
+        public async Task DeleteAsync(int id)
         {
             _logger.LogDebug("Deleting subtopic with ID: {SubTopicId}", id);
-            var subTopic = _context.SubTopics.Find(id);
+            var subTopic = await _context.SubTopics.FindAsync(id);
             if (subTopic != null)
             {
                 _context.SubTopics.Remove(subTopic);
-                _context.SaveChanges();
-                _logger.LogInformation("Deleted subtopic with ID: {SubTopicId}", id);
+                var changes = await _context.SaveChangesAsync();
+                _logger.LogInformation("Deleted subtopic with ID: {SubTopicId}, Rows affected: {Changes}", id, changes);
             }
             else
             {

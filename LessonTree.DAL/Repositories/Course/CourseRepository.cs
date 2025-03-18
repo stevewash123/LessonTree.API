@@ -16,38 +16,38 @@ namespace LessonTree.DAL.Repositories
             {
                 query = include(query);
             }
-            return query; // Return IQueryable to maintain flexibility
+            return query;
         }
 
-        public Course GetById(int id, Func<IQueryable<Course>, IQueryable<Course>> include = null)
+        public async Task<Course> GetByIdAsync(int id, Func<IQueryable<Course>, IQueryable<Course>> include = null)
         {
             IQueryable<Course> query = _context.Courses;
             if (include != null)
             {
                 query = include(query);
             }
-            return query.FirstOrDefault(c => c.Id == id) ?? new Course(); // Default to empty Course if not found
+            return await query.FirstOrDefaultAsync(c => c.Id == id) ?? new Course();
         }
 
-        public void Add(Course course)
+        public async Task AddAsync(Course course)
         {
             _context.Courses.Add(course);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
 
-        public void Update(Course course)
+        public async Task UpdateAsync(Course course)
         {
             _context.Courses.Update(course);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
 
-        public void Delete(int id)
+        public async Task DeleteAsync(int id)
         {
-            var course = GetById(id);
+            var course = await GetByIdAsync(id);
             if (course != null)
             {
                 _context.Courses.Remove(course);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
         }
     }

@@ -21,57 +21,62 @@ namespace LessonTree.API.Controllers
             _logger = logger;
         }
 
-        [HttpGet]
-        public IActionResult GetSubTopics()
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetSubTopic(int id)
         {
-            var subTopics = _service.GetAll();
+            try
+            {
+                var subTopic = await _service.GetByIdAsync(id);
+                return Ok(subTopic);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetSubTopics()
+        {
+            var subTopics = await _service.GetAllAsync();
             return Ok(subTopics);
         }
 
-        [HttpGet("{id}")]
-        public IActionResult GetSubTopic(int id)
-        {
-            var subTopic = _service.GetById(id);
-            if (subTopic == null) return NotFound();
-            return Ok(subTopic);
-        }
-
         [HttpPost]
-        public IActionResult AddSubTopic([FromBody] SubTopicCreateResource subTopicCreateResource)
+        public async Task<IActionResult> AddSubTopic([FromBody] SubTopicCreateResource subTopicCreateResource)
         {
-            _service.Add(subTopicCreateResource);
-            var createdSubTopic = _service.GetById(_service.GetAll().Last().Id); // Assuming GetAll returns in order of creation
+            var createdId = await _service.AddAsync(subTopicCreateResource);
+            var createdSubTopic = await _service.GetByIdAsync(createdId);
             return CreatedAtAction(nameof(GetSubTopic), new { id = createdSubTopic.Id }, createdSubTopic);
         }
 
         [HttpPut("{id}")]
-        public IActionResult UpdateSubTopic(int id, [FromBody] SubTopicUpdateResource subTopicUpdateResource)
+        public async Task<IActionResult> UpdateSubTopic(int id, [FromBody] SubTopicUpdateResource subTopicUpdateResource)
         {
             if (id != subTopicUpdateResource.Id) return BadRequest();
-            _service.Update(subTopicUpdateResource);
+            await _service.UpdateAsync(subTopicUpdateResource);
             return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public IActionResult DeleteSubTopic(int id)
+        public async Task<IActionResult> DeleteSubTopic(int id)
         {
-            _service.Delete(id);
+            await _service.DeleteAsync(id);
             return NoContent();
         }
 
         [HttpPost("move")]
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public IActionResult MoveSubTopic([FromBody] SubTopicMoveResource moveResource)
+        public async Task<IActionResult> MoveSubTopic([FromBody] SubTopicMoveResource moveResource)
         {
             _logger.LogDebug("Entering MoveSubTopic with SubTopic ID: {SubTopicId}, New Topic ID: {NewTopicId}",
                 moveResource.SubTopicId, moveResource.NewTopicId);
 
             try
             {
-                _service.MoveSubTopic(moveResource.SubTopicId, moveResource.NewTopicId);
+                await _service.MoveSubTopic(moveResource.SubTopicId, moveResource.NewTopicId);
                 _logger.LogInformation("Moved SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId}",
                     moveResource.SubTopicId, moveResource.NewTopicId);
-                return Ok();
+                return Ok(new { status = "success", message = "SubTopic moved successfully" });
             }
             catch (ArgumentException ex)
             {
@@ -82,22 +87,19 @@ namespace LessonTree.API.Controllers
             {
                 _logger.LogError(ex, "Unexpected error moving SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId}",
                     moveResource.SubTopicId, moveResource.NewTopicId);
-                return StatusCode(500, "Internal server error");
+                return StatusCode(500, new { status = "error", message = ex.Message });
             }
         }
 
         [HttpPost("copy")]
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public IActionResult CopySubTopic([FromBody] SubTopicMoveResource copyResource)
+        public async Task<IActionResult> CopySubTopic([FromBody] SubTopicMoveResource copyResource)
         {
             _logger.LogDebug("Entering CopySubTopic with SubTopic ID: {SubTopicId}, New Topic ID: {NewTopicId}",
                 copyResource.SubTopicId, copyResource.NewTopicId);
 
             try
             {
-                var newSubTopic = _service.CopySubTopic(copyResource.SubTopicId, copyResource.NewTopicId);
-                _logger.LogInformation("Copied SubTopic ID: {SubTopicId} to new SubTopic ID: {NewSubTopicId} under Topic ID: {NewTopicId}",
-                    copyResource.SubTopicId, newSubTopic.Id, copyResource.NewTopicId);
+                var newSubTopic = await _service.CopySubTopicAsync(copyResource.SubTopicId, copyResource.NewTopicId);
                 return CreatedAtAction(nameof(GetSubTopic), new { id = newSubTopic.Id }, newSubTopic);
             }
             catch (ArgumentException ex)
@@ -109,7 +111,7 @@ namespace LessonTree.API.Controllers
             {
                 _logger.LogError(ex, "Unexpected error copying SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId}",
                     copyResource.SubTopicId, copyResource.NewTopicId);
-                return StatusCode(500, "Internal server error");
+                return StatusCode(500, new { status = "error", message = ex.Message });
             }
         }
     }

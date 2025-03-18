@@ -1,11 +1,16 @@
-﻿using LessonTree.Models.DTO;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using LessonTree.Models.DTO;
 
-public interface IStandardService
+namespace LessonTree.BLL.Service
 {
-    List<StandardResource> GetAll();
-    StandardResource GetById(int id);
-    void Add(StandardCreateResource standardCreateResource);
-    void Update(StandardUpdateResource standardUpdateResource);
-    void Delete(int id);
-    List<StandardResource> GetByTopicId(int topicId);
+    public interface IStandardService
+    {
+        Task<List<StandardResource>> GetAllAsync();
+        Task<StandardResource?> GetByIdAsync(int id);
+        Task<int> AddAsync(StandardCreateResource standardCreateResource); 
+        Task UpdateAsync(StandardUpdateResource standardUpdateResource);
+        Task DeleteAsync(int id);
+        Task<List<StandardResource>> GetByTopicIdAsync(int topicId);
+    }
 }

@@ -6,17 +6,17 @@ namespace LessonTree.BLL.Service
 {
     public interface ILessonService
     {
-        LessonDetailResource GetById(int id);
-        List<LessonResource> GetAll();
-        void Add(LessonCreateResource lessonCreateResource);
-        void Update(LessonUpdateResource lessonUpdateResource);
-        void Delete(int id);
-        void AddDocument(int lessonId, int documentId);
-        void RemoveDocument(int lessonId, int documentId);
-        List<LessonResource> GetByTitle(string title);
-        void MoveLesson(int lessonId, int newSubTopicId);
-        void AddStandardToLesson(int lessonId, int standardId);
-        void RemoveStandardFromLesson(int lessonId, int standardId);
-        LessonResource CopyLesson(int lessonId, int newSubTopicId);
+        Task<LessonDetailResource?> GetByIdAsync(int id);
+        Task<List<LessonResource>> GetAllAsync();
+        Task<int> AddAsync(LessonCreateResource lessonCreateResource); // Updated
+        Task UpdateAsync(LessonUpdateResource lessonUpdateResource);
+        Task DeleteAsync(int id);
+        Task AddAttachmentAsync(int lessonId, int attachmentId);
+        Task RemoveAttachmentAsync(int lessonId, int attachmentId);
+        Task<List<LessonResource>> GetByTitleAsync(string title);
+        Task MoveLessonAsync(int lessonId, int newSubTopicId);
+        Task AddStandardToLessonAsync(int lessonId, int standardId);
+        Task RemoveStandardFromLessonAsync(int lessonId, int standardId);
+        Task<LessonResource> CopyLessonAsync(int lessonId, int newSubTopicId);
     }
 }

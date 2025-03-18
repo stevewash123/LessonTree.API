@@ -6,9 +6,9 @@ namespace LessonTree.DAL.Repositories
     public interface ICourseRepository
     {
         IQueryable<Course> GetAll(Func<IQueryable<Course>, IQueryable<Course>> include = null);
-        Course GetById(int id, Func<IQueryable<Course>, IQueryable<Course>> include = null);
-        void Add(Course course);
-        void Update(Course course);
-        void Delete(int id);
+        Task<Course> GetByIdAsync(int id, Func<IQueryable<Course>, IQueryable<Course>> include = null);
+        Task AddAsync(Course course);
+        Task UpdateAsync(Course course);
+        Task DeleteAsync(int id);
     }
 }

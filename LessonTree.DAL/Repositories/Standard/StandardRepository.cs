@@ -1,50 +1,98 @@
 ﻿using LessonTree.DAL.Domain;
-using LessonTree.DAL.Repositories;
-using LessonTree.DAL;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
-public class StandardRepository : IStandardRepository
+namespace LessonTree.DAL.Repositories
 {
-    private readonly LessonTreeContext _context;
-
-    public StandardRepository(LessonTreeContext context)
+    public class StandardRepository : IStandardRepository
     {
-        _context = context;
-    }
+        private readonly LessonTreeContext _context;
+        private readonly ILogger<StandardRepository> _logger;
 
-    public IQueryable<Standard> GetAll()
-    {
-        return _context.Standards.AsQueryable();
-    }
-
-    public Standard GetById(int id)
-    {
-        return _context.Standards.Find(id);
-    }
-
-    public void Add(Standard standard)
-    {
-        _context.Standards.Add(standard);
-        _context.SaveChanges();
-    }
-
-    public void Update(Standard standard)
-    {
-        _context.Standards.Update(standard);
-        _context.SaveChanges();
-    }
-
-    public void Delete(int id)
-    {
-        var standard = _context.Standards.Find(id);
-        if (standard != null)
+        public StandardRepository(LessonTreeContext context, ILogger<StandardRepository> logger)
         {
-            _context.Standards.Remove(standard);
-            _context.SaveChanges();
+            _context = context;
+            _logger = logger;
         }
-    }
 
-    public IQueryable<Standard> GetByTopicId(int topicId)
-    {
-        return _context.Standards.Where(s => s.TopicId == topicId);
+        public IQueryable<Standard> GetAll()
+        {
+            _logger.LogDebug("Retrieving all standards");
+            return _context.Standards.AsQueryable();
+        }
+
+        public async Task<Standard?> GetByIdAsync(int id)
+        {
+            _logger.LogDebug("Retrieving standard by ID: {StandardId}", id);
+            var standard = await _context.Standards.FindAsync(id);
+            if (standard == null)
+            {
+                _logger.LogWarning("Standard with ID {StandardId} not found", id);
+            }
+            return standard;
+        }
+
+        public async Task<int> AddAsync(Standard standard)
+        {
+            _logger.LogDebug("Adding standard: {Title}", standard.Title);
+            try
+            {
+                _context.Standards.Add(standard);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Added standard with ID: {StandardId}, Title: {Title}", standard.Id, standard.Title);
+                return standard.Id;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add standard: {Title}", standard.Title);
+                throw;
+            }
+        }
+
+        public async Task UpdateAsync(Standard standard)
+        {
+            _logger.LogDebug("Updating standard with ID: {StandardId}, Title: {Title}", standard.Id, standard.Title);
+            try
+            {
+                _context.Standards.Update(standard);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Updated standard with ID: {StandardId}, Title: {Title}", standard.Id, standard.Title);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update standard with ID: {StandardId}", standard.Id);
+                throw;
+            }
+        }
+
+        public async Task DeleteAsync(int id)
+        {
+            _logger.LogDebug("Deleting standard with ID: {StandardId}", id);
+            try
+            {
+                var standard = await _context.Standards.FindAsync(id);
+                if (standard != null)
+                {
+                    _context.Standards.Remove(standard);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Deleted standard with ID: {StandardId}", id);
+                }
+                else
+                {
+                    _logger.LogWarning("Standard with ID {StandardId} not found for deletion", id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to delete standard with ID: {StandardId}", id);
+                throw;
+            }
+        }
+
+        public IQueryable<Standard> GetByTopicId(int topicId)
+        {
+            _logger.LogDebug("Retrieving standards by Topic ID: {TopicId}", topicId);
+            return _context.Standards.Where(s => s.TopicId == topicId);
+        }
     }
 }

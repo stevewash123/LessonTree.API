@@ -16,6 +16,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using System.Text.Json.Serialization.Metadata;
 using System.Text.Json;
+using Microsoft.OpenApi.Models;
 
 namespace LessonTree.API.Configuration
 {
@@ -25,7 +26,14 @@ namespace LessonTree.API.Configuration
         {
             builder.Services.AddEntityFrameworkSqlite()
                 .AddDbContext<LessonTreeContext>(options =>
-                    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+                {
+                    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+                    if (builder.Environment.IsDevelopment())
+                    {
+                        options.EnableSensitiveDataLogging();
+                        options.EnableDetailedErrors();
+                    }
+                });
 
             builder.Services.AddIdentity<User, IdentityRole<int>>()
                 .AddEntityFrameworkStores<LessonTreeContext>()
@@ -37,7 +45,7 @@ namespace LessonTree.API.Configuration
             builder.Services.AddTransient<ISubTopicRepository, SubTopicRepository>();
             builder.Services.AddTransient<ILessonRepository, LessonRepository>();
             builder.Services.AddTransient<IStandardRepository, StandardRepository>(); ;
-            builder.Services.AddTransient<IDocumentRepository, DocumentRepository>();
+            builder.Services.AddTransient<IAttachmentRepository, AttachmentRepository>();
 
             builder.Services.AddTransient<IUserService, UserService>();
             builder.Services.AddTransient<ICourseService, CourseService>();
@@ -45,7 +53,7 @@ namespace LessonTree.API.Configuration
             builder.Services.AddTransient<ISubTopicService, SubTopicService>();
             builder.Services.AddTransient<ILessonService, LessonService>();
             builder.Services.AddTransient<IStandardService, StandardService>();
-            builder.Services.AddTransient<IDocumentService, DocumentService>();
+            builder.Services.AddTransient<IAttachmentService, AttachmentService>();
 
             builder.Services.AddHealthChecks()
                 .AddCheck("self", () => HealthCheckResult.Healthy(builder.Configuration["HealthChecks:Checks:0:Description"]))
@@ -104,6 +112,27 @@ namespace LessonTree.API.Configuration
             builder.Services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new() { Title = "LessonTree API", Version = "v1" });
+
+                // Add security definition for JWT Bearer
+                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' followed by a space and the JWT token."
+                });
+
+                // Add security requirement
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                        },
+                        new string[] { }
+                    }
+                });
             });
 
             builder.Services.AddAutoMapper(typeof(MappingProfile)); // Specify the type containing mappings

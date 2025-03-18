@@ -30,18 +30,23 @@ namespace LessonTree.DAL
                 .HasForeignKey(ls => ls.StandardId);
 
             
-            modelBuilder.Entity<LessonDocument>()
-                .HasKey(ld => new { ld.LessonId, ld.DocumentId });
+            modelBuilder.Entity<LessonAttachment>()
+                .HasKey(ld => new { ld.LessonId, ld.AttachmentId });
 
-            modelBuilder.Entity<LessonDocument>()
+            modelBuilder.Entity<LessonAttachment>()
                 .HasOne(ld => ld.Lesson)
-                .WithMany(l => l.LessonDocuments)
+                .WithMany(l => l.LessonAttachments)
                 .HasForeignKey(ld => ld.LessonId);
 
-            modelBuilder.Entity<LessonDocument>()
-                .HasOne(ld => ld.Document)
-                .WithMany(d => d.LessonDocuments)
-                .HasForeignKey(ld => ld.DocumentId);
+            modelBuilder.Entity<LessonAttachment>()
+                .HasOne(ld => ld.Attachment)
+                .WithMany(d => d.LessonAttachments)
+                .HasForeignKey(ld => ld.AttachmentId);
+
+            modelBuilder.Entity<SubTopic>()
+                .HasIndex(st => new { st.TopicId, st.IsDefault })
+                .IsUnique()
+                .HasFilter("IsDefault = 1");
         }
 
         public DbSet<Course> Courses { get; set; }
@@ -50,7 +55,7 @@ namespace LessonTree.DAL
         public DbSet<Lesson> Lessons { get; set; }
         public DbSet<Standard> Standards { get; set; }
         public DbSet<LessonStandard> LessonStandards { get; set; }
-        public DbSet<Document> Documents { get; set; }
-        public DbSet<LessonDocument> LessonDocuments { get; set; }
+        public DbSet<Attachment> Attachments { get; set; }
+        public DbSet<LessonAttachment> LessonAttachments { get; set; }
     }
 }

@@ -9,10 +9,10 @@ namespace LessonTree.DAL.Repositories
 {
     public interface ISubTopicRepository
     {
+        Task<SubTopic> GetByIdAsync(int id, Func<IQueryable<SubTopic>, IQueryable<SubTopic>> include = null);
         IQueryable<SubTopic> GetAll(Func<IQueryable<SubTopic>, IQueryable<SubTopic>> include = null);
-        SubTopic GetById(int id, Func<IQueryable<SubTopic>, IQueryable<SubTopic>> include = null);
-        void Add(SubTopic subTopic);
-        void Update(SubTopic subTopic);
-        void Delete(int id);
+        Task<int> AddAsync(SubTopic subTopic);
+        Task UpdateAsync(SubTopic subTopic);
+        Task DeleteAsync(int id);
     }
 }

@@ -22,16 +22,16 @@ namespace LessonTree.API.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetCourses()
+        public async Task<IActionResult> GetCourses()
         {
-            var courses = _service.GetAll();
+            var courses = await _service.GetAllAsync();
             return Ok(courses);
         }
 
         [HttpGet("{id}")]
-        public IActionResult GetCourse(int id)
+        public async Task<IActionResult> GetCourse(int id)
         {
-            var course = _service.GetById(id);
+            var course = await _service.GetByIdAsync(id);
             if (course == null)
             {
                 _logger.LogWarning("Course with id {Id} not found", id);
@@ -41,17 +41,17 @@ namespace LessonTree.API.Controllers
         }
 
         [HttpPost]
-        public IActionResult AddCourse([FromBody] CourseCreateResource courseCreateResource)
+        public async Task<IActionResult> AddCourse([FromBody] CourseCreateResource courseCreateResource)
         {
             _logger.LogDebug("Adding new course: {Title}", courseCreateResource.Title);
-            _service.Add(courseCreateResource);
-            var createdCourse = _service.GetById(_service.GetAll().Last().Id); // Assuming GetAll returns in order of creation
+            await _service.AddAsync(courseCreateResource);
+            var createdCourse = await _service.GetByIdAsync((await _service.GetAllAsync()).Last().Id); // Adjusted for async
             _logger.LogInformation("Added course with ID: {CourseId}, Title: {Title}", createdCourse.Id, createdCourse.Title);
             return CreatedAtAction(nameof(GetCourse), new { id = createdCourse.Id }, createdCourse);
         }
 
         [HttpPut("{id}")]
-        public IActionResult UpdateCourse(int id, [FromBody] CourseUpdateResource courseUpdateResource)
+        public async Task<IActionResult> UpdateCourse(int id, [FromBody] CourseUpdateResource courseUpdateResource)
         {
             _logger.LogInformation("Updating course with id {Id}, DTO: {@CourseUpdateResource}", id, courseUpdateResource);
             if (id != courseUpdateResource.Id)
@@ -59,16 +59,16 @@ namespace LessonTree.API.Controllers
                 _logger.LogWarning("ID mismatch: Route id {RouteId} does not match DTO id {DtoId}", id, courseUpdateResource.Id);
                 return BadRequest(new ProblemDetails { Title = "ID mismatch", Detail = "Route ID must match DTO ID" });
             }
-            _service.Update(courseUpdateResource);
+            await _service.UpdateAsync(courseUpdateResource);
             _logger.LogInformation("Course with id {Id} updated successfully", id);
             return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public IActionResult DeleteCourse(int id)
+        public async Task<IActionResult> DeleteCourse(int id)
         {
             _logger.LogDebug("Deleting course with ID: {CourseId}", id);
-            _service.Delete(id);
+            await _service.DeleteAsync(id);
             _logger.LogInformation("Deleted course with ID: {CourseId}", id);
             return NoContent();
         }
