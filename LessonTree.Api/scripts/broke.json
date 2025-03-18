@@ -71,50 +71,72 @@
   ],
   "item": [
     {
-      "name": "Copy SubTopic - To Topic with HasSubTopics = true",
+      "name": "Delete SubTopic isDefault=false",
       "event": [
         {
           "listen": "test",
           "script": {
             "exec": [
-              "console.log('Test: Starting tests for Copy SubTopic to HasSubTopics = true');",
-              "pm.test('Status code is 201', function () {",
+              "console.log('Test: Starting tests for Delete SubTopic');",
+              "pm.test(\"Status code is 204\", function () {",
               "    console.log('Test: Checking status code:', pm.response.code);",
-              "    pm.response.to.have.status(201);",
+              "    try {",
+              "        pm.response.to.have.status(204);",
+              "    } catch (e) {",
+              "        console.error('Assertion failure details:', e.message);",
+              "        throw e;",
+              "    }",
               "});",
-              "pm.test('Verify copy', function () {",
-              "    var jsonData = pm.response.json();",
-              "    console.log('Test: Response body:', jsonData);",
-              "    pm.expect(jsonData.title).to.equal('American Literature');",
-              "    pm.expect(jsonData.topicId).to.equal(3);",
-              "    pm.expect(jsonData.id).to.be.above(2);",
-              "    console.log('Test: Copied SubTopic ID:', jsonData.id, 'Title:', jsonData.title);",
-              "});",
-              "console.log('Test: Completed tests for Copy SubTopic to HasSubTopics = true');"
+              "console.log('Test: Completed tests for Delete SubTopic');"
             ],
             "type": "text/javascript"
           }
         }
       ],
       "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\"subTopicId\":2,\"newTopicId\":3}"
-        },
+        "method": "DELETE",
+        "header": [],
         "url": {
-          "raw": "https://localhost:7238/api/SubTopic/copy",
+          "raw": "https://localhost:7238/api/SubTopic/4",
           "protocol": "https",
           "host": [ "localhost" ],
           "port": "7238",
-          "path": [ "api", "SubTopic", "copy" ]
+          "path": [ "api", "SubTopic", "3" ]
+        }
+      }
+    },
+    {
+      "name": "Delete SubTopic isDefault=true",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "console.log('Test: Starting tests for Delete SubTopic');",
+              "pm.test(\"Status code is 204\", function () {",
+              "    console.log('Test: Checking status code:', pm.response.code);",
+              "    try {",
+              "        pm.response.to.have.status(409);",
+              "    } catch (e) {",
+              "        console.error('Assertion failure details:', e.message);",
+              "        throw e;",
+              "    }",
+              "});",
+              "console.log('Test: Completed tests for Delete SubTopic');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "https://localhost:7238/api/SubTopic/3",
+          "protocol": "https",
+          "host": [ "localhost" ],
+          "port": "7238",
+          "path": [ "api", "SubTopic", "4" ]
         }
       }
     }

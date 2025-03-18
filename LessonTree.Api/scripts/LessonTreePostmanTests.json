@@ -579,7 +579,7 @@
               ]
             }
           }
-        },                
+        },
         {
           "name": "Update Topic (Grammar)",
           "event": [
@@ -1160,7 +1160,7 @@
           }
         },
         {
-          "name": "Delete SubTopic (Punctuation)",
+          "name": "Delete SubTopic isDefault=false",
           "event": [
             {
               "listen": "test",
@@ -1187,6 +1187,41 @@
             "header": [],
             "url": {
               "raw": "https://localhost:7238/api/SubTopic/4",
+              "protocol": "https",
+              "host": [ "localhost" ],
+              "port": "7238",
+              "path": [ "api", "SubTopic", "3" ]
+            }
+          }
+        },
+        {
+          "name": "Delete SubTopic isDefault=true",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('Test: Starting tests for Delete SubTopic');",
+                  "pm.test(\"Status code is 204\", function () {",
+                  "    console.log('Test: Checking status code:', pm.response.code);",
+                  "    try {",
+                  "        pm.response.to.have.status(409);",
+                  "    } catch (e) {",
+                  "        console.error('Assertion failure details:', e.message);",
+                  "        throw e;",
+                  "    }",
+                  "});",
+                  "console.log('Test: Completed tests for Delete SubTopic');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "https://localhost:7238/api/SubTopic/3",
               "protocol": "https",
               "host": [ "localhost" ],
               "port": "7238",

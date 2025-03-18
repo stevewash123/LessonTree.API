@@ -22,32 +22,7 @@ namespace LessonTree.API.Configuration
 
             app.UseCors("AllowSwaggerAndUI");
 
-            app.UseExceptionHandler(errorApp =>
-            {
-                errorApp.Run(async context =>
-                {
-                    var errorFeature = context.Features.Get<IExceptionHandlerFeature>();
-                    if (errorFeature != null)
-                    {
-                        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-                        var exception = errorFeature.Error;
-
-                        logger.LogError(exception, "Unhandled exception occurred: {Message}", exception.Message);
-
-                        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                        context.Response.ContentType = "application/json";
-
-                        var includeStackTrace = bool.Parse(app.Services.GetRequiredService<IConfiguration>()["HealthChecks:IncludeStackTrace"] ?? "true");
-                        var errorResponse = new
-                        {
-                            status = "error",
-                            message = exception.Message,
-                            stackTrace = includeStackTrace ? exception.StackTrace : null
-                        };
-                        await context.Response.WriteAsync(JsonSerializer.Serialize(errorResponse));
-                    }
-                });
-            });
+            app.UseMiddleware<ExceptionMiddleware>();
 
             app.UseHsts();
             app.UseXContentTypeOptions();
