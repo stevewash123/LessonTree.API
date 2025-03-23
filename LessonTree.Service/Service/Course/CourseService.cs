@@ -36,7 +36,8 @@ namespace LessonTree.BLL.Service
                 }
             }
 
-            return _mapper.Map<IEnumerable<CourseResource>>(courses);
+            var resource = _mapper.Map<IEnumerable<CourseResource>>(courses);
+            return resource;
         }
 
         public async Task<CourseResource> GetByIdAsync(int id)

@@ -45,11 +45,22 @@ public class LessonService : ILessonService
             lessonResource.Id);
         return lessonResource;
     }
-
+    
     public async Task<List<LessonResource>> GetAllAsync()
     {
         _logger.LogDebug("Fetching all lessons in service");
         var lessons = await _lessonRepository.GetAll()
+            .ProjectTo<LessonResource>(_mapper.ConfigurationProvider)
+            .ToListAsync();
+        _logger.LogDebug("Fetched {Count} lessons", lessons.Count);
+        return lessons;
+    }
+
+    public async Task<List<LessonResource>> GetLessonsBySubtopic(int subtopicId)
+    {
+        _logger.LogDebug("Fetching all lessons in service");
+        var lessons = await _lessonRepository.GetAll()
+            .Where(l => l.SubTopicId == subtopicId)
             .ProjectTo<LessonResource>(_mapper.ConfigurationProvider)
             .ToListAsync();
         _logger.LogDebug("Fetched {Count} lessons", lessons.Count);

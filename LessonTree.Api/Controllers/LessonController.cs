@@ -28,6 +28,13 @@ public class LessonController : ControllerBase
         return Ok(lessons);
     }
 
+    [HttpGet("bySubTopic/{subtopicId}")]
+    public async Task<IActionResult> GetLessonsBySubtopic(int subtopicId)
+    {
+        var lessons = await _lessonService.GetLessonsBySubtopic(subtopicId);
+        return Ok(lessons);
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetLesson(int id)
     {

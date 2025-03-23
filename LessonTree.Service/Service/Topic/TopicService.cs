@@ -55,16 +55,26 @@ public class TopicService : ITopicService
 
         return topicResource;
     }
-   
+
     public async Task<List<TopicResource>> GetAllAsync()
     {
         _logger.LogDebug("Fetching all topics");
         var topics = await _topicRepository.GetAll(q => q
-            .Include(t => t.SubTopics).ThenInclude(s => s.Lessons).ThenInclude(l => l.LessonAttachments).ThenInclude(ld => ld.Attachment))
+            .Include(t => t.SubTopics))
             .ToListAsync();
         return _mapper.Map<List<TopicResource>>(topics ?? new List<Topic>());
     }
 
+    public async Task<List<TopicResource>> GetTopicsByCourseAsync(int courseId)
+    {
+        _logger.LogDebug("Fetching all topics");
+        var topics = await _topicRepository.GetAll(q => q
+            .Where(t => t.CourseId == courseId) 
+            .Include(t => t.SubTopics))
+            .ToListAsync();
+        return _mapper.Map<List<TopicResource>>(topics ?? new List<Topic>());
+    }
+    
     public async Task<int> AddAsync(TopicCreateResource topicCreateResource)
     {
         _logger.LogDebug("Adding topic: {Title}", topicCreateResource.Title);

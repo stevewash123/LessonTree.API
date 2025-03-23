@@ -42,6 +42,13 @@ namespace LessonTree.API.Controllers
             return Ok(subTopics);
         }
 
+        [HttpGet("byTopic/{topicId}")]
+        public async Task<IActionResult> GetSubtopicsByTopicId(int topicId)
+        {
+            var subTopics = await _service.GetSubtopicsByTopicIdAsync(topicId);
+            return Ok(subTopics);
+        }
+
         [HttpPost]
         public async Task<IActionResult> AddSubTopic([FromBody] SubTopicCreateResource subTopicCreateResource)
         {

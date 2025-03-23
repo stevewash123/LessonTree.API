@@ -43,15 +43,33 @@ public class SubTopicService : ISubTopicService
         }
         return _mapper.Map<SubTopicResource>(subTopic);
     }
-
+    
     public async Task<List<SubTopicResource>> GetAllAsync()
     {
         _logger.LogDebug("Fetching all subtopics");
         try
         {
             var subTopics = await _subTopicRepository.GetAll(q => q
-                .Include(s => s.Lessons).ThenInclude(l => l.LessonAttachments).ThenInclude(ld => ld.Attachment))
+                .Include(s => s.Lessons))
                 .ToListAsync();
+            return _mapper.Map<List<SubTopicResource>>(subTopics ?? new List<SubTopic>());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve SubTopics.");
+            throw new InvalidOperationException("Failed to retrieve SubTopics due to a data access error.", ex);
+        }
+    }
+    public async Task<List<SubTopicResource>> GetSubtopicsByTopicIdAsync(int topicId)
+    {
+        _logger.LogDebug("Fetching all subtopics");
+        try
+        {
+            var subTopics = await _subTopicRepository.GetAll(q => q
+                .Where(s => s.TopicId == topicId)
+                .Include(s => s.Lessons))
+                .ToListAsync();
+
             return _mapper.Map<List<SubTopicResource>>(subTopics ?? new List<SubTopic>());
         }
         catch (Exception ex)

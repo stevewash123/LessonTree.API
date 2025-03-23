@@ -15,8 +15,7 @@ namespace LessonTree.Models.DTO
         public string Description { get; set; }
         public Boolean HasSubTopics { get; set; }
         public int CourseId { get; set; }
-        public List<SubTopicResource>? SubTopics { get; set; }
-        public List<LessonResource>? Lessons { get; set; }
+        public Boolean hasChildren { get; set; }
 
     }
 

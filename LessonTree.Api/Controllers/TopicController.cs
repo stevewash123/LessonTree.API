@@ -25,6 +25,13 @@ public class TopicController : ControllerBase
         return Ok(topics);
     }
 
+    [HttpGet("byCourse/{courseId}")]
+    public async Task<IActionResult> GetTopicsByCourseId(int courseId)
+    {
+        var topics = await _service.GetTopicsByCourseAsync(courseId);
+        return Ok(topics);
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetTopic(int id)
     {

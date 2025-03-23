@@ -12,7 +12,7 @@ namespace LessonTree.Models.DTO
         public string NodeId { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
-        public List<TopicResource> Topics { get; set; }
+        public Boolean hasChildren { get; set; }
     }
     public class CourseCreateResource
     {

@@ -10,10 +10,12 @@ namespace LessonTree.BLL.Service
         {
             // Course to CourseResource
             CreateMap<Course, CourseResource>()
-            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
-            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
-            .ForMember(dest => dest.Topics, opt => opt.MapFrom(src => src.Topics));
+                .ForMember(dest => dest.NodeId, opt => opt.MapFrom(src => $"course_{src.Id}"))
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+                .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
+                .ForMember(dest => dest.hasChildren, opt => opt.MapFrom(src => src.Topics.Any()));
+            //.ForMember(dest => dest.Topics, opt => opt.MapFrom(src => src.Topics));
 
             // Mapping from Topic to TopicResource
             CreateMap<Topic, TopicResource>()
@@ -22,13 +24,14 @@ namespace LessonTree.BLL.Service
                 .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
                 .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
                 .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
-                .ForMember(dest => dest.SubTopics, opt => opt.MapFrom(src => src.HasSubTopics ? src.SubTopics.Where(x => !x.IsDefault) : new List<SubTopic>()))
-                .ForMember(dest => dest.Lessons, opt => opt.MapFrom(src =>
-                    src.HasSubTopics
-                        ? new List<Lesson>()
-                        : (src.SubTopics != null
-                            ? src.SubTopics.SelectMany(st => st.Lessons ?? new List<Lesson>()).ToList()
-                            : new List<Lesson>())));
+                .ForMember(dest => dest.hasChildren, opt => opt.MapFrom(src => src.HasSubTopics ? src.SubTopics.Any() : src.SubTopics.SelectMany(X => X.Lessons).Any()));
+            //.ForMember(dest => dest.SubTopics, opt => opt.MapFrom(src => src.HasSubTopics ? src.SubTopics.Where(x => !x.IsDefault) : new List<SubTopic>()))
+            //.ForMember(dest => dest.Lessons, opt => opt.MapFrom(src =>
+            //src.HasSubTopics
+            //    ? new List<Lesson>()
+            //    : (src.SubTopics != null
+            //        ? src.SubTopics.SelectMany(st => st.Lessons ?? new List<Lesson>()).ToList()
+            //        : new List<Lesson>())));
 
             // SubTopic to SubTopicResource
             CreateMap<SubTopic, SubTopicResource>()
@@ -37,8 +40,10 @@ namespace LessonTree.BLL.Service
                 .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
                 .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
                 .ForMember(dest => dest.TopicId, opt => opt.MapFrom(src => src.TopicId))
+                .ForMember(dest => dest.hasChildren, opt => opt.MapFrom(src => src.Lessons.Any()))
+                //.ForMember(dest => dest.Topic, opt => opt.MapFrom(src => src.Topic))
                 .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.Topic.CourseId))
-                .ForMember(dest => dest.Lessons, opt => opt.MapFrom(src => src.Lessons ?? new List<Lesson>()))
+                //.ForMember(dest => dest.Lessons, opt => opt.MapFrom(src => src.Lessons ?? new List<Lesson>()))
                 .ForMember(dest => dest.IsDefault, opt => opt.MapFrom(src => src.IsDefault));
 
             // Lesson to LessonResource
@@ -46,6 +51,7 @@ namespace LessonTree.BLL.Service
                 .ForMember(dest => dest.NodeId, opt => opt.MapFrom(src => $"lesson_{src.Id}"))
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
                 .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.SubTopic.Topic.CourseId))
+                //.ForMember(dest => dest.SubTopic, opt => opt.MapFrom(src => src.SubTopic))
                 .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
                 .ForMember(dest => dest.Objective, opt => opt.MapFrom(src => src.Objective));
 

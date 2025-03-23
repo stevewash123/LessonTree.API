@@ -8,6 +8,7 @@ namespace LessonTree.BLL.Service
     {
         Task<LessonDetailResource?> GetByIdAsync(int id);
         Task<List<LessonResource>> GetAllAsync();
+        Task<List<LessonResource>> GetLessonsBySubtopic(int subtopicId);        
         Task<int> AddAsync(LessonCreateResource lessonCreateResource); // Updated
         Task UpdateAsync(LessonUpdateResource lessonUpdateResource);
         Task DeleteAsync(int id);
