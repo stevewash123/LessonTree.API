@@ -79,15 +79,15 @@ namespace LessonTree.API.Configuration
                                 {
                                     Title = "Literature",
                                     Description = "Exploring classic and modern literary works.",
-                                    HasSubTopics = true, // Multiple subtopics
+                                    HasSubTopics = true,
                                     SubTopics = new List<SubTopic>
                                     {
                                         new SubTopic
                                         {
                                             Title = "Shakespeare",
                                             Description = "Study of Shakespeare's plays and sonnets.",
-                                            IsDefault = true, // Default subtopic with no lessons
-                                            Lessons = new List<Lesson>() // Empty lessons
+                                            IsDefault = true,
+                                            Lessons = new List<Lesson>()
                                         },
                                         new SubTopic
                                         {
@@ -115,7 +115,7 @@ namespace LessonTree.API.Configuration
                                                     Materials = "Novel",
                                                     ClassTime = "45 minutes",
                                                     Methods = "Group reading",
-                                                    SpecialNeeds = null, // Boundary data: null special needs
+                                                    SpecialNeeds = null,
                                                     Assessment = "Quiz"
                                                 }
                                             }
@@ -125,7 +125,7 @@ namespace LessonTree.API.Configuration
                                             Title = "Poetry",
                                             Description = "Study of poetic forms and techniques.",
                                             IsDefault = false,
-                                            Lessons = new List<Lesson>() // Empty lessons
+                                            Lessons = new List<Lesson>()
                                         }
                                     }
                                 },
@@ -133,13 +133,20 @@ namespace LessonTree.API.Configuration
                                 {
                                     Title = "Grammar",
                                     Description = "Mastering English grammar rules.",
-                                    HasSubTopics = false, // Only default subtopic
+                                    HasSubTopics = true, // Changed from false to true
                                     SubTopics = new List<SubTopic>
                                     {
                                         new SubTopic
                                         {
                                             Title = "Default SubTopic",
                                             IsDefault = true,
+                                            Lessons = new List<Lesson>() // Lessons moved to new subtopic
+                                        },
+                                        new SubTopic
+                                        {
+                                            Title = "Core Grammar",
+                                            Description = "Fundamental grammar concepts.",
+                                            IsDefault = false,
                                             Lessons = new List<Lesson>
                                             {
                                                 new Lesson
@@ -157,8 +164,8 @@ namespace LessonTree.API.Configuration
                                                 {
                                                     Title = "Sentence Structure",
                                                     Level = "10th Grade",
-                                                    Objective = "Identify parts of sentance.",
-                                                    Materials = null, // Boundary data: null materials
+                                                    Objective = "Identify parts of sentence.",
+                                                    Materials = null,
                                                     ClassTime = "40 minutes",
                                                     Methods = "Lecture",
                                                     SpecialNeeds = "None",
@@ -172,7 +179,7 @@ namespace LessonTree.API.Configuration
                                 {
                                     Title = "Writing",
                                     Description = "Developing writing skills.",
-                                    HasSubTopics = true, // Changed from false to true to match test expectations
+                                    HasSubTopics = true,
                                     SubTopics = new List<SubTopic>
                                     {
                                         new SubTopic
@@ -200,7 +207,7 @@ namespace LessonTree.API.Configuration
                                                     Materials = "Examples of short stories",
                                                     ClassTime = "60 minutes",
                                                     Methods = "Writing exercises",
-                                                    SpecialNeeds = null, // Boundary data: null special needs
+                                                    SpecialNeeds = null,
                                                     Assessment = "Portfolio"
                                                 }
                                             }
@@ -219,14 +226,21 @@ namespace LessonTree.API.Configuration
                                 {
                                     Title = "Biology",
                                     Description = "Study of living organisms.",
-                                    HasSubTopics = false, // Only default subtopic
+                                    HasSubTopics = true, // Changed from false to true
                                     SubTopics = new List<SubTopic>
                                     {
                                         new SubTopic
                                         {
                                             Title = "Default SubTopic",
                                             IsDefault = true,
-                                            Lessons = new List<Lesson>() // No lessons
+                                            Lessons = new List<Lesson>()
+                                        },
+                                        new SubTopic
+                                        {
+                                            Title = "Intro to Biology",
+                                            Description = "Basic concepts of biology.",
+                                            IsDefault = false,
+                                            Lessons = new List<Lesson>()
                                         }
                                     }
                                 },
@@ -234,14 +248,21 @@ namespace LessonTree.API.Configuration
                                 {
                                     Title = "Chemistry",
                                     Description = "Fundamentals of matter and reactions.",
-                                    HasSubTopics = false, // Only default subtopic
+                                    HasSubTopics = true, // Changed from false to true
                                     SubTopics = new List<SubTopic>
                                     {
                                         new SubTopic
                                         {
                                             Title = "Default SubTopic",
                                             IsDefault = true,
-                                            Lessons = new List<Lesson>() // No lessons
+                                            Lessons = new List<Lesson>()
+                                        },
+                                        new SubTopic
+                                        {
+                                            Title = "Intro to Chemistry",
+                                            Description = "Basic concepts of chemistry.",
+                                            IsDefault = false,
+                                            Lessons = new List<Lesson>()
                                         }
                                     }
                                 }
@@ -250,8 +271,152 @@ namespace LessonTree.API.Configuration
                         new Course
                         {
                             Title = "High School Math",
-                            Description = "Mathematics course with no topics yet.",
-                            Topics = new List<Topic>() // Empty topics array
+                            Description = "Mathematics course with topics.",
+                            Topics = new List<Topic>
+                            {
+                                new Topic
+                                {
+                                    Title = "Algebra",
+                                    Description = "Study of algebraic concepts.",
+                                    HasSubTopics = true,
+                                    SubTopics = new List<SubTopic>
+                                    {
+                                        new SubTopic
+                                        {
+                                            Title = "Linear Equations",
+                                            Description = "Solving linear equations.",
+                                            IsDefault = false,
+                                            Lessons = new List<Lesson>
+                                            {
+                                                new Lesson
+                                                {
+                                                    Title = "Solving One-Step Equations",
+                                                    Level = "9th Grade",
+                                                    Objective = "Solve basic linear equations.",
+                                                    Materials = "Worksheet",
+                                                    ClassTime = "40 minutes",
+                                                    Methods = "Practice",
+                                                    SpecialNeeds = "Visual aids",
+                                                    Assessment = "Quiz"
+                                                },
+                                                new Lesson
+                                                {
+                                                    Title = "Solving Multi-Step Equations",
+                                                    Level = "9th Grade",
+                                                    Objective = "Solve complex linear equations.",
+                                                    Materials = "Textbook",
+                                                    ClassTime = "50 minutes",
+                                                    Methods = "Lecture, practice",
+                                                    SpecialNeeds = null,
+                                                    Assessment = "Test"
+                                                }
+                                            }
+                                        },
+                                        new SubTopic
+                                        {
+                                            Title = "Quadratic Equations",
+                                            Description = "Solving quadratic equations.",
+                                            IsDefault = false,
+                                            Lessons = new List<Lesson>
+                                            {
+                                                new Lesson
+                                                {
+                                                    Title = "Factoring Quadratics",
+                                                    Level = "10th Grade",
+                                                    Objective = "Factor quadratic expressions.",
+                                                    Materials = "Examples",
+                                                    ClassTime = "45 minutes",
+                                                    Methods = "Demonstration",
+                                                    SpecialNeeds = "Step-by-step guides",
+                                                    Assessment = "Homework"
+                                                },
+                                                new Lesson
+                                                {
+                                                    Title = "Quadratic Formula",
+                                                    Level = "10th Grade",
+                                                    Objective = "Use the quadratic formula.",
+                                                    Materials = "Formula sheet",
+                                                    ClassTime = "50 minutes",
+                                                    Methods = "Lecture",
+                                                    SpecialNeeds = null,
+                                                    Assessment = "Quiz"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                new Topic
+                                {
+                                    Title = "Geometry",
+                                    Description = "Study of shapes and spatial relationships.",
+                                    HasSubTopics = true,
+                                    SubTopics = new List<SubTopic>
+                                    {
+                                        new SubTopic
+                                        {
+                                            Title = "Triangles",
+                                            Description = "Properties of triangles.",
+                                            IsDefault = false,
+                                            Lessons = new List<Lesson>
+                                            {
+                                                new Lesson
+                                                {
+                                                    Title = "Triangle Congruence",
+                                                    Level = "10th Grade",
+                                                    Objective = "Understand congruence criteria.",
+                                                    Materials = "Geometric tools",
+                                                    ClassTime = "50 minutes",
+                                                    Methods = "Hands-on activity",
+                                                    SpecialNeeds = "Tactile materials",
+                                                    Assessment = "Worksheet"
+                                                },
+                                                new Lesson
+                                                {
+                                                    Title = "Pythagorean Theorem",
+                                                    Level = "10th Grade",
+                                                    Objective = "Apply the Pythagorean theorem.",
+                                                    Materials = "Diagrams",
+                                                    ClassTime = "40 minutes",
+                                                    Methods = "Lecture",
+                                                    SpecialNeeds = null,
+                                                    Assessment = "Test"
+                                                }
+                                            }
+                                        },
+                                        new SubTopic
+                                        {
+                                            Title = "Circles",
+                                            Description = "Properties of circles.",
+                                            IsDefault = false,
+                                            Lessons = new List<Lesson>
+                                            {
+                                                new Lesson
+                                                {
+                                                    Title = "Circle Properties",
+                                                    Level = "10th Grade",
+                                                    Objective = "Identify circle components.",
+                                                    Materials = "Compass",
+                                                    ClassTime = "45 minutes",
+                                                    Methods = "Drawing",
+                                                    SpecialNeeds = "Large print diagrams",
+                                                    Assessment = "Quiz"
+                                                },
+                                                new Lesson
+                                                {
+                                                    Title = "Circle Theorems",
+                                                    Level = "10th Grade",
+                                                    Objective = "Apply circle theorems.",
+                                                    Materials = "Textbook",
+                                                    ClassTime = "50 minutes",
+                                                    Methods = "Lecture",
+                                                    SpecialNeeds = null,
+                                                    Assessment = "Homework"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     };
                     context.Courses.AddRange(courses);

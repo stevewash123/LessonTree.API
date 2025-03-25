@@ -16,6 +16,7 @@ namespace LessonTree.Models.DTO
         public int CourseId { get; set; }
         public Boolean IsDefault { get; set; }
         public Boolean hasChildren { get; set; }
+        public List<LessonResource> Lessons { get; set; }
     }
     public class SubTopicCreateResource // New
     {
