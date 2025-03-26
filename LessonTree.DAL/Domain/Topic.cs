@@ -1,13 +1,19 @@
-﻿namespace LessonTree.DAL.Domain
+﻿using LessonTree.DAL.Domain;
+
+public class Topic
 {
-    public class Topic
-    {
-        public int Id { get; set; }
-        public string Title { get; set; }
-        public string? Description { get; set; }
-        public int CourseId { get; set; }
-        public virtual Course Course { get; set; }
-        public virtual List<SubTopic> SubTopics { get; set; } = new List<SubTopic>(); 
-        public bool HasSubTopics { get; set; } = false; 
-    }
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public string? Description { get; set; }
+    public int CourseId { get; set; }
+    public virtual Course Course { get; set; }
+    public int UserId { get; set; }
+    public virtual User User { get; set; }
+    public VisibilityType Visibility { get; set; } = VisibilityType.Private;
+    public int? TeamId { get; set; }
+    public virtual Team? Team { get; set; }
+    public virtual List<SubTopic> SubTopics { get; set; } = new List<SubTopic>();
+    public virtual List<Note> Notes { get; set; } = new List<Note>();
+    public bool Archived { get; set; } = false;
+    public virtual List<Lesson> Lessons { get; set; } = new List<Lesson>(); // New: Direct lessons
 }

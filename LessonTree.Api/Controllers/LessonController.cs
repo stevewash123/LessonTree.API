@@ -1,9 +1,11 @@
 ﻿using LessonTree.BLL.Service;
+using LessonTree.DAL.Domain;
 using LessonTree.Models.DTO;
+using LessonTree.Models.Enums;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using LessonTree.DAL.Domain;
+using System.Security.Claims;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -14,45 +16,85 @@ public class LessonController : ControllerBase
     private readonly IAttachmentService _attachmentService;
     private readonly ILogger<LessonController> _logger;
 
-    public LessonController(ILessonService lessonService, IAttachmentService attachmentService, ILogger<LessonController> logger)
+    public LessonController(
+        ILessonService lessonService,
+        IAttachmentService attachmentService,
+        ILogger<LessonController> logger)
     {
         _lessonService = lessonService;
         _attachmentService = attachmentService;
         _logger = logger;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetLessons()
+    private int GetCurrentUserId()
     {
-        var lessons = await _lessonService.GetAllAsync();
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            _logger.LogError("Failed to extract UserId from JWT claims");
+            throw new UnauthorizedAccessException("User ID not found in token");
+        }
+        return userId;
+    }
+    [HttpGet]
+    public async Task<IActionResult> GetLessons(ArchiveFilter filter = ArchiveFilter.Active)
+    {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Fetching lessons for User ID: {UserId}, Filter: {Filter}", userId, filter);
+        var lessons = await _lessonService.GetAllAsync(userId, filter);
         return Ok(lessons);
     }
 
     [HttpGet("bySubTopic/{subtopicId}")]
-    public async Task<IActionResult> GetLessonsBySubtopic(int subtopicId)
+    public async Task<IActionResult> GetLessonsBySubtopic(int subtopicId, ArchiveFilter filter = ArchiveFilter.Active)
     {
-        var lessons = await _lessonService.GetLessonsBySubtopic(subtopicId);
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Fetching lessons for SubTopic ID: {SubTopicId}, User ID: {UserId}, Filter: {Filter}", subtopicId, userId, filter);
+        var lessons = await _lessonService.GetLessonsBySubtopic(subtopicId, userId, filter);
+        return Ok(lessons);
+    }
+
+    [HttpGet("byTopic/{topicId}")]
+    public async Task<IActionResult> GetLessonsByTopic(int topicId, ArchiveFilter filter = ArchiveFilter.Active)
+    {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Fetching lessons for Topic ID: {TopicId}, User ID: {UserId}, Filter: {Filter}", topicId, userId, filter);
+        var lessons = await _lessonService.GetLessonsByTopic(topicId, userId, filter);
         return Ok(lessons);
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetLesson(int id)
     {
-        var lesson = await _lessonService.GetByIdAsync(id);
-        if (lesson == null)
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Fetching lesson ID: {LessonId} for User ID: {UserId}", id, userId);
+
+        var lessonDomain = await _lessonService.GetDomainLessonByIdAsync(id);
+        if (lessonDomain == null)
         {
             _logger.LogError("Lesson with ID {LessonId} not found", id);
             return NotFound();
         }
-        return Ok(lesson);
+
+        // Optional: Check ownership if needed
+        if (lessonDomain.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to access lesson ID {LessonId} owned by another user", userId, id);
+            return Forbid();
+        }
+
+        var lessonDto = await _lessonService.GetByIdAsync(id);
+        return Ok(lessonDto);
     }
 
     [HttpPost]
     public async Task<IActionResult> AddLesson([FromBody] LessonCreateResource lessonCreateResource)
     {
-        _logger.LogDebug("Entering AddLesson with Title: {Title}", lessonCreateResource.Title);
-        await _lessonService.AddAsync(lessonCreateResource);
-        var createdLesson = await _lessonService.GetByIdAsync((await _lessonService.GetAllAsync()).Last().Id); // Adjusted for async
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Adding lesson with Title: {Title} for User ID: {UserId}", lessonCreateResource.Title, userId);
+
+        int createdId = await _lessonService.AddAsync(lessonCreateResource, userId);
+        var createdLesson = await _lessonService.GetByIdAsync(createdId);
         _logger.LogInformation("Added lesson with ID: {LessonId}, Title: {Title}", createdLesson.Id, createdLesson.Title);
         return CreatedAtAction(nameof(GetLesson), new { id = createdLesson.Id }, createdLesson);
     }
@@ -60,12 +102,26 @@ public class LessonController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateLesson(int id, [FromBody] LessonUpdateResource lessonUpdateResource)
     {
-        _logger.LogDebug("Entering UpdateLesson with ID: {LessonId}", id);
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Updating lesson ID: {LessonId} for User ID: {UserId}", id, userId);
         if (id != lessonUpdateResource.Id)
         {
             _logger.LogWarning("ID mismatch: URL ID {UrlId} does not match body ID {BodyId}", id, lessonUpdateResource.Id);
             return BadRequest();
         }
+
+        var existingLesson = await _lessonService.GetDomainLessonByIdAsync(id);
+        if (existingLesson == null)
+        {
+            _logger.LogError("Lesson with ID {LessonId} not found", id);
+            return NotFound();
+        }
+        if (existingLesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to update lesson ID {LessonId} owned by another user", userId, id);
+            return Forbid();
+        }
+
         await _lessonService.UpdateAsync(lessonUpdateResource);
         _logger.LogInformation("Updated lesson with ID: {LessonId}, Title: {Title}", id, lessonUpdateResource.Title);
         return NoContent();
@@ -74,7 +130,21 @@ public class LessonController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteLesson(int id)
     {
-        _logger.LogDebug("Entering DeleteLesson with ID: {LessonId}", id);
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Deleting lesson ID: {LessonId} for User ID: {UserId}", id, userId);
+
+        var lesson = await _lessonService.GetDomainLessonByIdAsync(id);
+        if (lesson == null)
+        {
+            _logger.LogError("Lesson with ID {LessonId} not found", id);
+            return NotFound();
+        }
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to delete lesson ID {LessonId} owned by another user", userId, id);
+            return Forbid();
+        }
+
         await _lessonService.DeleteAsync(id);
         _logger.LogInformation("Deleted lesson with ID: {LessonId}", id);
         return NoContent();
@@ -84,12 +154,19 @@ public class LessonController : ControllerBase
     [Authorize(Roles = "PaidUser,Admin")]
     public async Task<IActionResult> AddAttachment(int id, IFormFile file)
     {
-        _logger.LogDebug("Entering AddAttachment for Lesson ID: {LessonId}", id);
-        var lesson = await _lessonService.GetByIdAsync(id);
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Adding attachment to Lesson ID: {LessonId} for User ID: {UserId}", id, userId);
+
+        var lesson = await _lessonService.GetDomainLessonByIdAsync(id);
         if (lesson == null)
         {
             _logger.LogError("Lesson with ID {LessonId} not found", id);
             return NotFound();
+        }
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to add attachment to lesson ID {LessonId} owned by another user", userId, id);
+            return Forbid();
         }
 
         if (file == null || file.Length == 0)
@@ -100,21 +177,15 @@ public class LessonController : ControllerBase
 
         try
         {
-            // Step 1: Create a new Attachment entity from the uploaded file
             var attachment = new Attachment
             {
                 FileName = file.FileName,
                 ContentType = file.ContentType,
                 Blob = ReadFileBytes(file)
             };
-
-            // Step 2: Save the attachment and get its ID using AttachmentService
-            int attachmentId = _attachmentService.CreateAttachment(attachment); // TODO: Make this async if possible
-
-            // Step 3: Associate the attachment with the lesson using LessonService
+            int attachmentId = _attachmentService.CreateAttachment(attachment);
             await _lessonService.AddAttachmentAsync(id, attachmentId);
             _logger.LogInformation("Added attachment {FileName} to Lesson ID: {LessonId}", file.FileName, id);
-
             return CreatedAtAction(nameof(GetLesson), new { id }, null);
         }
         catch (Exception ex)
@@ -137,7 +208,21 @@ public class LessonController : ControllerBase
     [Authorize(Roles = "PaidUser,Admin")]
     public async Task<IActionResult> RemoveAttachment(int lessonId, int attachmentId)
     {
-        _logger.LogDebug("Entering RemoveAttachment for Lesson ID: {LessonId}, Attachment ID: {AttachmentId}", lessonId, attachmentId);
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Removing attachment ID: {AttachmentId} from Lesson ID: {LessonId} for User ID: {UserId}", attachmentId, lessonId, userId);
+
+        var lesson = await _lessonService.GetDomainLessonByIdAsync(lessonId);
+        if (lesson == null)
+        {
+            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
+            return NotFound();
+        }
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to remove attachment from lesson ID {LessonId} owned by another user", userId, lessonId);
+            return Forbid();
+        }
+
         try
         {
             await _lessonService.RemoveAttachmentAsync(lessonId, attachmentId);
@@ -157,17 +242,27 @@ public class LessonController : ControllerBase
     }
 
     [HttpPost("move")]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IActionResult> MoveLesson([FromBody] LessonMoveResource moveResource)
     {
-        _logger.LogDebug("Entering MoveLesson with Lesson ID: {LessonId}, New SubTopic ID: {NewSubTopicId}",
-            moveResource.LessonId, moveResource.NewSubTopicId);
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Moving Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId} for User ID: {UserId}", moveResource.LessonId, moveResource.NewSubTopicId, userId);
+
+        var lesson = await _lessonService.GetDomainLessonByIdAsync(moveResource.LessonId);
+        if (lesson == null)
+        {
+            _logger.LogError("Lesson with ID {LessonId} not found", moveResource.LessonId);
+            return NotFound();
+        }
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to move lesson ID {LessonId} owned by another user", userId, moveResource.LessonId);
+            return Forbid();
+        }
 
         try
         {
-            await _lessonService.MoveLessonAsync(moveResource.LessonId, moveResource.NewSubTopicId);
-            _logger.LogInformation("Moved Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}",
-                moveResource.LessonId, moveResource.NewSubTopicId);
+            await _lessonService.MoveLessonAsync(moveResource.LessonId, moveResource.NewSubTopicId, null);
+            _logger.LogInformation("Moved Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}", moveResource.LessonId, moveResource.NewSubTopicId);
             return Ok();
         }
         catch (ArgumentException ex)
@@ -177,8 +272,7 @@ public class LessonController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error moving Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}",
-                moveResource.LessonId, moveResource.NewSubTopicId);
+            _logger.LogError(ex, "Unexpected error moving Lesson ID: {LessonId}", moveResource.LessonId);
             return StatusCode(500, "Internal server error");
         }
     }
@@ -186,6 +280,21 @@ public class LessonController : ControllerBase
     [HttpPost("{lessonId}/standards")]
     public async Task<IActionResult> AddStandardToLesson(int lessonId, [FromBody] int standardId)
     {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Adding standard {StandardId} to Lesson ID: {LessonId} for User ID: {UserId}", standardId, lessonId, userId);
+
+        var lesson = await _lessonService.GetDomainLessonByIdAsync(lessonId);
+        if (lesson == null)
+        {
+            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
+            return NotFound();
+        }
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to add standard to lesson ID {LessonId} owned by another user", userId, lessonId);
+            return Forbid();
+        }
+
         try
         {
             await _lessonService.AddStandardToLessonAsync(lessonId, standardId);
@@ -193,6 +302,7 @@ public class LessonController : ControllerBase
         }
         catch (ArgumentException ex)
         {
+            _logger.LogError("Error adding standard: {Message}", ex.Message);
             return NotFound(ex.Message);
         }
     }
@@ -200,6 +310,21 @@ public class LessonController : ControllerBase
     [HttpDelete("{lessonId}/standards/{standardId}")]
     public async Task<IActionResult> RemoveStandardFromLesson(int lessonId, int standardId)
     {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Removing standard {StandardId} from Lesson ID: {LessonId} for User ID: {UserId}", standardId, lessonId, userId);
+
+        var lesson = await _lessonService.GetDomainLessonByIdAsync(lessonId);
+        if (lesson == null)
+        {
+            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
+            return NotFound();
+        }
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to remove standard from lesson ID {LessonId} owned by another user", userId, lessonId);
+            return Forbid();
+        }
+
         try
         {
             await _lessonService.RemoveStandardFromLessonAsync(lessonId, standardId);
@@ -207,22 +332,29 @@ public class LessonController : ControllerBase
         }
         catch (ArgumentException ex)
         {
+            _logger.LogError("Error removing standard: {Message}", ex.Message);
             return NotFound(ex.Message);
         }
     }
 
     [HttpPost("copy")]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IActionResult> CopyLesson([FromBody] LessonMoveResource copyResource)
     {
-        _logger.LogDebug("Entering CopyLesson with Lesson ID: {LessonId}, New SubTopic ID: {NewSubTopicId}",
-            copyResource.LessonId, copyResource.NewSubTopicId);
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Copying Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId} for User ID: {UserId}",
+            copyResource.LessonId, copyResource.NewSubTopicId, userId);
+
+        var lesson = await _lessonService.GetDomainLessonByIdAsync(copyResource.LessonId);
+        if (lesson == null)
+        {
+            _logger.LogError("Lesson with ID {LessonId} not found", copyResource.LessonId);
+            return NotFound();
+        }
 
         try
         {
-            var newLesson = await _lessonService.CopyLessonAsync(copyResource.LessonId, copyResource.NewSubTopicId);
-            _logger.LogInformation("Copied Lesson ID: {LessonId} to new Lesson ID: {NewLessonId} under SubTopic ID: {NewSubTopicId}",
-                copyResource.LessonId, newLesson.Id, copyResource.NewSubTopicId);
+            var newLesson = await _lessonService.CopyLessonAsync(copyResource.LessonId, copyResource.NewSubTopicId, null, userId);
+            _logger.LogInformation("Copied Lesson ID: {LessonId} to new Lesson ID: {NewLessonId}", copyResource.LessonId, newLesson.Id);
             return CreatedAtAction(nameof(GetLesson), new { id = newLesson.Id }, newLesson);
         }
         catch (ArgumentException ex)
@@ -232,8 +364,7 @@ public class LessonController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error copying Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}",
-                copyResource.LessonId, copyResource.NewSubTopicId);
+            _logger.LogError(ex, "Unexpected error copying Lesson ID: {LessonId}", copyResource.LessonId);
             return StatusCode(500, "Internal server error");
         }
     }

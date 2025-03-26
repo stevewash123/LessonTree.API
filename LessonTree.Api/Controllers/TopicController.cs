@@ -1,8 +1,11 @@
-﻿using LessonTree.BLL.Service;
+﻿// Full File
+using LessonTree.BLL.Service;
 using LessonTree.Models.DTO;
+using LessonTree.Models.Enums;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -10,7 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 public class TopicController : ControllerBase
 {
     private readonly ITopicService _service;
-    private readonly ILogger<TopicController> _logger; // Fixed logger type
+    private readonly ILogger<TopicController> _logger;
 
     public TopicController(ITopicService service, ILogger<TopicController> logger)
     {
@@ -18,17 +21,32 @@ public class TopicController : ControllerBase
         _logger = logger;
     }
 
-    [HttpGet]
-    public async Task<IActionResult> GetTopics()
+    private int GetCurrentUserId()
     {
-        var topics = await _service.GetAllAsync();
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            _logger.LogError("Failed to extract UserId from JWT claims");
+            throw new UnauthorizedAccessException("User ID not found in token");
+        }
+        return userId;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetTopics(ArchiveFilter filter = ArchiveFilter.Active)
+    {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Fetching topics for User ID: {UserId}, Filter: {Filter}", userId, filter);
+        var topics = await _service.GetAllAsync(userId, filter);
         return Ok(topics);
     }
 
     [HttpGet("byCourse/{courseId}")]
-    public async Task<IActionResult> GetTopicsByCourseId(int courseId)
+    public async Task<IActionResult> GetTopicsByCourseId(int courseId, ArchiveFilter filter = ArchiveFilter.Active)
     {
-        var topics = await _service.GetTopicsByCourseAsync(courseId);
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Fetching topics for Course ID: {CourseId}, User ID: {UserId}, Filter: {Filter}", courseId, userId, filter);
+        var topics = await _service.GetTopicsByCourseAsync(courseId, userId, filter);
         return Ok(topics);
     }
 
@@ -37,14 +55,14 @@ public class TopicController : ControllerBase
     {
         try
         {
-            _logger.LogDebug("Fetching topic by ID: {TopicId}", id);
-            var topic = await _service.GetByIdAsync(id);
+            int userId = GetCurrentUserId();
+            _logger.LogDebug("Fetching topic by ID: {TopicId} for User ID: {UserId}", id, userId);
+            var topic = await _service.GetByIdAsync(id, userId);
             if (topic == null)
             {
                 _logger.LogInformation("Topic with ID {TopicId} not found, returning 404", id);
                 return NotFound();
             }
-
             _logger.LogDebug("Returning topic with ID {TopicId}", id);
             return Ok(topic);
         }
@@ -58,8 +76,11 @@ public class TopicController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> AddTopic([FromBody] TopicCreateResource topicCreateResource)
     {
-        var createdTopicId = await _service.AddAsync(topicCreateResource);
-        var createdTopic = await _service.GetByIdAsync(createdTopicId);
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Adding topic: {Title} for User ID: {UserId}", topicCreateResource.Title, userId);
+        var createdTopicId = await _service.AddAsync(topicCreateResource, userId);
+        var createdTopic = await _service.GetByIdAsync(createdTopicId, userId);
+        _logger.LogInformation("Added topic with ID: {TopicId}", createdTopic.Id);
         return CreatedAtAction(nameof(GetTopic), new { id = createdTopic.Id }, createdTopic);
     }
 
@@ -68,6 +89,7 @@ public class TopicController : ControllerBase
     {
         if (id != topicUpdateResource.Id) return BadRequest();
         await _service.UpdateAsync(topicUpdateResource);
+        _logger.LogInformation("Updated topic with ID: {TopicId}", id);
         return NoContent();
     }
 
@@ -94,57 +116,26 @@ public class TopicController : ControllerBase
     }
 
     [HttpPost("move")]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IActionResult> MoveTopic([FromBody] TopicMoveResource moveResource)
     {
-        _logger.LogDebug("Entering MoveTopic with Topic ID: {TopicId}, New Course ID: {NewCourseId}",
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Moving Topic ID: {TopicId} to Course ID: {NewCourseId} for User ID: {UserId}",
+            moveResource.TopicId, moveResource.NewCourseId, userId);
+        await _service.MoveTopicAsync(moveResource.TopicId, moveResource.NewCourseId, userId);
+        _logger.LogInformation("Moved Topic ID: {TopicId} to Course ID: {NewCourseId}",
             moveResource.TopicId, moveResource.NewCourseId);
-
-        try
-        {
-            await _service.MoveTopicAsync(moveResource.TopicId, moveResource.NewCourseId);
-            _logger.LogInformation("Moved Topic ID: {TopicId} to Course ID: {NewCourseId}",
-                moveResource.TopicId, moveResource.NewCourseId);
-            return Ok();
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogError("Error moving topic: {Message}", ex.Message);
-            return NotFound(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error moving Topic ID: {TopicId} to Course ID: {NewCourseId}",
-                moveResource.TopicId, moveResource.NewCourseId);
-            return StatusCode(500, "Internal server error");
-        }
+        return Ok();
     }
 
     [HttpPost("copy")]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public async Task<IActionResult> CopyTopic([FromBody] TopicMoveResource copyResource)
     {
-        _logger.LogDebug("Entering CopyTopic with Topic ID: {TopicId}, New Course ID: {NewCourseId}",
-            copyResource.TopicId, copyResource.NewCourseId);
-
-        try
-        {
-            var newTopic = await _service.CopyTopicAsync(copyResource.TopicId, copyResource.NewCourseId);
-            _logger.LogInformation("Copied Topic ID: {TopicId} to new Topic ID: {NewTopicId} under Course ID: {NewCourseId}",
-                copyResource.TopicId, newTopic.Id, copyResource.NewCourseId);
-            var response =  CreatedAtAction(nameof(GetTopic), new { id = newTopic.Id }, newTopic);
-            return response;
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogError("Error copying topic: {Message}", ex.Message);
-            return NotFound(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error copying Topic ID: {TopicId} to Course ID: {NewCourseId}",
-                copyResource.TopicId, copyResource.NewCourseId);
-            return StatusCode(500, "Internal server error");
-        }
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Copying Topic ID: {TopicId} to Course ID: {NewCourseId} for User ID: {UserId}",
+            copyResource.TopicId, copyResource.NewCourseId, userId);
+        var newTopic = await _service.CopyTopicAsync(copyResource.TopicId, copyResource.NewCourseId, userId);
+        _logger.LogInformation("Copied Topic ID: {TopicId} to new Topic ID: {NewTopicId} under Course ID: {NewCourseId}",
+            copyResource.TopicId, newTopic.Id, copyResource.NewCourseId);
+        return CreatedAtAction(nameof(GetTopic), new { id = newTopic.Id }, newTopic);
     }
 }

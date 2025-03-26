@@ -1,6 +1,6 @@
-﻿using LessonTree.DAL.Domain;
+﻿using LessonTree.DAL;
+using LessonTree.DAL.Domain;
 using LessonTree.DAL.Repositories;
-using LessonTree.DAL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -39,6 +39,9 @@ public class LessonRepository : ILessonRepository
             query = query
                 .Include(l => l.LessonAttachments).ThenInclude(ld => ld.Attachment)
                 .Include(l => l.SubTopic)
+                .Include(l => l.Topic) // New: Include Topic
+                .Include(l => l.User) // New: Include User
+                .Include(l => l.Team) // New: Include Team
                 .Include(l => l.LessonStandards).ThenInclude(ls => ls.Standard);
         }
         var lesson = await query.FirstOrDefaultAsync(l => l.Id == id);
@@ -82,7 +85,6 @@ public class LessonRepository : ILessonRepository
         }
     }
 
-    // Existing Async Method (Already Present)
     public async Task AddAttachmentAsync(int lessonId, int attachmentId)
     {
         _logger.LogDebug("Adding attachment ID: {AttachmentId} to Lesson ID: {LessonId}", attachmentId, lessonId);
@@ -104,7 +106,6 @@ public class LessonRepository : ILessonRepository
         _logger.LogInformation("Added attachment ID: {AttachmentId} to lesson with ID: {LessonId}", attachmentId, lessonId);
     }
 
-    // Existing Async Method (Already Present)
     public async Task RemoveAttachmentAsync(int lessonId, int attachmentId)
     {
         _logger.LogDebug("Removing attachment ID: {AttachmentId} from Lesson ID: {LessonId}", attachmentId, lessonId);
@@ -126,7 +127,39 @@ public class LessonRepository : ILessonRepository
         var lessons = _context.Lessons
             .Include(l => l.LessonAttachments).ThenInclude(ld => ld.Attachment)
             .Include(l => l.SubTopic)
+            .Include(l => l.Topic) // New
             .Where(l => l.Title.Contains(title));
         return lessons;
+    }
+
+    // New Methods
+    public IQueryable<Lesson> GetByTopicId(int topicId, bool includeArchived = false)
+    {
+        _logger.LogDebug("Retrieving lessons by Topic ID: {TopicId}", topicId);
+        var query = _context.Lessons
+            .Where(l => l.TopicId == topicId);
+        if (!includeArchived)
+            query = query.Where(l => !l.Archived);
+        return query;
+    }
+
+    public IQueryable<Lesson> GetBySubTopicId(int subTopicId, bool includeArchived = false)
+    {
+        _logger.LogDebug("Retrieving lessons by SubTopic ID: {SubTopicId}", subTopicId);
+        var query = _context.Lessons
+            .Where(l => l.SubTopicId == subTopicId);
+        if (!includeArchived)
+            query = query.Where(l => !l.Archived);
+        return query;
+    }
+
+    public IQueryable<Lesson> GetByUserId(int userId, bool includeArchived = false)
+    {
+        _logger.LogDebug("Retrieving lessons by User ID: {UserId}", userId);
+        var query = _context.Lessons
+            .Where(l => l.UserId == userId);
+        if (!includeArchived)
+            query = query.Where(l => !l.Archived);
+        return query;
     }
 }

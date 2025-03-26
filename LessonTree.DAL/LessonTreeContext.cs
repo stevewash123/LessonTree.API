@@ -22,31 +22,51 @@ namespace LessonTree.DAL
             modelBuilder.Entity<LessonStandard>()
                 .HasOne(ls => ls.Lesson)
                 .WithMany(l => l.LessonStandards)
-                .HasForeignKey(ls => ls.LessonId);
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete when Lesson is deleted
 
             modelBuilder.Entity<LessonStandard>()
                 .HasOne(ls => ls.Standard)
                 .WithMany(s => s.LessonStandards)
-                .HasForeignKey(ls => ls.StandardId);
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete when Standard is deleted
 
-            
+            // LessonAttachment many-to-many
             modelBuilder.Entity<LessonAttachment>()
                 .HasKey(ld => new { ld.LessonId, ld.AttachmentId });
 
             modelBuilder.Entity<LessonAttachment>()
                 .HasOne(ld => ld.Lesson)
                 .WithMany(l => l.LessonAttachments)
-                .HasForeignKey(ld => ld.LessonId);
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete when Lesson is deleted
 
             modelBuilder.Entity<LessonAttachment>()
                 .HasOne(ld => ld.Attachment)
                 .WithMany(d => d.LessonAttachments)
-                .HasForeignKey(ld => ld.AttachmentId);
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete when Attachment is deleted
+
+            // Hierarchy relationships with cascade delete
+            modelBuilder.Entity<Topic>()
+                .HasOne(t => t.Course)
+                .WithMany(c => c.Topics)
+                .HasForeignKey(t => t.CourseId)
+                .OnDelete(DeleteBehavior.Cascade); // Course -> Topic
 
             modelBuilder.Entity<SubTopic>()
-                .HasIndex(st => new { st.TopicId, st.IsDefault })
-                .IsUnique()
-                .HasFilter("IsDefault = 1");
+                .HasOne(st => st.Topic)
+                .WithMany(t => t.SubTopics)
+                .HasForeignKey(st => st.TopicId)
+                .OnDelete(DeleteBehavior.Cascade); // Topic -> SubTopic
+
+            modelBuilder.Entity<Lesson>()
+                .HasOne(l => l.Topic)
+                .WithMany(t => t.Lessons)
+                .HasForeignKey(l => l.TopicId)
+                .OnDelete(DeleteBehavior.Cascade); // Topic -> Lesson
+
+            modelBuilder.Entity<Lesson>()
+                .HasOne(l => l.SubTopic)
+                .WithMany(st => st.Lessons)
+                .HasForeignKey(l => l.SubTopicId)
+                .OnDelete(DeleteBehavior.Cascade); // SubTopic -> Lesson
         }
 
         public DbSet<Course> Courses { get; set; }

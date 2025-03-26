@@ -1,12 +1,12 @@
-﻿using AutoMapper;
+﻿// Full File
+using AutoMapper;
 using LessonTree.BLL.Service;
 using LessonTree.DAL.Domain;
 using LessonTree.DAL.Repositories;
 using LessonTree.Models.DTO;
+using LessonTree.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Reflection.Emit;
-using System.Security.AccessControl;
 
 public class SubTopicService : ISubTopicService
 {
@@ -16,8 +16,12 @@ public class SubTopicService : ISubTopicService
     private readonly ILogger<SubTopicService> _logger;
     private readonly IMapper _mapper;
 
-    public SubTopicService(ISubTopicRepository subTopicRepository, ITopicRepository topicRepository,
-                           ILessonRepository lessonRepository, ILogger<SubTopicService> logger, IMapper mapper)
+    public SubTopicService(
+        ISubTopicRepository subTopicRepository,
+        ITopicRepository topicRepository,
+        ILessonRepository lessonRepository,
+        ILogger<SubTopicService> logger,
+        IMapper mapper)
     {
         _subTopicRepository = subTopicRepository;
         _topicRepository = topicRepository;
@@ -26,62 +30,92 @@ public class SubTopicService : ISubTopicService
         _mapper = mapper;
     }
 
-    public async Task<SubTopicResource> GetByIdAsync(int id)
+    public async Task<SubTopicResource> GetByIdAsync(int id, int userId)
     {
-        _logger.LogDebug("Fetching subtopic by ID: {SubTopicId}", id);
+        _logger.LogDebug("Fetching subtopic by ID: {SubTopicId} for User ID: {UserId}", id, userId);
         var subTopic = await _subTopicRepository.GetByIdAsync(id, q => q
             .Include(s => s.Lessons).ThenInclude(l => l.LessonAttachments).ThenInclude(ld => ld.Attachment));
-        if (subTopic == null)
+        if (subTopic == null || subTopic.UserId != userId)
         {
-            _logger.LogWarning("SubTopic with ID {SubTopicId} not found in service", id);
-            throw new KeyNotFoundException($"SubTopic with ID {id} not found.");
+            _logger.LogWarning("SubTopic with ID {SubTopicId} not found or not owned by User ID {UserId}", id, userId);
+            throw new KeyNotFoundException($"SubTopic with ID {id} not found or not owned by user.");
         }
-        if (subTopic.Lessons == null) // Unexpected null due to eager loading
+        if (subTopic.Lessons == null)
         {
             _logger.LogError("SubTopic ID {SubTopicId} has invalid lesson data.", id);
             throw new InvalidOperationException("SubTopic data is in an invalid state.");
         }
         return _mapper.Map<SubTopicResource>(subTopic);
     }
-    
-    public async Task<List<SubTopicResource>> GetAllAsync()
+
+    public async Task<SubTopic?> GetDomainSubTopicByIdAsync(int id)
     {
-        _logger.LogDebug("Fetching all subtopics");
+        _logger.LogDebug("Fetching domain subtopic by ID: {SubTopicId}", id);
+        var subTopic = await _subTopicRepository.GetByIdAsync(id);
+        if (subTopic == null)
+        {
+            _logger.LogWarning("Domain subtopic with ID {SubTopicId} not found", id);
+        }
+        return subTopic;
+    }
+
+    public async Task<List<SubTopicResource>> GetAllAsync(int userId, ArchiveFilter filter = ArchiveFilter.Active)
+    {
+        _logger.LogDebug("Fetching all subtopics for User ID: {UserId}, Filter: {Filter}", userId, filter);
         try
         {
-            var subTopics = await _subTopicRepository.GetAll(q => q
-                .Include(s => s.Lessons))
-                .ToListAsync();
+            var query = _subTopicRepository.GetAll(q => q
+                .Where(s => s.UserId == userId)
+                .Include(s => s.Lessons));
+
+            query = filter switch
+            {
+                ArchiveFilter.Active => query.Where(s => !s.Archived),
+                ArchiveFilter.Archived => query.Where(s => s.Archived),
+                ArchiveFilter.Both => query,
+                _ => throw new ArgumentOutOfRangeException(nameof(filter), "Invalid filter value")
+            };
+
+            var subTopics = await query.ToListAsync();
             return _mapper.Map<List<SubTopicResource>>(subTopics ?? new List<SubTopic>());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to retrieve SubTopics.");
+            _logger.LogError(ex, "Failed to retrieve SubTopics for User ID {UserId}", userId);
             throw new InvalidOperationException("Failed to retrieve SubTopics due to a data access error.", ex);
         }
     }
-    public async Task<List<SubTopicResource>> GetSubtopicsByTopicIdAsync(int topicId)
+
+    public async Task<List<SubTopicResource>> GetSubtopicsByTopicIdAsync(int topicId, int userId, ArchiveFilter filter = ArchiveFilter.Active)
     {
-        _logger.LogDebug("Fetching all subtopics");
+        _logger.LogDebug("Fetching subtopics for Topic ID: {TopicId}, User ID: {UserId}, Filter: {Filter}", topicId, userId, filter);
         try
         {
-            var subTopics = await _subTopicRepository.GetAll(q => q
-                .Where(s => s.TopicId == topicId)
-                .Include(s => s.Lessons))
-                .ToListAsync();
+            var query = _subTopicRepository.GetAll(q => q
+                .Where(s => s.TopicId == topicId && s.UserId == userId)
+                .Include(s => s.Lessons));
 
+            query = filter switch
+            {
+                ArchiveFilter.Active => query.Where(s => !s.Archived),
+                ArchiveFilter.Archived => query.Where(s => s.Archived),
+                ArchiveFilter.Both => query,
+                _ => throw new ArgumentOutOfRangeException(nameof(filter), "Invalid filter value")
+            };
+
+            var subTopics = await query.ToListAsync();
             return _mapper.Map<List<SubTopicResource>>(subTopics ?? new List<SubTopic>());
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to retrieve SubTopics.");
+            _logger.LogError(ex, "Failed to retrieve SubTopics for Topic ID {TopicId}, User ID {UserId}", topicId, userId);
             throw new InvalidOperationException("Failed to retrieve SubTopics due to a data access error.", ex);
         }
     }
 
-    public async Task<int> AddAsync(SubTopicCreateResource subTopicCreateResource)
+    public async Task<int> AddAsync(SubTopicCreateResource subTopicCreateResource, int userId)
     {
-        _logger.LogDebug("Adding subtopic: {Title}", subTopicCreateResource.Title);
+        _logger.LogDebug("Adding subtopic: {Title} for User ID: {UserId}", subTopicCreateResource.Title, userId);
         if (string.IsNullOrWhiteSpace(subTopicCreateResource.Title))
         {
             throw new ArgumentException("Title is required", nameof(subTopicCreateResource.Title));
@@ -93,6 +127,8 @@ public class SubTopicService : ISubTopicService
             throw new ArgumentException("The specified Topic does not exist.", nameof(subTopicCreateResource.TopicId));
         }
         var subTopic = _mapper.Map<SubTopic>(subTopicCreateResource);
+        subTopic.UserId = userId; // Set UserId here
+        subTopic.Archived = false; // Default to active on creation
         var createdId = await _subTopicRepository.AddAsync(subTopic);
         _logger.LogInformation("SubTopic added with ID: {SubTopicId}", createdId);
         return createdId;
@@ -119,7 +155,7 @@ public class SubTopicService : ISubTopicService
         // Map the DTO onto the existing entity, leaving TopicId unchanged
         _mapper.Map(subTopicUpdateResource, existingSubTopic);
         _logger.LogDebug("Updating subtopic: {Title}", subTopicUpdateResource.Title);
-        
+
         // Persist the changes
         await _subTopicRepository.UpdateAsync(existingSubTopic);
         _logger.LogInformation("SubTopic updated with ID: {SubTopicId}", subTopicUpdateResource.Id);
@@ -169,53 +205,15 @@ public class SubTopicService : ISubTopicService
             throw new ArgumentException("Topic not found");
         }
 
-        if (!newTopic.HasSubTopics)
-        {
-            // Find the default SubTopic of the target Topic
-            var defaultSubTopic = newTopic.SubTopics.FirstOrDefault(st => st.IsDefault);
-            if (defaultSubTopic == null)
-            {
-                _logger.LogError("Default SubTopic not found for Topic ID {TopicId}", newTopicId);
-                throw new InvalidOperationException("Default SubTopic not found in target Topic");
-            }
-
-            _logger.LogDebug("Moving lessons from SubTopic {SubTopicId} to default SubTopic {DefaultSubTopicId}", subTopicId, defaultSubTopic.Id);
-
-            // Create a copy of the Lessons list to avoid modification during iteration
-            var lessonsToMove = subTopic.Lessons.ToList();
-            foreach (var lesson in lessonsToMove)
-            {
-                try
-                {
-                    lesson.SubTopicId = defaultSubTopic.Id;
-                    await _lessonRepository.UpdateAsync(lesson);
-                    _logger.LogDebug("Updated lesson {LessonId} to SubTopic {SubTopicId}", lesson.Id, defaultSubTopic.Id);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to update lesson {LessonId} for SubTopic {SubTopicId}", lesson.Id, defaultSubTopic.Id);
-                    throw new InvalidOperationException("Failed to move lessons to the default SubTopic.", ex);
-                }
-            }
-
-            // Delete the original SubTopic if it’s now empty
-            if (!subTopic.Lessons.Any())
-            {
-                await _subTopicRepository.DeleteAsync(subTopic.Id);
-                _logger.LogInformation("Deleted empty SubTopic ID: {SubTopicId}", subTopic.Id);
-            }
-        }
-        else
-        {
-            subTopic.TopicId = newTopicId;
-            await _subTopicRepository.UpdateAsync(subTopic);
-            _logger.LogInformation("Moved SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId}", subTopic.Id, newTopicId);
-        }
+        // Simplified logic: always move the SubTopic directly to the new Topic
+        subTopic.TopicId = newTopicId;
+        await _subTopicRepository.UpdateAsync(subTopic);
+        _logger.LogInformation("Moved SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId}", subTopic.Id, newTopicId);
     }
 
-    public async Task<SubTopicResource> CopySubTopicAsync(int subTopicId, int newTopicId)
+    public async Task<SubTopicResource> CopySubTopicAsync(int subTopicId, int newTopicId, int userId)
     {
-        _logger.LogDebug("Copying SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId}", subTopicId, newTopicId);
+        _logger.LogDebug("Copying SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId} for User ID: {UserId}", subTopicId, newTopicId, userId);
         var originalSubTopic = await _subTopicRepository.GetByIdAsync(subTopicId, q => q
             .Include(s => s.Lessons).ThenInclude(l => l.LessonAttachments).ThenInclude(ld => ld.Attachment)
             .Include(s => s.Lessons).ThenInclude(l => l.LessonStandards));
@@ -230,49 +228,32 @@ public class SubTopicService : ISubTopicService
             _logger.LogError("Topic with ID {TopicId} not found", newTopicId);
             throw new ArgumentException("Topic not found");
         }
-        if (!newTopic.HasSubTopics)
-        {
-            var defaultSubTopic = newTopic.SubTopics.FirstOrDefault(st => st.IsDefault);
-            if (defaultSubTopic == null)
-            {
-                _logger.LogError("Default SubTopic not found for Topic ID {TopicId}", newTopicId);
-                throw new InvalidOperationException("Default SubTopic not found in target Topic");
-            }
-            try
-            {
-                foreach (var originalLesson in originalSubTopic.Lessons)
-                {
-                    Lesson newLesson = copyLesson(defaultSubTopic.Id, originalLesson);
-                    await _lessonRepository.AddAsync(newLesson);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to copy lessons for SubTopic ID {SubTopicId}", subTopicId);
-                throw new InvalidOperationException("Failed to copy lessons to the default SubTopic.", ex);
-            }
-            return _mapper.Map<SubTopicResource>(defaultSubTopic);
-        }
-        else
-        {
-            // Create a new SubTopic under the target Topic
-            var newSubTopic = new SubTopic
-            {
-                Title = originalSubTopic.Title,
-                Description = originalSubTopic.Description,
-                TopicId = newTopicId,
-                Lessons = originalSubTopic.Lessons.Select(originalLesson => copyLesson(newTopicId, originalLesson)).ToList()
-            };
 
-            await _subTopicRepository.AddAsync(newSubTopic);
-            _logger.LogInformation("Copied SubTopic ID: {OriginalSubTopicId} to new SubTopic ID: {NewSubTopicId} under Topic ID: {NewTopicId}",
-                subTopicId, newSubTopic.Id, newTopicId);
+        // Create a new SubTopic under the target Topic without lessons initially
+        var newSubTopic = new SubTopic
+        {
+            Title = originalSubTopic.Title,
+            Description = originalSubTopic.Description,
+            TopicId = newTopicId,
+            UserId = userId,
+            Visibility = originalSubTopic.Visibility,
+            TeamId = originalSubTopic.TeamId,
+            Archived = false // Default to active on creation
+        };
 
-            return _mapper.Map<SubTopicResource>(newSubTopic);
-        }
+        await _subTopicRepository.AddAsync(newSubTopic);
+
+        // Now populate lessons with the correct SubTopicId
+        newSubTopic.Lessons = originalSubTopic.Lessons.Select(originalLesson => CopyLesson(newSubTopic.Id, originalLesson, userId)).ToList();
+        await _subTopicRepository.UpdateAsync(newSubTopic);
+
+        _logger.LogInformation("Copied SubTopic ID: {OriginalSubTopicId} to new SubTopic ID: {NewSubTopicId} under Topic ID: {NewTopicId} by User ID: {UserId}",
+            subTopicId, newSubTopic.Id, newTopicId, userId);
+
+        return _mapper.Map<SubTopicResource>(newSubTopic);
     }
 
-    private static Lesson copyLesson(int defaultSubTopicId, Lesson originalLesson)
+    private static Lesson CopyLesson(int defaultSubTopicId, Lesson originalLesson, int userId)
     {
         return new Lesson
         {
@@ -285,6 +266,9 @@ public class SubTopicService : ISubTopicService
             SpecialNeeds = originalLesson.SpecialNeeds,
             Assessment = originalLesson.Assessment,
             SubTopicId = defaultSubTopicId,
+            UserId = userId, // Set to copier’s UserId
+            Visibility = originalLesson.Visibility,
+            TeamId = originalLesson.TeamId,
             LessonAttachments = originalLesson.LessonAttachments.Select(ld => new LessonAttachment
             {
                 AttachmentId = ld.AttachmentId

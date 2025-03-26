@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LessonTree.DAL.Domain
+﻿namespace LessonTree.DAL.Domain
 {
     public class SubTopic
     {
@@ -12,8 +6,15 @@ namespace LessonTree.DAL.Domain
         public string Title { get; set; }
         public string? Description { get; set; }
         public int TopicId { get; set; }
-        public Topic Topic { get; set; }
+        public virtual Topic Topic { get; set; }
+        public int UserId { get; set; }
+        public virtual User User { get; set; }
+        public VisibilityType Visibility { get; set; } = VisibilityType.Private;
+        public int? TeamId { get; set; } // New: Optional team association for Visibility = Team
+        public virtual Team? Team { get; set; } // New
         public virtual List<Lesson> Lessons { get; set; } = new List<Lesson>();
         public bool IsDefault { get; set; } = false;
+        public virtual List<Note> Notes { get; set; } = new List<Note>();
+        public bool Archived { get; set; } = false;
     }
 }

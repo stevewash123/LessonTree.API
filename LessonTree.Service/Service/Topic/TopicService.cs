@@ -3,6 +3,7 @@ using LessonTree.BLL.Service;
 using LessonTree.DAL.Domain;
 using LessonTree.DAL.Repositories;
 using LessonTree.Models.DTO;
+using LessonTree.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -31,164 +32,144 @@ public class TopicService : ITopicService
         _logger = logger;
     }
 
-    public async Task<TopicResource> GetByIdAsync(int id)
+    public async Task<TopicResource> GetByIdAsync(int id, int userId)
     {
-        _logger.LogDebug("Fetching topic by ID: {TopicId} in service", id);
+        _logger.LogDebug("Fetching topic by ID: {TopicId} for User ID: {UserId}", id, userId);
         var topic = await _topicRepository.GetByIdAsync(id, q => q
             .Include(t => t.SubTopics)
             .ThenInclude(s => s.Lessons)
             .ThenInclude(l => l.LessonAttachments)
+            .ThenInclude(ld => ld.Attachment)
+            .Include(t => t.Lessons)
+            .ThenInclude(l => l.LessonAttachments)
             .ThenInclude(ld => ld.Attachment));
 
-        if (topic == null)
+        if (topic == null || topic.UserId != userId)
         {
-            _logger.LogWarning("Topic with ID {TopicId} not found in service", id);
-            return null;
+            _logger.LogWarning("Topic with ID {TopicId} not found or not owned by User ID {UserId}", id, userId);
+            throw new KeyNotFoundException($"Topic with ID {id} not found or not owned by user.");
         }
 
-        _logger.LogDebug("Topic with ID {TopicId} found. Title: {Title}, HasSubTopics: {HasSubTopics}, SubTopicCount: {SubTopicCount}",
-            topic.Id, topic.Title, topic.HasSubTopics, topic.SubTopics?.Count ?? 0);
+        _logger.LogDebug("Topic with ID {TopicId} found. Title: {Title}, SubTopicCount: {SubTopicCount}, LessonCount: {LessonCount}",
+            topic.Id, topic.Title, topic.SubTopics?.Count ?? 0, topic.Lessons?.Count ?? 0);
 
-        var topicResource = _mapper.Map<TopicResource>(topic);
-        _logger.LogDebug("Mapped topic with ID {TopicId} to TopicResource. NodeId: {NodeId}, CourseId: {CourseId}",
-            topicResource.Id, topicResource.NodeId, topicResource.CourseId);
-
-        return topicResource;
+        return _mapper.Map<TopicResource>(topic);
     }
 
-    public async Task<List<TopicResource>> GetAllAsync()
+    public async Task<Topic?> GetDomainTopicByIdAsync(int id)
     {
-        _logger.LogDebug("Fetching all topics");
-        var topics = await _topicRepository.GetAll(q => q
-            .Include(t => t.SubTopics))
-            .ToListAsync();
-        return _mapper.Map<List<TopicResource>>(topics ?? new List<Topic>());
-    }
-
-    public async Task<List<TopicResource>> GetTopicsByCourseAsync(int courseId)
-    {
-        _logger.LogDebug("Fetching all topics");
-        var topics = await _topicRepository.GetAll(q => q
-            .Where(t => t.CourseId == courseId) 
-            .Include(t => t.SubTopics))
-            .ToListAsync();
-        return _mapper.Map<List<TopicResource>>(topics ?? new List<Topic>());
-    }
-    
-    public async Task<int> AddAsync(TopicCreateResource topicCreateResource)
-    {
-        _logger.LogDebug("Adding topic: {Title}", topicCreateResource.Title);
-        var topic = _mapper.Map<Topic>(topicCreateResource);
-        var createdTopicId = await _topicRepository.AddAsync(topic);
-        var defaultSubTopic = new SubTopic
+        _logger.LogDebug("Fetching domain topic by ID: {TopicId}", id);
+        var topic = await _topicRepository.GetByIdAsync(id);
+        if (topic == null)
         {
-            Title = "Default SubTopic",
-            TopicId = createdTopicId,
-            IsDefault = true
+            _logger.LogWarning("Domain topic with ID {TopicId} not found", id);
+        }
+        return topic;
+    }
+
+    public async Task<List<TopicResource>> GetAllAsync(int userId, ArchiveFilter filter = ArchiveFilter.Active)
+    {
+        _logger.LogDebug("Fetching all topics for User ID: {UserId}, Filter: {Filter}", userId, filter);
+        var query = _topicRepository.GetAll(q => q
+            .Where(t => t.UserId == userId)
+            .Include(t => t.SubTopics)
+            .Include(t => t.Lessons));
+
+        query = filter switch
+        {
+            ArchiveFilter.Active => query.Where(t => !t.Archived),
+            ArchiveFilter.Archived => query.Where(t => t.Archived),
+            ArchiveFilter.Both => query,
+            _ => throw new ArgumentOutOfRangeException(nameof(filter), "Invalid filter value")
         };
-        await _subTopicRepository.AddAsync(defaultSubTopic);
+
+        var topics = await query.ToListAsync();
+        return _mapper.Map<List<TopicResource>>(topics ?? new List<Topic>());
+    }
+
+    public async Task<List<TopicResource>> GetTopicsByCourseAsync(int courseId, int userId, ArchiveFilter filter = ArchiveFilter.Active)
+    {
+        _logger.LogDebug("Fetching topics for Course ID: {CourseId}, User ID: {UserId}, Filter: {Filter}", courseId, userId, filter);
+        var query = _topicRepository.GetAll(q => q
+            .Where(t => t.CourseId == courseId && t.UserId == userId)
+            .Include(t => t.SubTopics)
+            .Include(t => t.Lessons));
+
+        query = filter switch
+        {
+            ArchiveFilter.Active => query.Where(t => !t.Archived),
+            ArchiveFilter.Archived => query.Where(t => t.Archived),
+            ArchiveFilter.Both => query,
+            _ => throw new ArgumentOutOfRangeException(nameof(filter), "Invalid filter value")
+        };
+
+        var topics = await query.ToListAsync();
+        return _mapper.Map<List<TopicResource>>(topics ?? new List<Topic>());
+    }
+
+    public async Task<int> AddAsync(TopicCreateResource topicCreateResource, int userId)
+    {
+        _logger.LogDebug("Adding topic: {Title} for User ID: {UserId}", topicCreateResource.Title, userId);
+        var topic = _mapper.Map<Topic>(topicCreateResource);
+        topic.UserId = userId;
+        var createdTopicId = await _topicRepository.AddAsync(topic);
         _logger.LogInformation("Topic added with ID: {TopicId}", createdTopicId);
         return createdTopicId;
     }
 
     public async Task UpdateAsync(TopicUpdateResource topicUpdateResource)
     {
-        // Fetch the existing topic with its subtopics and lessons
-        var existingTopic = await _topicRepository.GetByIdAsync(topicUpdateResource.Id, q => q
-            .Include(t => t.SubTopics)
-            .ThenInclude(s => s.Lessons));
+        _logger.LogDebug("Updating topic with ID: {TopicId}", topicUpdateResource.Id);
+        var existingTopic = await _topicRepository.GetByIdAsync(topicUpdateResource.Id);
         if (existingTopic == null)
         {
             _logger.LogWarning("Topic with ID {TopicId} not found for update", topicUpdateResource.Id);
             throw new ArgumentException("Topic not found");
         }
 
-        // Map the updated values onto the existing topic entity
         _mapper.Map(topicUpdateResource, existingTopic);
-
-        // Check if HasSubTopics is being set to FALSE
-        if (existingTopic.HasSubTopics && !topicUpdateResource.HasSubTopics)
-        {
-            // Find the default subtopic
-            var defaultSubTopic = existingTopic.SubTopics.FirstOrDefault(st => st.IsDefault);
-            if (defaultSubTopic == null)
-            {
-                _logger.LogError("Default subtopic not found for topic ID {TopicId}", existingTopic.Id);
-                throw new InvalidOperationException("Default subtopic not found");
-            }
-
-            // Move all lessons from non-default subtopics to the default subtopic
-            var nonDefaultSubTopics = existingTopic.SubTopics.Where(st => !st.IsDefault).ToList();
-            foreach (var subTopic in nonDefaultSubTopics)
-            {
-                foreach (var lesson in subTopic.Lessons)
-                {
-                    lesson.SubTopicId = defaultSubTopic.Id;
-                    await _lessonRepository.UpdateAsync(lesson);
-                }
-            }
-
-            // Delete empty non-default subtopics
-            var emptySubTopics = nonDefaultSubTopics.Where(st => !st.Lessons.Any()).ToList();
-            foreach (var emptySubTopic in emptySubTopics)
-            {
-                await _subTopicRepository.DeleteAsync(emptySubTopic.Id);
-            }
-
-            // Update the HasSubTopics property after handling subtopics
-            existingTopic.HasSubTopics = false;
-        }
-
-        // Persist the updated topic
         await _topicRepository.UpdateAsync(existingTopic);
         _logger.LogInformation("Topic updated with ID: {TopicId}", existingTopic.Id);
-    }
-    private async Task MoveLessonsToDefaultSubTopicAsync(Topic topic)
-    {
-        var defaultSubTopic = topic.SubTopics.FirstOrDefault(st => st.IsDefault);
-        if (defaultSubTopic == null)
-        {
-            throw new InvalidOperationException("Default subtopic not found");
-        }
-
-        var lessonsToMove = topic.SubTopics
-            .Where(st => !st.IsDefault)
-            .SelectMany(st => st.Lessons)
-            .ToList();
-
-        foreach (var lesson in lessonsToMove)
-        {
-            lesson.SubTopicId = defaultSubTopic.Id;
-            await _lessonRepository.UpdateAsync(lesson);
-        }
     }
 
     public async Task DeleteAsync(int id)
     {
-        _logger.LogDebug("Deleting topic with ID: {TopicId} in service", id);
-        var topic = await _topicRepository.GetByIdAsync(id);
+        _logger.LogDebug("Deleting topic with ID: {TopicId}", id);
+        var topic = await _topicRepository.GetByIdAsync(id, q => q
+            .Include(t => t.SubTopics)
+            .ThenInclude(s => s.Lessons)
+            .Include(t => t.Lessons));
+
         if (topic == null)
         {
             _logger.LogWarning("Cannot delete topic with ID {TopicId} because it was not found", id);
             throw new ArgumentException($"Topic with ID {id} not found");
         }
 
-        _logger.LogDebug("Topic with ID {TopicId} found for deletion. Title: {Title}, HasSubTopics: {HasSubTopics}, SubTopicCount: {SubTopicCount}",
-            topic.Id, topic.Title, topic.HasSubTopics, topic.SubTopics?.Count ?? 0);
+        // Log the scope of the deletion for transparency
+        _logger.LogDebug("Topic ID: {TopicId} has {SubTopicCount} SubTopics and {LessonCount} direct Lessons to be deleted",
+            id, topic.SubTopics?.Count ?? 0, topic.Lessons?.Count ?? 0);
+
+        foreach (var subTopic in topic.SubTopics)
+        {
+            _logger.LogDebug("SubTopic ID: {SubTopicId} has {LessonCount} Lessons to be deleted",
+                subTopic.Id, subTopic.Lessons?.Count ?? 0);
+        }
 
         await _topicRepository.DeleteAsync(id);
-        _logger.LogInformation("Topic deleted with ID: {TopicId} in service", id);
+        _logger.LogInformation("Topic deleted with ID: {TopicId}, including all associated SubTopics and Lessons", id);
     }
 
-    public async Task MoveTopicAsync(int topicId, int newCourseId)
+    public async Task MoveTopicAsync(int topicId, int newCourseId, int userId)
     {
-        _logger.LogDebug("Moving Topic ID: {TopicId} to Course ID: {NewCourseId}", topicId, newCourseId);
-
-        var topic = await _topicRepository.GetByIdAsync(topicId, q => q.Include(t => t.SubTopics).ThenInclude(s => s.Lessons));
-        if (topic == null)
+        _logger.LogDebug("Moving Topic ID: {TopicId} to Course ID: {NewCourseId} for User ID: {UserId}", topicId, newCourseId, userId);
+        var topic = await _topicRepository.GetByIdAsync(topicId, q => q
+            .Include(t => t.SubTopics).ThenInclude(s => s.Lessons)
+            .Include(t => t.Lessons));
+        if (topic == null || topic.UserId != userId)
         {
-            _logger.LogError("Topic with ID {TopicId} not found", topicId);
-            throw new ArgumentException("Topic not found");
+            _logger.LogError("Topic with ID {TopicId} not found or not owned by User ID {UserId}", topicId, userId);
+            throw new ArgumentException("Topic not found or not owned by user");
         }
 
         var newCourse = await _courseRepository.GetByIdAsync(newCourseId);
@@ -200,15 +181,17 @@ public class TopicService : ITopicService
 
         topic.CourseId = newCourseId;
         await _topicRepository.UpdateAsync(topic);
+        _logger.LogInformation("Moved Topic ID: {TopicId} to Course ID: {NewCourseId}", topicId, newCourseId);
     }
 
-    public async Task<TopicResource> CopyTopicAsync(int topicId, int newCourseId)
+    public async Task<TopicResource> CopyTopicAsync(int topicId, int newCourseId, int userId)
     {
-        _logger.LogDebug("Copying Topic ID: {TopicId} to Course ID: {NewCourseId}", topicId, newCourseId);
-
+        _logger.LogDebug("Copying Topic ID: {TopicId} to Course ID: {NewCourseId} for User ID: {UserId}", topicId, newCourseId, userId);
         var originalTopic = await _topicRepository.GetByIdAsync(topicId, q => q
             .Include(t => t.SubTopics).ThenInclude(s => s.Lessons).ThenInclude(l => l.LessonAttachments).ThenInclude(ld => ld.Attachment)
-            .Include(t => t.SubTopics).ThenInclude(s => s.Lessons).ThenInclude(l => l.LessonStandards));
+            .Include(t => t.SubTopics).ThenInclude(s => s.Lessons).ThenInclude(l => l.LessonStandards)
+            .Include(t => t.Lessons).ThenInclude(l => l.LessonAttachments).ThenInclude(ld => ld.Attachment)
+            .Include(t => t.Lessons).ThenInclude(l => l.LessonStandards));
 
         if (originalTopic == null)
         {
@@ -221,15 +204,23 @@ public class TopicService : ITopicService
             Title = originalTopic.Title,
             Description = originalTopic.Description,
             CourseId = newCourseId,
-            HasSubTopics = originalTopic.HasSubTopics,
+            UserId = userId,
+            Visibility = originalTopic.Visibility,
+            TeamId = originalTopic.TeamId,
             SubTopics = originalTopic.SubTopics.Select(originalSubTopic => new SubTopic
             {
                 Title = originalSubTopic.Title,
                 Description = originalSubTopic.Description,
+                UserId = userId,
+                Visibility = originalSubTopic.Visibility,
+                TeamId = originalSubTopic.TeamId,
                 Lessons = originalSubTopic.Lessons.Select(originalLesson => new Lesson
                 {
                     Title = originalLesson.Title,
                     Objective = originalLesson.Objective,
+                    UserId = userId,
+                    Visibility = originalLesson.Visibility,
+                    TeamId = originalLesson.TeamId,
                     LessonAttachments = originalLesson.LessonAttachments.Select(ld => new LessonAttachment
                     {
                         AttachmentId = ld.AttachmentId
@@ -239,12 +230,28 @@ public class TopicService : ITopicService
                         StandardId = ls.StandardId
                     }).ToList()
                 }).ToList()
+            }).ToList(),
+            Lessons = originalTopic.Lessons.Select(originalLesson => new Lesson
+            {
+                Title = originalLesson.Title,
+                Objective = originalLesson.Objective,
+                UserId = userId,
+                Visibility = originalLesson.Visibility,
+                TeamId = originalLesson.TeamId,
+                LessonAttachments = originalLesson.LessonAttachments.Select(ld => new LessonAttachment
+                {
+                    AttachmentId = ld.AttachmentId
+                }).ToList(),
+                LessonStandards = originalLesson.LessonStandards.Select(ls => new LessonStandard
+                {
+                    StandardId = ls.StandardId
+                }).ToList()
             }).ToList()
         };
 
         await _topicRepository.AddAsync(newTopic);
-        _logger.LogInformation("Copied Topic ID: {OriginalTopicId} to new Topic ID: {NewTopicId} under Course ID: {NewCourseId}",
-            topicId, newTopic.Id, newCourseId);
+        _logger.LogInformation("Copied Topic ID: {OriginalTopicId} to new Topic ID: {NewTopicId} under Course ID: {NewCourseId} by User ID: {UserId}",
+            topicId, newTopic.Id, newCourseId, userId);
 
         return _mapper.Map<TopicResource>(newTopic);
     }

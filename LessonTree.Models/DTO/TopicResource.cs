@@ -1,11 +1,4 @@
-﻿using Microsoft.Extensions.Diagnostics.HealthChecks;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LessonTree.Models.DTO
+﻿namespace LessonTree.Models.DTO
 {
     public class TopicResource
     {
@@ -13,19 +6,19 @@ namespace LessonTree.Models.DTO
         public string NodeId { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
-        public Boolean HasSubTopics { get; set; }
-        public int CourseId { get; set; }
-        public Boolean hasChildren { get; set; }
+        public int CourseId { get; set; } // Read-only, set via Move
+        public bool hasChildren { get; set; }
         public List<SubTopicResource> SubTopics { get; set; }
         public List<LessonResource> Lessons { get; set; }
-
     }
 
     public class TopicCreateResource
     {
         public string Title { get; set; }
         public string Description { get; set; }
-        public int CourseId { get; set; }
+        public int CourseId { get; set; } // Required for creation, not editable later
+        public string Visibility { get; set; } = "Private";
+        public int? TeamId { get; set; }
     }
 
     public class TopicUpdateResource
@@ -33,7 +26,9 @@ namespace LessonTree.Models.DTO
         public int Id { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
-        public bool HasSubTopics { get; set; }
+        public string Visibility { get; set; }
+        public int? TeamId { get; set; }
+        // Removed CourseId - not editable via Update, only by Move
     }
 
     public class TopicMoveResource
