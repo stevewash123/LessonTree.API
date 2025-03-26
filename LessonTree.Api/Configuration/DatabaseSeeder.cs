@@ -1,4 +1,5 @@
-﻿using LessonTree.DAL;
+﻿// Full File
+using LessonTree.DAL;
 using LessonTree.DAL.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -13,485 +14,239 @@ namespace LessonTree.API.Configuration
 {
     public static class DatabaseSeeder
     {
-        public static async Task SeedDatabaseAsync(LessonTreeContext context, UserManager<User> userManager, RoleManager<IdentityRole<int>> roleManager, ILogger logger, IHostEnvironment env)
+        public static async Task SeedDatabaseAsync(LessonTreeContext context, UserManager<User> userManager, ILogger logger, IHostEnvironment env)
         {
-            //try
-            //{
-            //    logger.LogInformation("Applying migrations to LessonTree.db...");
-            //    context.Database.Migrate();
+            try
+            {
+                if (!env.IsDevelopment())
+                {
+                    logger.LogInformation("Skipping test data seeding: not in Development mode.");
+                    return;
+                }
 
-            //    // Seed Roles
-            //    string[] roles = { "FreeUser", "PaidUser", "Admin" };
-            //    foreach (var role in roles)
-            //    {
-            //        if (!await roleManager.RoleExistsAsync(role))
-            //        {
-            //            logger.LogInformation("Creating role: {Role}", role);
-            //            await roleManager.CreateAsync(new IdentityRole<int> { Name = role });
-            //        }
-            //    }
+                logger.LogInformation("Seeding test data for Courses, Topics, SubTopics, and Lessons in Development mode...");
 
-            //    // Seed Admin User
-            //    string adminUsername = "admin";
-            //    string adminPassword = "Admin123!";
-            //    var adminUser = await userManager.FindByNameAsync(adminUsername);
-            //    if (adminUser == null)
-            //    {
-            //        logger.LogInformation("Creating admin user: {Username}", adminUsername);
-            //        adminUser = new User { UserName = adminUsername };
-            //        var result = await userManager.CreateAsync(adminUser, adminPassword);
-            //        if (result.Succeeded)
-            //        {
-            //            await userManager.AddToRoleAsync(adminUser, "Admin");
-            //            logger.LogInformation("Initial Admin user created: {Username}", adminUsername);
-            //        }
-            //        else
-            //        {
-            //            logger.LogError("Failed to create initial Admin user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
-            //        }
-            //    }
+                // Clear existing data for a clean slate
+                context.LessonAttachments.RemoveRange(context.LessonAttachments);
+                context.LessonStandards.RemoveRange(context.LessonStandards);
+                context.Lessons.RemoveRange(context.Lessons);
+                context.SubTopics.RemoveRange(context.SubTopics);
+                context.Topics.RemoveRange(context.Topics);
+                context.Courses.RemoveRange(context.Courses);
+                context.Standards.RemoveRange(context.Standards);
+                context.Attachments.RemoveRange(context.Attachments);
+                await context.SaveChangesAsync();
 
-            //    // Seed Test Data in Development Mode (always seed, clearing existing data)
-            //    if (env.IsDevelopment())
-            //    {
-            //        logger.LogInformation("Seeding test data for Courses, Topics, SubTopics, Lessons, Standards, and Attachments in Development mode...");
+                // Seed Admin User (needed for ownership)
+                string adminUsername = "admin";
+                string adminPassword = "Admin123!";
+                var adminUser = await userManager.FindByNameAsync(adminUsername);
+                if (adminUser == null)
+                {
+                    logger.LogInformation("Creating admin user: {Username}", adminUsername);
+                    adminUser = new User { UserName = adminUsername };
+                    var result = await userManager.CreateAsync(adminUser, adminPassword);
+                    if (!result.Succeeded)
+                    {
+                        logger.LogError("Failed to create admin user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                        throw new Exception("Admin user creation failed.");
+                    }
+                }
 
-            //        // Clear existing data to ensure a clean state
-            //        context.LessonAttachments.RemoveRange(context.LessonAttachments);
-            //        context.LessonStandards.RemoveRange(context.LessonStandards);
-            //        context.Lessons.RemoveRange(context.Lessons);
-            //        context.SubTopics.RemoveRange(context.SubTopics);
-            //        context.Topics.RemoveRange(context.Topics);
-            //        context.Courses.RemoveRange(context.Courses);
-            //        context.Standards.RemoveRange(context.Standards);
-            //        context.Attachments.RemoveRange(context.Attachments);
-            //        await context.SaveChangesAsync();
+                // Seed Non-Admin User (for ownership testing)
+                string testUserUsername = "testuser";
+                string testUserPassword = "Test123!";
+                var testUser = await userManager.FindByNameAsync(testUserUsername);
+                if (testUser == null)
+                {
+                    logger.LogInformation("Creating test user: {Username}", testUserUsername);
+                    testUser = new User { UserName = testUserUsername };
+                    var result = await userManager.CreateAsync(testUser, testUserPassword);
+                    if (!result.Succeeded)
+                    {
+                        logger.LogError("Failed to create test user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                        throw new Exception("Test user creation failed.");
+                    }
+                }
 
-            //        var courses = new List<Course>
-            //        {
-            //            new Course
-            //            {
-            //                Title = "High School English",
-            //                Description = "A comprehensive English course for high school students.",
-            //                Topics = new List<Topic>
-            //                {
-            //                    new Topic
-            //                    {
-            //                        Title = "Literature",
-            //                        Description = "Exploring classic and modern literary works.",
-            //                        HasSubTopics = true,
-            //                        SubTopics = new List<SubTopic>
-            //                        {
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Shakespeare",
-            //                                Description = "Study of Shakespeare's plays and sonnets.",
-            //                                IsDefault = true,
-            //                                Lessons = new List<Lesson>()
-            //                            },
-            //                            new SubTopic
-            //                            {
-            //                                Title = "American Literature",
-            //                                Description = "Key works from American authors.",
-            //                                IsDefault = false,
-            //                                Lessons = new List<Lesson>
-            //                                {
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "The Great Gatsby",
-            //                                        Level = "11th Grade",
-            //                                        Objective = "Understand themes and symbolism.",
-            //                                        Materials = "Novel, study guide",
-            //                                        ClassTime = "60 minutes",
-            //                                        Methods = "Lecture, discussion",
-            //                                        SpecialNeeds = "Audio version for visually impaired",
-            //                                        Assessment = "Essay"
-            //                                    },
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "To Kill a Mockingbird",
-            //                                        Level = "10th Grade",
-            //                                        Objective = "Analyze character development.",
-            //                                        Materials = "Novel",
-            //                                        ClassTime = "45 minutes",
-            //                                        Methods = "Group reading",
-            //                                        SpecialNeeds = null,
-            //                                        Assessment = "Quiz"
-            //                                    }
-            //                                }
-            //                            },
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Poetry",
-            //                                Description = "Study of poetic forms and techniques.",
-            //                                IsDefault = false,
-            //                                Lessons = new List<Lesson>()
-            //                            }
-            //                        }
-            //                    },
-            //                    new Topic
-            //                    {
-            //                        Title = "Grammar",
-            //                        Description = "Mastering English grammar rules.",
-            //                        HasSubTopics = true, // Changed from false to true
-            //                        SubTopics = new List<SubTopic>
-            //                        {
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Default SubTopic",
-            //                                IsDefault = true,
-            //                                Lessons = new List<Lesson>() // Lessons moved to new subtopic
-            //                            },
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Core Grammar",
-            //                                Description = "Fundamental grammar concepts.",
-            //                                IsDefault = false,
-            //                                Lessons = new List<Lesson>
-            //                                {
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "Parts of Speech",
-            //                                        Level = "9th Grade",
-            //                                        Objective = "Identify parts of speech.",
-            //                                        Materials = "Workbook",
-            //                                        ClassTime = "30 minutes",
-            //                                        Methods = "Exercises",
-            //                                        SpecialNeeds = "Large print materials",
-            //                                        Assessment = "Test"
-            //                                    },
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "Sentence Structure",
-            //                                        Level = "10th Grade",
-            //                                        Objective = "Identify parts of sentence.",
-            //                                        Materials = null,
-            //                                        ClassTime = "40 minutes",
-            //                                        Methods = "Lecture",
-            //                                        SpecialNeeds = "None",
-            //                                        Assessment = "Worksheet"
-            //                                    }
-            //                                }
-            //                            }
-            //                        }
-            //                    },
-            //                    new Topic
-            //                    {
-            //                        Title = "Writing",
-            //                        Description = "Developing writing skills.",
-            //                        HasSubTopics = true,
-            //                        SubTopics = new List<SubTopic>
-            //                        {
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Default SubTopic",
-            //                                IsDefault = true,
-            //                                Lessons = new List<Lesson>
-            //                                {
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "Essay Writing",
-            //                                        Level = "11th Grade",
-            //                                        Objective = "Write a coherent essay.",
-            //                                        Materials = "Writing prompts",
-            //                                        ClassTime = "50 minutes",
-            //                                        Methods = "Workshop",
-            //                                        SpecialNeeds = "Extended time for dyslexic students",
-            //                                        Assessment = "Peer review"
-            //                                    },
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "Creative Writing",
-            //                                        Level = "12th Grade",
-            //                                        Objective = "Develop a short story.",
-            //                                        Materials = "Examples of short stories",
-            //                                        ClassTime = "60 minutes",
-            //                                        Methods = "Writing exercises",
-            //                                        SpecialNeeds = null,
-            //                                        Assessment = "Portfolio"
-            //                                    }
-            //                                }
-            //                            }
-            //                        }
-            //                    }
-            //                }
-            //            },
-            //            new Course
-            //            {
-            //                Title = "High School Science",
-            //                Description = "A broad science course for high school students.",
-            //                Topics = new List<Topic>
-            //                {
-            //                    new Topic
-            //                    {
-            //                        Title = "Biology",
-            //                        Description = "Study of living organisms.",
-            //                        HasSubTopics = true, // Changed from false to true
-            //                        SubTopics = new List<SubTopic>
-            //                        {
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Default SubTopic",
-            //                                IsDefault = true,
-            //                                Lessons = new List<Lesson>()
-            //                            },
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Intro to Biology",
-            //                                Description = "Basic concepts of biology.",
-            //                                IsDefault = false,
-            //                                Lessons = new List<Lesson>()
-            //                            }
-            //                        }
-            //                    },
-            //                    new Topic
-            //                    {
-            //                        Title = "Chemistry",
-            //                        Description = "Fundamentals of matter and reactions.",
-            //                        HasSubTopics = true, // Changed from false to true
-            //                        SubTopics = new List<SubTopic>
-            //                        {
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Default SubTopic",
-            //                                IsDefault = true,
-            //                                Lessons = new List<Lesson>()
-            //                            },
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Intro to Chemistry",
-            //                                Description = "Basic concepts of chemistry.",
-            //                                IsDefault = false,
-            //                                Lessons = new List<Lesson>()
-            //                            }
-            //                        }
-            //                    }
-            //                }
-            //            },
-            //            new Course
-            //            {
-            //                Title = "High School Math",
-            //                Description = "Mathematics course with topics.",
-            //                Topics = new List<Topic>
-            //                {
-            //                    new Topic
-            //                    {
-            //                        Title = "Algebra",
-            //                        Description = "Study of algebraic concepts.",
-            //                        HasSubTopics = true,
-            //                        SubTopics = new List<SubTopic>
-            //                        {
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Linear Equations",
-            //                                Description = "Solving linear equations.",
-            //                                IsDefault = false,
-            //                                Lessons = new List<Lesson>
-            //                                {
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "Solving One-Step Equations",
-            //                                        Level = "9th Grade",
-            //                                        Objective = "Solve basic linear equations.",
-            //                                        Materials = "Worksheet",
-            //                                        ClassTime = "40 minutes",
-            //                                        Methods = "Practice",
-            //                                        SpecialNeeds = "Visual aids",
-            //                                        Assessment = "Quiz"
-            //                                    },
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "Solving Multi-Step Equations",
-            //                                        Level = "9th Grade",
-            //                                        Objective = "Solve complex linear equations.",
-            //                                        Materials = "Textbook",
-            //                                        ClassTime = "50 minutes",
-            //                                        Methods = "Lecture, practice",
-            //                                        SpecialNeeds = null,
-            //                                        Assessment = "Test"
-            //                                    }
-            //                                }
-            //                            },
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Quadratic Equations",
-            //                                Description = "Solving quadratic equations.",
-            //                                IsDefault = false,
-            //                                Lessons = new List<Lesson>
-            //                                {
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "Factoring Quadratics",
-            //                                        Level = "10th Grade",
-            //                                        Objective = "Factor quadratic expressions.",
-            //                                        Materials = "Examples",
-            //                                        ClassTime = "45 minutes",
-            //                                        Methods = "Demonstration",
-            //                                        SpecialNeeds = "Step-by-step guides",
-            //                                        Assessment = "Homework"
-            //                                    },
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "Quadratic Formula",
-            //                                        Level = "10th Grade",
-            //                                        Objective = "Use the quadratic formula.",
-            //                                        Materials = "Formula sheet",
-            //                                        ClassTime = "50 minutes",
-            //                                        Methods = "Lecture",
-            //                                        SpecialNeeds = null,
-            //                                        Assessment = "Quiz"
-            //                                    }
-            //                                }
-            //                            }
-            //                        }
-            //                    },
-            //                    new Topic
-            //                    {
-            //                        Title = "Geometry",
-            //                        Description = "Study of shapes and spatial relationships.",
-            //                        HasSubTopics = true,
-            //                        SubTopics = new List<SubTopic>
-            //                        {
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Triangles",
-            //                                Description = "Properties of triangles.",
-            //                                IsDefault = false,
-            //                                Lessons = new List<Lesson>
-            //                                {
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "Triangle Congruence",
-            //                                        Level = "10th Grade",
-            //                                        Objective = "Understand congruence criteria.",
-            //                                        Materials = "Geometric tools",
-            //                                        ClassTime = "50 minutes",
-            //                                        Methods = "Hands-on activity",
-            //                                        SpecialNeeds = "Tactile materials",
-            //                                        Assessment = "Worksheet"
-            //                                    },
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "Pythagorean Theorem",
-            //                                        Level = "10th Grade",
-            //                                        Objective = "Apply the Pythagorean theorem.",
-            //                                        Materials = "Diagrams",
-            //                                        ClassTime = "40 minutes",
-            //                                        Methods = "Lecture",
-            //                                        SpecialNeeds = null,
-            //                                        Assessment = "Test"
-            //                                    }
-            //                                }
-            //                            },
-            //                            new SubTopic
-            //                            {
-            //                                Title = "Circles",
-            //                                Description = "Properties of circles.",
-            //                                IsDefault = false,
-            //                                Lessons = new List<Lesson>
-            //                                {
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "Circle Properties",
-            //                                        Level = "10th Grade",
-            //                                        Objective = "Identify circle components.",
-            //                                        Materials = "Compass",
-            //                                        ClassTime = "45 minutes",
-            //                                        Methods = "Drawing",
-            //                                        SpecialNeeds = "Large print diagrams",
-            //                                        Assessment = "Quiz"
-            //                                    },
-            //                                    new Lesson
-            //                                    {
-            //                                        Title = "Circle Theorems",
-            //                                        Level = "10th Grade",
-            //                                        Objective = "Apply circle theorems.",
-            //                                        Materials = "Textbook",
-            //                                        ClassTime = "50 minutes",
-            //                                        Methods = "Lecture",
-            //                                        SpecialNeeds = null,
-            //                                        Assessment = "Homework"
-            //                                    }
-            //                                }
-            //                            }
-            //                        }
-            //                    }
-            //                }
-            //            }
-            //        };
-            //        context.Courses.AddRange(courses);
-            //        await context.SaveChangesAsync();
+                // Seed Test Courses
+                var courses = new List<Course>
+                {
+                    // Course 1: Nulls scattered about (owned by admin)
+                    new Course
+                    {
+                        Title = "Course with Nulls",
+                        Description = null, // Null description
+                        UserId = adminUser.Id,
+                        Archived = false,
+                        Topics = new List<Topic>
+                        {
+                            new Topic
+                            {
+                                Title = "Topic with Nulls",
+                                Description = null, // Null description
+                                UserId = adminUser.Id,
+                                Archived = false,
+                                SubTopics = new List<SubTopic>
+                                {
+                                    new SubTopic
+                                    {
+                                        Title = "SubTopic with Nulls",
+                                        Description = null, // Null description
+                                        UserId = adminUser.Id,
+                                        Archived = false,
+                                        Lessons = new List<Lesson>
+                                        {
+                                            new Lesson
+                                            {
+                                                Title = "Lesson with Nulls",
+                                                Level = null, // Null level
+                                                Objective = "Test null handling",
+                                                Materials = null, // Null materials
+                                                ClassTime = "45 minutes",
+                                                Methods = null, // Null methods
+                                                SpecialNeeds = null, // Null special needs
+                                                Assessment = "Quiz",
+                                                UserId = adminUser.Id
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
 
-            //        // Seed Standards
-            //        var literatureTopic = courses[0].Topics.First(t => t.Title == "Literature");
-            //        var biologyTopic = courses[1].Topics.First(t => t.Title == "Biology");
+                    // Course 2: Not owned by admin (testuser-owned, no subtopics)
+                    new Course
+                    {
+                        Title = "TestUser Course",
+                        Description = "Course owned by testuser, no subtopics.",
+                        UserId = testUser.Id,
+                        Archived = false,
+                        Topics = new List<Topic>
+                        {
+                            new Topic
+                            {
+                                Title = "Direct Lessons",
+                                Description = "Topic with lessons but no subtopics.",
+                                UserId = testUser.Id,
+                                Archived = false,
+                                Lessons = new List<Lesson>
+                                {
+                                    new Lesson
+                                    {
+                                        Title = "Basic Lesson",
+                                        Level = "9th Grade",
+                                        Objective = "Learn basics.",
+                                        Materials = "Textbook",
+                                        ClassTime = "40 minutes",
+                                        Methods = "Lecture",
+                                        SpecialNeeds = null,
+                                        Assessment = "Quiz",
+                                        UserId = testUser.Id
+                                    }
+                                }
+                            }
+                        }
+                    },
 
-            //        var standards = new List<Standard>
-            //        {
-            //            new Standard
-            //            {
-            //                Title = "CCSS.ELA-LITERACY.RL.9-10.1",
-            //                Description = "Cite strong and thorough textual evidence to support analysis of what the text says explicitly as well as inferences drawn from the text.",
-            //                StandardType = "Literature",
-            //                TopicId = literatureTopic.Id
-            //            },
-            //            new Standard
-            //            {
-            //                Title = "CCSS.ELA-LITERACY.RL.9-10.2",
-            //                Description = "Determine a theme or central idea of a text and analyze in detail its development over the course of the text, including how it emerges and is shaped and refined by specific details; provide an objective summary of the text.",
-            //                StandardType = "Literature",
-            //                TopicId = literatureTopic.Id
-            //            },
-            //            new Standard
-            //            {
-            //                Title = "NGSS.HS-LS1-1",
-            //                Description = "Construct an explanation based on evidence for how the structure of DNA determines the structure of proteins which carry out the essential functions of life through systems of specialized cells.",
-            //                StandardType = "Biology",
-            //                TopicId = biologyTopic.Id
-            //            }
-            //        };
-            //        context.Standards.AddRange(standards);
-            //        await context.SaveChangesAsync();
+                    // Course 3: Admin-owned with subtopics
+                    new Course
+                    {
+                        Title = "Admin Course with SubTopics",
+                        Description = "Admin-owned course with subtopics.",
+                        UserId = adminUser.Id,
+                        Archived = false,
+                        Topics = new List<Topic>
+                        {
+                            new Topic
+                            {
+                                Title = "Literature",
+                                Description = "Exploring literary works.",
+                                UserId = adminUser.Id,
+                                Archived = false,
+                                SubTopics = new List<SubTopic>
+                                {
+                                    new SubTopic
+                                    {
+                                        Title = "Shakespeare",
+                                        Description = "Study of Shakespeare's works.",
+                                        UserId = adminUser.Id,
+                                        Archived = false,
+                                        Lessons = new List<Lesson>
+                                        {
+                                            new Lesson
+                                            {
+                                                Title = "Hamlet",
+                                                Level = "11th Grade",
+                                                Objective = "Analyze Hamlet.",
+                                                Materials = "Play text",
+                                                ClassTime = "60 minutes",
+                                                Methods = "Discussion",
+                                                SpecialNeeds = "Audio version",
+                                                Assessment = "Essay",
+                                                UserId = adminUser.Id
+                                            }
+                                        }
+                                    },
+                                    new SubTopic
+                                    {
+                                        Title = "Poetry",
+                                        Description = "Study of poetic forms.",
+                                        UserId = adminUser.Id,
+                                        Archived = true, // Archived subtopic for testing
+                                        Lessons = new List<Lesson>()
+                                    }
+                                }
+                            }
+                        }
+                    },
 
-            //        // Seed Attachments
-            //        var attachments = new List<Attachment>
-            //        {
-            //            new Attachment { FileName = "Lesson Plan Template.docx", ContentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document", Blob = [] },
-            //            new Attachment { FileName = "Worksheet.pdf", ContentType = "application/pdf", Blob = [] },
-            //            new Attachment { FileName = "Presentation.pptx", ContentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation", Blob = [] }
-            //        };
-            //        context.Attachments.AddRange(attachments);
-            //        await context.SaveChangesAsync();
+                    // Course 4: Admin-owned without subtopics
+                    new Course
+                    {
+                        Title = "Admin Course without SubTopics",
+                        Description = "Admin-owned course with direct lessons.",
+                        UserId = adminUser.Id,
+                        Archived = true, // Archived course for testing
+                        Topics = new List<Topic>
+                        {
+                            new Topic
+                            {
+                                Title = "Grammar",
+                                Description = "Mastering grammar rules.",
+                                UserId = adminUser.Id,
+                                Archived = false,
+                                Lessons = new List<Lesson>
+                                {
+                                    new Lesson
+                                    {
+                                        Title = "Parts of Speech",
+                                        Level = "9th Grade",
+                                        Objective = "Identify parts of speech.",
+                                        Materials = "Workbook",
+                                        ClassTime = "30 minutes",
+                                        Methods = "Exercises",
+                                        SpecialNeeds = "Large print",
+                                        Assessment = "Test",
+                                        UserId = adminUser.Id
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
 
-            //        // Link Standards and Documents to Lessons
-            //        var americanLitSubTopic = literatureTopic.SubTopics.First(st => st.Title == "American Literature");
-            //        var lessonGreatGatsby = americanLitSubTopic.Lessons.First(l => l.Title == "The Great Gatsby");
-            //        var lessonMockingbird = americanLitSubTopic.Lessons.First(l => l.Title == "To Kill a Mockingbird");
+                context.Courses.AddRange(courses);
+                await context.SaveChangesAsync();
 
-            //        var lessonStandards = new List<LessonStandard>
-            //        {
-            //            new LessonStandard { LessonId = lessonGreatGatsby.Id, StandardId = standards[0].Id },
-            //            new LessonStandard { LessonId = lessonMockingbird.Id, StandardId = standards[1].Id }
-            //        };
-            //        context.LessonStandards.AddRange(lessonStandards);
-
-            //        var lessonAttachments = new List<LessonAttachment>
-            //        {
-            //            new LessonAttachment { LessonId = lessonGreatGatsby.Id, AttachmentId = attachments[0].Id },
-            //            new LessonAttachment { LessonId = lessonMockingbird.Id, AttachmentId = attachments[1].Id }
-            //        };
-            //        context.LessonAttachments.AddRange(lessonAttachments);
-
-            //        await context.SaveChangesAsync();
-
-            //        logger.LogInformation("Test data seeded successfully in Development mode.");
-            //    }
-            //}
-            //catch (Exception ex)
-            //{
-            //    logger.LogError(ex, "Failed to migrate database or seed data: {Message}", ex.Message);
-            //    throw;
-            //}
+                logger.LogInformation("Test data seeded successfully in Development mode.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to seed test data: {Message}", ex.Message);
+                throw;
+            }
         }
     }
 }
