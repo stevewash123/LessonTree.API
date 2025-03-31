@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LessonTree.DAL.Domain
+namespace LessonTree.Models.Enums 
 {
     public enum VisibilityType
     {

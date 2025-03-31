@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Serilog;
 
 namespace LessonTree.API.Controllers
 {
@@ -17,11 +16,16 @@ namespace LessonTree.API.Controllers
         private readonly LessonTreeContext _context;
         private readonly UserManager<User> _userManager;
         private readonly RoleManager<IdentityRole<int>> _roleManager;
-        private readonly ILogger<AdminController> _logger; 
+        private readonly ILogger<AdminController> _logger;
         private readonly IHostEnvironment _hostEnvironment;
         private readonly IWebHostEnvironment _env;
 
-        public AdminController(IWebHostEnvironment env, LessonTreeContext context, UserManager<User> userManager, RoleManager<IdentityRole<int>> roleManager, ILogger<AdminController> logger, IHostEnvironment hostEnvironment)
+        public AdminController(IWebHostEnvironment env,
+                             LessonTreeContext context,
+                             UserManager<User> userManager,
+                             RoleManager<IdentityRole<int>> roleManager,
+                             ILogger<AdminController> logger,
+                             IHostEnvironment hostEnvironment)
         {
             _context = context;
             _userManager = userManager;
@@ -56,7 +60,10 @@ namespace LessonTree.API.Controllers
                 _context.Database.ExecuteSqlRaw("DELETE FROM AspNetUsers;");
                 _context.Database.ExecuteSqlRaw("DELETE FROM AspNetRoles;");
                 _context.Database.ExecuteSqlRaw("DELETE FROM sqlite_sequence;");
-                await DatabaseSeeder.SeedDatabaseAsync(_context, _userManager, _roleManager, _logger, _hostEnvironment);
+
+                // Updated call to match new DatabaseSeeder signature
+                await DatabaseSeeder.SeedDatabaseAsync(_context, _userManager, _logger, _hostEnvironment);
+
                 _logger.LogInformation("Database reset and reseeded successfully.");
                 return Ok("Database reset and reseeded successfully.");
             }

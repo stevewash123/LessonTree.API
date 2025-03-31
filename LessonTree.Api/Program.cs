@@ -77,13 +77,13 @@ if (args.Contains("--seed"))
     {
         var context = scope.ServiceProvider.GetRequiredService<LessonTreeContext>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
         var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
 
         logger.LogInformation("Seeding database...");
         try
         {
-            await DatabaseSeeder.SeedDatabaseAsync(context, userManager, roleManager, logger, env);
+            // Updated call to match new DatabaseSeeder signature
+            await DatabaseSeeder.SeedDatabaseAsync(context, userManager, logger, env);
             logger.LogInformation("Database seeding completed.");
         }
         catch (Exception ex)

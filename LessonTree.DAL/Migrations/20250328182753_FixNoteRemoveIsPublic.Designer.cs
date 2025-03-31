@@ -3,6 +3,7 @@ using System;
 using LessonTree.DAL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LessonTree.DAL.Migrations
 {
     [DbContext(typeof(LessonTreeContext))]
-    partial class LessonTreeContextModelSnapshot : ModelSnapshot
+    [Migration("20250328182753_FixNoteRemoveIsPublic")]
+    partial class FixNoteRemoveIsPublic
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.2");
@@ -36,9 +39,6 @@ namespace LessonTree.DAL.Migrations
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("FileSize")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("GoogleDocId")
                         .HasColumnType("TEXT");
@@ -450,10 +450,6 @@ namespace LessonTree.DAL.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("INTEGER");
 
@@ -771,15 +767,13 @@ namespace LessonTree.DAL.Migrations
                         .WithMany("Notes")
                         .HasForeignKey("TopicId");
 
-                    b.HasOne("LessonTree.DAL.Domain.User", "CreatedBy")
+                    b.HasOne("LessonTree.DAL.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Course");
-
-                    b.Navigation("CreatedBy");
 
                     b.Navigation("Lesson");
 
@@ -788,6 +782,8 @@ namespace LessonTree.DAL.Migrations
                     b.Navigation("Team");
 
                     b.Navigation("Topic");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Schedule", b =>

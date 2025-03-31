@@ -44,7 +44,7 @@ namespace LessonTree.API.Configuration
                 if (adminUser == null)
                 {
                     logger.LogInformation("Creating admin user: {Username}", adminUsername);
-                    adminUser = new User { UserName = adminUsername };
+                    adminUser = new User { UserName = adminUsername, FirstName = "Wilson", LastName="Pickett" };
                     var result = await userManager.CreateAsync(adminUser, adminPassword);
                     if (!result.Succeeded)
                     {
@@ -60,7 +60,7 @@ namespace LessonTree.API.Configuration
                 if (testUser == null)
                 {
                     logger.LogInformation("Creating test user: {Username}", testUserUsername);
-                    testUser = new User { UserName = testUserUsername };
+                    testUser = new User { UserName = testUserUsername, FirstName = "Jerry", LastName = "Stackhouse" };
                     var result = await userManager.CreateAsync(testUser, testUserPassword);
                     if (!result.Succeeded)
                     {

@@ -1,4 +1,6 @@
-﻿namespace LessonTree.DAL.Domain
+﻿using LessonTree.Models.Enums;
+
+namespace LessonTree.DAL.Domain
 {
     public class SubTopic
     {
@@ -10,8 +12,6 @@
         public int UserId { get; set; }
         public virtual User User { get; set; }
         public VisibilityType Visibility { get; set; } = VisibilityType.Private;
-        public int? TeamId { get; set; } // New: Optional team association for Visibility = Team
-        public virtual Team? Team { get; set; } // New
         public virtual List<Lesson> Lessons { get; set; } = new List<Lesson>();
         public bool IsDefault { get; set; } = false;
         public virtual List<Note> Notes { get; set; } = new List<Note>();

@@ -1,10 +1,12 @@
-﻿namespace LessonTree.Models.DTO
+﻿using LessonTree.Models.Enums;
+
+namespace LessonTree.Models.DTO
 {
-    public class LessonResource
+    public class LessonResource  // only what's needed for the tree
     {
         public int Id { get; set; }
-        public int? SubTopicId { get; set; } // Read-only, set via Move
-        public int? TopicId { get; set; }    // Read-only, set via Move
+        public int? SubTopicId { get; set; }
+        public int? TopicId { get; set; }
         public int CourseId { get; set; }
         public string NodeId { get; set; }
         public string Title { get; set; }
@@ -14,10 +16,9 @@
     public class LessonCreateResource
     {
         public string Title { get; set; }
-        public int? SubTopicId { get; set; } // Set at creation, not editable later
-        public int? TopicId { get; set; }    // Set at creation, not editable later
+        public int? SubTopicId { get; set; } // Set at creation, not editable later except by move
+        public int? TopicId { get; set; }    // Set at creation, not editable later except by move
         public string Visibility { get; set; } = "Private";
-        public int? TeamId { get; set; }
         public string? Level { get; set; }
         public string Objective { get; set; }
         public string? Materials { get; set; }
@@ -31,8 +32,6 @@
     {
         public int Id { get; set; }
         public string Title { get; set; }
-        public string Visibility { get; set; }
-        public int? TeamId { get; set; }
         public string? Level { get; set; }
         public string Objective { get; set; }
         public string? Materials { get; set; }
@@ -40,7 +39,8 @@
         public string? Methods { get; set; }
         public string? SpecialNeeds { get; set; }
         public string? Assessment { get; set; }
-        // SubTopicId and TopicId already omitted, confirmed correct
+        public VisibilityType Visibility { get; set; }
+        public bool Archived { get; set; } 
     }
 
     public class LessonMoveResource
@@ -53,8 +53,8 @@
     public class LessonDetailResource
     {
         public int Id { get; set; }
-        public int? SubTopicId { get; set; } // Read-only
-        public int? TopicId { get; set; }    // Read-only
+        public int? SubTopicId { get; set; }
+        public int? TopicId { get; set; }
         public int CourseId { get; set; }
         public string Title { get; set; }
         public string Objective { get; set; }
@@ -64,7 +64,10 @@
         public string? Methods { get; set; }
         public string? SpecialNeeds { get; set; }
         public string? Assessment { get; set; }
+        public bool Archived { get; set; } // Added
+        public VisibilityType Visibility { get; set; }
         public List<StandardResource> Standards { get; set; } = new List<StandardResource>();
         public List<AttachmentResource> Attachments { get; set; }
+        public List<NoteResource> Notes { get; set; } = new List<NoteResource>();
     }
 }

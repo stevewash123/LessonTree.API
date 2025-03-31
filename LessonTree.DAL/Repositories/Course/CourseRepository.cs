@@ -19,6 +19,14 @@ namespace LessonTree.DAL.Repositories
             return query;
         }
 
+        public int? GetUserSchoolId(int userId)
+        {
+            return _context.Users
+                .Where(u => u.Id == userId)
+                .Select(u => u.SchoolId)
+                .FirstOrDefault();
+        }
+
         public async Task<Course> GetByIdAsync(int id, Func<IQueryable<Course>, IQueryable<Course>> include = null)
         {
             IQueryable<Course> query = _context.Courses;

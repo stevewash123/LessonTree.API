@@ -1,34 +1,39 @@
-﻿namespace LessonTree.Models.DTO
+﻿// File: SubTopicResource.cs
+using LessonTree.Models.Enums;
+
+namespace LessonTree.Models.DTO
 {
     public class SubTopicResource
     {
         public int Id { get; set; }
-        public string NodeId { get; set; }
-        public string Title { get; set; }
-        public string Description { get; set; }
-        public int TopicId { get; set; } // Read-only, set via Move
+        public string NodeId { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public int TopicId { get; set; }
         public int CourseId { get; set; }
-        public bool hasChildren { get; set; }
-        public List<LessonResource> Lessons { get; set; }
+        public bool HasChildren { get; set; }
+        public bool Archived { get; set; }
+        public VisibilityType Visibility { get; set; }
+        public List<LessonResource> Lessons { get; set; } = new List<LessonResource>();
+        public List<NoteResource> Notes { get; set; } = new List<NoteResource>();
     }
 
     public class SubTopicCreateResource
     {
-        public string Title { get; set; }
+        public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public int TopicId { get; set; } // Required for creation, not editable later
-        public string Visibility { get; set; } = "Private";
-        public int? TeamId { get; set; }
+        public int TopicId { get; set; }
+        public VisibilityType Visibility { get; set; } = VisibilityType.Private;
     }
 
+    // no links, links can only be changed by move
     public class SubTopicUpdateResource
     {
         public int Id { get; set; }
-        public string Title { get; set; }
+        public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public string Visibility { get; set; }
-        public int? TeamId { get; set; }
-        // Removed TopicId - not editable via Update, only by move
+        public VisibilityType Visibility { get; set; }
+        public bool Archived { get; set; }
     }
 
     public class SubTopicMoveResource

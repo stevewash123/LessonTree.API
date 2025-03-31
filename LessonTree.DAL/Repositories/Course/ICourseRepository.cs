@@ -9,6 +9,7 @@ namespace LessonTree.DAL.Repositories
         Task<Course> GetByIdAsync(int id, Func<IQueryable<Course>, IQueryable<Course>> include = null);
         Task AddAsync(Course course);
         Task UpdateAsync(Course course);
-        Task DeleteAsync(int id);
+        Task DeleteAsync(int id); 
+        int? GetUserSchoolId(int userId);
     }
 }

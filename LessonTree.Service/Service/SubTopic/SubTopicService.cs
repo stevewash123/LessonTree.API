@@ -237,7 +237,6 @@ public class SubTopicService : ISubTopicService
             TopicId = newTopicId,
             UserId = userId,
             Visibility = originalSubTopic.Visibility,
-            TeamId = originalSubTopic.TeamId,
             Archived = false // Default to active on creation
         };
 
@@ -268,7 +267,6 @@ public class SubTopicService : ISubTopicService
             SubTopicId = defaultSubTopicId,
             UserId = userId, // Set to copier’s UserId
             Visibility = originalLesson.Visibility,
-            TeamId = originalLesson.TeamId,
             LessonAttachments = originalLesson.LessonAttachments.Select(ld => new LessonAttachment
             {
                 AttachmentId = ld.AttachmentId

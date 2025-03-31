@@ -206,21 +206,18 @@ public class TopicService : ITopicService
             CourseId = newCourseId,
             UserId = userId,
             Visibility = originalTopic.Visibility,
-            TeamId = originalTopic.TeamId,
             SubTopics = originalTopic.SubTopics.Select(originalSubTopic => new SubTopic
             {
                 Title = originalSubTopic.Title,
                 Description = originalSubTopic.Description,
                 UserId = userId,
                 Visibility = originalSubTopic.Visibility,
-                TeamId = originalSubTopic.TeamId,
                 Lessons = originalSubTopic.Lessons.Select(originalLesson => new Lesson
                 {
                     Title = originalLesson.Title,
                     Objective = originalLesson.Objective,
                     UserId = userId,
                     Visibility = originalLesson.Visibility,
-                    TeamId = originalLesson.TeamId,
                     LessonAttachments = originalLesson.LessonAttachments.Select(ld => new LessonAttachment
                     {
                         AttachmentId = ld.AttachmentId
@@ -237,7 +234,6 @@ public class TopicService : ITopicService
                 Objective = originalLesson.Objective,
                 UserId = userId,
                 Visibility = originalLesson.Visibility,
-                TeamId = originalLesson.TeamId,
                 LessonAttachments = originalLesson.LessonAttachments.Select(ld => new LessonAttachment
                 {
                     AttachmentId = ld.AttachmentId

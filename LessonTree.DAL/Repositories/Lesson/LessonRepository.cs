@@ -41,7 +41,6 @@ public class LessonRepository : ILessonRepository
                 .Include(l => l.SubTopic)
                 .Include(l => l.Topic) // New: Include Topic
                 .Include(l => l.User) // New: Include User
-                .Include(l => l.Team) // New: Include Team
                 .Include(l => l.LessonStandards).ThenInclude(ls => ls.Standard);
         }
         var lesson = await query.FirstOrDefaultAsync(l => l.Id == id);

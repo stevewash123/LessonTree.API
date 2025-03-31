@@ -5,6 +5,7 @@ namespace LessonTree.DAL.Domain
         public int Id { get; set; }
         public AttachmentType Type { get; set; } // Distinguishes between uploaded files and Google Docs
         public string FileName { get; set; }    // Used for uploaded files
+        public int FileSize { get; set; }   
         public string? ContentType { get; set; } // Used for uploaded files
         public byte[] Blob { get; set; }        // Used for uploaded files
         public string? GoogleDocUrl { get; set; } // Stores the Google Doc URL

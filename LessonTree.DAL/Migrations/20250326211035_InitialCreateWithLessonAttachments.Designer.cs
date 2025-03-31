@@ -3,6 +3,7 @@ using System;
 using LessonTree.DAL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,91 +11,16 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LessonTree.DAL.Migrations
 {
     [DbContext(typeof(LessonTreeContext))]
-    partial class LessonTreeContextModelSnapshot : ModelSnapshot
+    [Migration("20250326211035_InitialCreateWithLessonAttachments")]
+    partial class InitialCreateWithLessonAttachments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.2");
 
-            modelBuilder.Entity("LessonTree.DAL.Domain.Attachment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<byte[]>("Blob")
-                        .IsRequired()
-                        .HasColumnType("BLOB");
-
-                    b.Property<string>("ContentType")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("FileSize")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("GoogleDocId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("GoogleDocUrl")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("Shared")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Attachments");
-                });
-
-            modelBuilder.Entity("LessonTree.DAL.Domain.Course", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("Archived")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("TeamId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Visibility")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TeamId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Courses");
-                });
-
-            modelBuilder.Entity("LessonTree.DAL.Domain.Lesson", b =>
+            modelBuilder.Entity("Lesson", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -165,6 +91,80 @@ namespace LessonTree.DAL.Migrations
                     b.ToTable("Lessons");
                 });
 
+            modelBuilder.Entity("LessonTree.DAL.Domain.Attachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("Blob")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.Property<string>("ContentType")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GoogleDocId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GoogleDocUrl")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Shared")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Attachments");
+                });
+
+            modelBuilder.Entity("LessonTree.DAL.Domain.Course", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Archived")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("TeamId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Visibility")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TeamId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Courses");
+                });
+
             modelBuilder.Entity("LessonTree.DAL.Domain.LessonAttachment", b =>
                 {
                     b.Property<int>("LessonId")
@@ -211,6 +211,9 @@ namespace LessonTree.DAL.Migrations
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("LessonId")
                         .HasColumnType("INTEGER");
 
@@ -224,9 +227,6 @@ namespace LessonTree.DAL.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Visibility")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
@@ -243,7 +243,7 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notes");
+                    b.ToTable("Note");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Schedule", b =>
@@ -391,45 +391,6 @@ namespace LessonTree.DAL.Migrations
                     b.ToTable("Team");
                 });
 
-            modelBuilder.Entity("LessonTree.DAL.Domain.Topic", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("Archived")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("CourseId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("TeamId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Visibility")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CourseId");
-
-                    b.HasIndex("TeamId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Topics");
-                });
-
             modelBuilder.Entity("LessonTree.DAL.Domain.User", b =>
                 {
                     b.Property<int>("Id")
@@ -449,10 +410,6 @@ namespace LessonTree.DAL.Migrations
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("INTEGER");
@@ -663,24 +620,46 @@ namespace LessonTree.DAL.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("LessonTree.DAL.Domain.Course", b =>
+            modelBuilder.Entity("Topic", b =>
                 {
-                    b.HasOne("LessonTree.DAL.Domain.Team", "Team")
-                        .WithMany()
-                        .HasForeignKey("TeamId");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
 
-                    b.HasOne("LessonTree.DAL.Domain.User", "User")
-                        .WithMany("Courses")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Property<bool>("Archived")
+                        .HasColumnType("INTEGER");
 
-                    b.Navigation("Team");
+                    b.Property<int>("CourseId")
+                        .HasColumnType("INTEGER");
 
-                    b.Navigation("User");
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("TeamId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Visibility")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("TeamId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Topics");
                 });
 
-            modelBuilder.Entity("LessonTree.DAL.Domain.Lesson", b =>
+            modelBuilder.Entity("Lesson", b =>
                 {
                     b.HasOne("LessonTree.DAL.Domain.SubTopic", "SubTopic")
                         .WithMany("Lessons")
@@ -691,7 +670,7 @@ namespace LessonTree.DAL.Migrations
                         .WithMany()
                         .HasForeignKey("TeamId");
 
-                    b.HasOne("LessonTree.DAL.Domain.Topic", "Topic")
+                    b.HasOne("Topic", "Topic")
                         .WithMany("Lessons")
                         .HasForeignKey("TopicId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -711,6 +690,23 @@ namespace LessonTree.DAL.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("LessonTree.DAL.Domain.Course", b =>
+                {
+                    b.HasOne("LessonTree.DAL.Domain.Team", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId");
+
+                    b.HasOne("LessonTree.DAL.Domain.User", "User")
+                        .WithMany("Courses")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Team");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("LessonTree.DAL.Domain.LessonAttachment", b =>
                 {
                     b.HasOne("LessonTree.DAL.Domain.Attachment", "Attachment")
@@ -719,7 +715,7 @@ namespace LessonTree.DAL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("LessonTree.DAL.Domain.Lesson", "Lesson")
+                    b.HasOne("Lesson", "Lesson")
                         .WithMany("LessonAttachments")
                         .HasForeignKey("LessonId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -732,7 +728,7 @@ namespace LessonTree.DAL.Migrations
 
             modelBuilder.Entity("LessonTree.DAL.Domain.LessonStandard", b =>
                 {
-                    b.HasOne("LessonTree.DAL.Domain.Lesson", "Lesson")
+                    b.HasOne("Lesson", "Lesson")
                         .WithMany("LessonStandards")
                         .HasForeignKey("LessonId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -755,7 +751,7 @@ namespace LessonTree.DAL.Migrations
                         .WithMany("Notes")
                         .HasForeignKey("CourseId");
 
-                    b.HasOne("LessonTree.DAL.Domain.Lesson", "Lesson")
+                    b.HasOne("Lesson", "Lesson")
                         .WithMany("Notes")
                         .HasForeignKey("LessonId");
 
@@ -767,19 +763,17 @@ namespace LessonTree.DAL.Migrations
                         .WithMany()
                         .HasForeignKey("TeamId");
 
-                    b.HasOne("LessonTree.DAL.Domain.Topic", "Topic")
+                    b.HasOne("Topic", "Topic")
                         .WithMany("Notes")
                         .HasForeignKey("TopicId");
 
-                    b.HasOne("LessonTree.DAL.Domain.User", "CreatedBy")
+                    b.HasOne("LessonTree.DAL.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Course");
-
-                    b.Navigation("CreatedBy");
 
                     b.Navigation("Lesson");
 
@@ -788,6 +782,8 @@ namespace LessonTree.DAL.Migrations
                     b.Navigation("Team");
 
                     b.Navigation("Topic");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Schedule", b =>
@@ -811,7 +807,7 @@ namespace LessonTree.DAL.Migrations
 
             modelBuilder.Entity("LessonTree.DAL.Domain.ScheduleDay", b =>
                 {
-                    b.HasOne("LessonTree.DAL.Domain.Lesson", "Lesson")
+                    b.HasOne("Lesson", "Lesson")
                         .WithMany("ScheduleDays")
                         .HasForeignKey("LessonId");
 
@@ -828,7 +824,7 @@ namespace LessonTree.DAL.Migrations
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Standard", b =>
                 {
-                    b.HasOne("LessonTree.DAL.Domain.Topic", "Topic")
+                    b.HasOne("Topic", "Topic")
                         .WithMany()
                         .HasForeignKey("TopicId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -843,7 +839,7 @@ namespace LessonTree.DAL.Migrations
                         .WithMany()
                         .HasForeignKey("TeamId");
 
-                    b.HasOne("LessonTree.DAL.Domain.Topic", "Topic")
+                    b.HasOne("Topic", "Topic")
                         .WithMany("SubTopics")
                         .HasForeignKey("TopicId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -871,31 +867,6 @@ namespace LessonTree.DAL.Migrations
                         .IsRequired();
 
                     b.Navigation("Owner");
-                });
-
-            modelBuilder.Entity("LessonTree.DAL.Domain.Topic", b =>
-                {
-                    b.HasOne("LessonTree.DAL.Domain.Course", "Course")
-                        .WithMany("Topics")
-                        .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("LessonTree.DAL.Domain.Team", "Team")
-                        .WithMany()
-                        .HasForeignKey("TeamId");
-
-                    b.HasOne("LessonTree.DAL.Domain.User", "User")
-                        .WithMany("Topics")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Course");
-
-                    b.Navigation("Team");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.UserConfiguration", b =>
@@ -979,6 +950,42 @@ namespace LessonTree.DAL.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Topic", b =>
+                {
+                    b.HasOne("LessonTree.DAL.Domain.Course", "Course")
+                        .WithMany("Topics")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LessonTree.DAL.Domain.Team", "Team")
+                        .WithMany()
+                        .HasForeignKey("TeamId");
+
+                    b.HasOne("LessonTree.DAL.Domain.User", "User")
+                        .WithMany("Topics")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Team");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Lesson", b =>
+                {
+                    b.Navigation("LessonAttachments");
+
+                    b.Navigation("LessonStandards");
+
+                    b.Navigation("Notes");
+
+                    b.Navigation("ScheduleDays");
+                });
+
             modelBuilder.Entity("LessonTree.DAL.Domain.Attachment", b =>
                 {
                     b.Navigation("LessonAttachments");
@@ -991,17 +998,6 @@ namespace LessonTree.DAL.Migrations
                     b.Navigation("Schedules");
 
                     b.Navigation("Topics");
-                });
-
-            modelBuilder.Entity("LessonTree.DAL.Domain.Lesson", b =>
-                {
-                    b.Navigation("LessonAttachments");
-
-                    b.Navigation("LessonStandards");
-
-                    b.Navigation("Notes");
-
-                    b.Navigation("ScheduleDays");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Schedule", b =>
@@ -1026,15 +1022,6 @@ namespace LessonTree.DAL.Migrations
                     b.Navigation("UserTeams");
                 });
 
-            modelBuilder.Entity("LessonTree.DAL.Domain.Topic", b =>
-                {
-                    b.Navigation("Lessons");
-
-                    b.Navigation("Notes");
-
-                    b.Navigation("SubTopics");
-                });
-
             modelBuilder.Entity("LessonTree.DAL.Domain.User", b =>
                 {
                     b.Navigation("Configuration");
@@ -1048,6 +1035,15 @@ namespace LessonTree.DAL.Migrations
                     b.Navigation("Topics");
 
                     b.Navigation("UserTeams");
+                });
+
+            modelBuilder.Entity("Topic", b =>
+                {
+                    b.Navigation("Lessons");
+
+                    b.Navigation("Notes");
+
+                    b.Navigation("SubTopics");
                 });
 #pragma warning restore 612, 618
         }

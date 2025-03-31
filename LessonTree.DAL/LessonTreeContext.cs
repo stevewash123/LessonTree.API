@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿// Full File: LessonTree.DAL/LessonTreeContext.cs
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using LessonTree.DAL.Domain;
 using Microsoft.AspNetCore.Identity;
@@ -67,15 +68,50 @@ namespace LessonTree.DAL
                 .WithMany(st => st.Lessons)
                 .HasForeignKey(l => l.SubTopicId)
                 .OnDelete(DeleteBehavior.Cascade); // SubTopic -> Lesson
+
+            // New hierarchy relationships
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.District)
+                .WithMany(d => d.Staff)
+                .HasForeignKey(u => u.DistrictId)
+                .OnDelete(DeleteBehavior.SetNull); // Optional: Set null if District is deleted
+
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.School)
+                .WithMany(s => s.Teachers)
+                .HasForeignKey(u => u.SchoolId)
+                .OnDelete(DeleteBehavior.SetNull); // Optional: Set null if School is deleted
+
+            modelBuilder.Entity<School>()
+                .HasOne(s => s.District)
+                .WithMany(d => d.Schools)
+                .HasForeignKey(s => s.DistrictId)
+                .OnDelete(DeleteBehavior.Cascade); // District -> School
+
+            modelBuilder.Entity<Department>()
+                .HasOne(d => d.School)
+                .WithMany(s => s.Departments)
+                .HasForeignKey(d => d.SchoolId)
+                .OnDelete(DeleteBehavior.Cascade); // School -> Department
+
+            // User-Department many-to-many
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.Departments)
+                .WithMany(d => d.Members)
+                .UsingEntity(j => j.ToTable("UserDepartments"));
         }
 
         public DbSet<Course> Courses { get; set; }
         public DbSet<Topic> Topics { get; set; }
         public DbSet<SubTopic> SubTopics { get; set; }
         public DbSet<Lesson> Lessons { get; set; }
+        public DbSet<Note> Notes { get; set; }
         public DbSet<Standard> Standards { get; set; }
         public DbSet<LessonStandard> LessonStandards { get; set; }
         public DbSet<Attachment> Attachments { get; set; }
         public DbSet<LessonAttachment> LessonAttachments { get; set; }
+        public DbSet<District> Districts { get; set; }
+        public DbSet<School> Schools { get; set; }
+        public DbSet<Department> Departments { get; set; }
     }
 }

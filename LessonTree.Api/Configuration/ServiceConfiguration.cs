@@ -44,8 +44,9 @@ namespace LessonTree.API.Configuration
             builder.Services.AddTransient<ITopicRepository, TopicRepository>();
             builder.Services.AddTransient<ISubTopicRepository, SubTopicRepository>();
             builder.Services.AddTransient<ILessonRepository, LessonRepository>();
-            builder.Services.AddTransient<IStandardRepository, StandardRepository>(); ;
+            builder.Services.AddTransient<IStandardRepository, StandardRepository>();
             builder.Services.AddTransient<IAttachmentRepository, AttachmentRepository>();
+            builder.Services.AddTransient<INotesRepository, NotesRepository>();
 
             builder.Services.AddTransient<IUserService, UserService>();
             builder.Services.AddTransient<ICourseService, CourseService>();

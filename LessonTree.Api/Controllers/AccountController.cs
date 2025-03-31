@@ -60,10 +60,14 @@ namespace LessonTree.API.Controllers
 
             var roles = await _userManager.GetRolesAsync(user);
             var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
-            };
+    {
+        new Claim(ClaimTypes.Name, user.UserName),
+        new Claim("sub", user.Id.ToString()),
+        new Claim("lastName", user.LastName ?? ""),
+        new Claim("firstName", user.FirstName ?? ""),
+        new Claim("districtId", user.DistrictId?.ToString() ?? ""), // Add SchoolId claim
+        new Claim("schoolId", user.SchoolId?.ToString() ?? "") // Add SchoolId claim
+    };
             claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
             var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]));

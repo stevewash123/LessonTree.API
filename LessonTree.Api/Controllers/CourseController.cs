@@ -1,5 +1,4 @@
-﻿// Full File
-using LessonTree.BLL.Service;
+﻿using LessonTree.BLL.Service;
 using LessonTree.Models.DTO;
 using LessonTree.Models.Enums;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -36,11 +35,13 @@ namespace LessonTree.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetCourses(ArchiveFilter filter = ArchiveFilter.Active)
+        public async Task<IActionResult> GetCourses(
+            [FromQuery] ArchiveFilter filter = ArchiveFilter.Active,
+            [FromQuery] int? visibility = null) // Add visibility parameter
         {
             int userId = GetCurrentUserId();
-            _logger.LogDebug("Fetching courses for User ID: {UserId}, Filter: {Filter}", userId, filter);
-            var courses = await _service.GetAllAsync(userId, filter);
+            _logger.LogDebug("Fetching courses for User ID: {UserId}, Filter: {Filter}, Visibility: {Visibility}", userId, filter, visibility);
+            var courses = await _service.GetAllAsync(userId, filter, visibility);
             return Ok(courses);
         }
 

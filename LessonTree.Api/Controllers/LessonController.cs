@@ -151,7 +151,7 @@ public class LessonController : ControllerBase
     }
 
     [HttpPost("{id}/attachments")]
-    [Authorize(Roles = "PaidUser,Admin")]
+    //[Authorize(Roles = "PaidUser,Admin")]
     public async Task<IActionResult> AddAttachment(int id, IFormFile file)
     {
         int userId = GetCurrentUserId();
@@ -180,6 +180,7 @@ public class LessonController : ControllerBase
             var attachment = new Attachment
             {
                 FileName = file.FileName,
+                
                 ContentType = file.ContentType,
                 Blob = ReadFileBytes(file)
             };

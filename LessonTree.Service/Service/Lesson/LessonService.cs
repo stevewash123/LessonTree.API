@@ -37,7 +37,7 @@ public class LessonService : ILessonService
             .Include(l => l.SubTopic)
             .Include(l => l.Topic)
             .Include(l => l.User)
-            .Include(l => l.Team)
+            .Include(l => l.Notes)
             .Include(l => l.LessonAttachments).ThenInclude(ld => ld.Attachment)
             .Include(l => l.LessonStandards).ThenInclude(ls => ls.Standard));
 
@@ -375,7 +375,6 @@ public class LessonService : ILessonService
             Assessment = originalLesson.Assessment,
             UserId = userId, // Set to the copier’s UserId
             Visibility = originalLesson.Visibility,
-            TeamId = originalLesson.TeamId,
             SubTopicId = newSubTopicId,
             TopicId = newTopicId,
             LessonAttachments = originalLesson.LessonAttachments.Select(ld => new LessonAttachment

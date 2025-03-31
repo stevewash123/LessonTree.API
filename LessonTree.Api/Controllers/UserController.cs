@@ -50,8 +50,10 @@ namespace LessonTree.API.Controllers
             var userResource = new UserResource
             {
                 Id = user.Id,
-                Username = user.UserName, // Updated from Username
-                Password = null // Exclude password for security
+                Username = user.UserName,
+                FirstName = user.FirstName, // Map FullName
+                LastName = user.LastName, // Map FullName
+                Password = null
             };
             _logger.LogDebug("Returning user: {UserName}", user.UserName); // Updated from Username
             return Ok(userResource);
@@ -72,7 +74,9 @@ namespace LessonTree.API.Controllers
                 _logger.LogError("User with ID {UserId} not found", id);
                 return NotFound();
             }
-            user.UserName = userResource.Username; // Updated from Username
+            //user.UserName = userResource.Username; 
+            user.FirstName = userResource.FirstName;
+            user.LastName = userResource.LastName;
             _service.Update(user);
             _logger.LogInformation("Updated user with ID: {UserId}, UserName: {UserName}", id, user.UserName); // Updated from Username
             return NoContent();
