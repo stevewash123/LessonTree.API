@@ -16,5 +16,7 @@ namespace LessonTree.DAL.Domain
         public virtual List<Note> Notes { get; set; } = new List<Note>();
         public bool Archived { get; set; } = false;
         public VisibilityType Visibility { get; set; } = VisibilityType.Private;
+
+        public virtual List<Standard> Standards { get; set; } = new List<Standard>();
     }
 }

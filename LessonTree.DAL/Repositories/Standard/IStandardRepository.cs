@@ -11,6 +11,7 @@ namespace LessonTree.DAL.Repositories
         Task<int> AddAsync(Standard standard); // Updated to return ID
         Task UpdateAsync(Standard standard);
         Task DeleteAsync(int id);
-        IQueryable<Standard> GetByTopicId(int topicId);
+        IQueryable<Standard> GetByTopicId(int topicId); 
+        IQueryable<Standard> GetByCourseId(int courseId);
     }
 }

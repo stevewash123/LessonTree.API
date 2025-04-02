@@ -131,21 +131,21 @@ namespace LessonTree.API.Controllers
             }
         }
 
-        [HttpGet("topic/{topicId}")]
-        public async Task<IActionResult> GetStandardsByTopicId(int topicId)
+        [HttpGet("course/{courseId}")]
+        public async Task<IActionResult> GetStandardsByCourseId(int courseId, [FromQuery] int? districtId = null)
         {
-            _logger.LogDebug("Fetching standards by Topic ID: {TopicId} in controller", topicId);
+            _logger.LogDebug("Fetching standards by Course ID: {CourseId}, District ID: {DistrictId} in controller", courseId, districtId);
             try
             {
-                var standards = await _service.GetByTopicIdAsync(topicId);
-                _logger.LogInformation("Successfully fetched {Count} standards for Topic ID: {TopicId}", standards.Count, topicId);
+                var standards = await _service.GetByCourseIdAsync(courseId, districtId);
+                _logger.LogInformation("Successfully fetched {Count} standards for Course ID: {CourseId}", standards.Count, courseId);
                 return Ok(standards);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to fetch standards for Topic ID: {TopicId}", topicId);
+                _logger.LogError(ex, "Failed to fetch standards for Course ID: {CourseId}", courseId);
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { status = "error", message = "An unexpected error occurred while retrieving standards by topic." });
+                    new { status = "error", message = "An unexpected error occurred while retrieving standards by course." });
             }
         }
     }

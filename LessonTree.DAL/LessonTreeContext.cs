@@ -99,6 +99,26 @@ namespace LessonTree.DAL
                 .HasMany(u => u.Departments)
                 .WithMany(d => d.Members)
                 .UsingEntity(j => j.ToTable("UserDepartments"));
+
+            modelBuilder.Entity<Standard>()
+                .HasOne(s => s.Course)
+                .WithMany(c => c.Standards) // Assuming Course will have a Standards collection
+                .HasForeignKey(s => s.CourseId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete when Course is deleted
+
+            modelBuilder.Entity<Standard>()
+                .HasOne(s => s.Topic)
+                .WithMany(c => c.Standards) // Assuming Course will have a Standards collection
+                .HasForeignKey(s => s.TopicId)
+                .OnDelete(DeleteBehavior.SetNull); // Cascade delete when Course is deleted
+
+            modelBuilder.Entity<Standard>()
+                .HasOne(s => s.District)
+                .WithMany(d => d.Standards) // Assuming District will have a Standards collection
+                .HasForeignKey(s => s.DistrictId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+
         }
 
         public DbSet<Course> Courses { get; set; }

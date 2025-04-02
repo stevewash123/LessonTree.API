@@ -13,7 +13,8 @@ namespace LessonTree.Models.DTO
         public bool Archived { get; set; }
         public VisibilityType Visibility { get; set; }
         public List<TopicResource> Topics { get; set; } = new List<TopicResource>();
-        public List<NoteResource> Notes { get; set; } = new List<NoteResource>();
+        public List<NoteResource> Notes { get; set; } = new List<NoteResource>(); 
+        public List<StandardResource> Standards { get; set; } = new List<StandardResource>(); // Added
     }
 
     public class CourseCreateResource

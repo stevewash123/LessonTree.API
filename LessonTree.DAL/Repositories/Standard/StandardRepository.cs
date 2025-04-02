@@ -94,5 +94,11 @@ namespace LessonTree.DAL.Repositories
             _logger.LogDebug("Retrieving standards by Topic ID: {TopicId}", topicId);
             return _context.Standards.Where(s => s.TopicId == topicId);
         }
+
+        public IQueryable<Standard> GetByCourseId(int courseId)
+        {
+            _logger.LogDebug("Retrieving standards by Course ID: {CourseId}", courseId);
+            return _context.Standards.Where(s => s.CourseId == courseId);
+        }
     }
 }

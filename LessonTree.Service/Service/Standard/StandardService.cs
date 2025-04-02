@@ -47,8 +47,8 @@ namespace LessonTree.BLL.Service
                     _logger.LogWarning("Standard with ID {StandardId} not found in service", id);
                     return null;
                 }
-                _logger.LogDebug("Standard with ID {StandardId} found. Title: {Title}, TopicId: {TopicId}",
-                    standard.Id, standard.Title, standard.TopicId);
+                _logger.LogDebug("Standard with ID {StandardId} found. Title: {Title}, CourseId: {CourseId}",
+                    standard.Id, standard.Title, standard.CourseId);
                 var standardResource = _mapper.Map<StandardResource>(standard);
                 _logger.LogDebug("Mapped standard with ID {StandardId} to StandardResource", standardResource.Id);
                 return standardResource;
@@ -121,18 +121,23 @@ namespace LessonTree.BLL.Service
             }
         }
 
-        public async Task<List<StandardResource>> GetByTopicIdAsync(int topicId)
+        public async Task<List<StandardResource>> GetByCourseIdAsync(int courseId, int? districtId = null)
         {
-            _logger.LogDebug("Fetching standards by Topic ID: {TopicId} in service", topicId);
+            _logger.LogDebug("Fetching standards by Course ID: {CourseId}, District ID: {DistrictId} in service", courseId, districtId);
             try
             {
-                var standards = await _repository.GetByTopicId(topicId).ToListAsync();
-                _logger.LogDebug("Found {Count} standards for Topic ID: {TopicId}", standards.Count, topicId);
+                var query = _repository.GetByCourseId(courseId);
+                if (districtId.HasValue)
+                {
+                    query = query.Where(s => s.DistrictId == districtId.Value);
+                }
+                var standards = await query.ToListAsync();
+                _logger.LogDebug("Found {Count} standards for Course ID: {CourseId}", standards.Count, courseId);
                 return _mapper.Map<List<StandardResource>>(standards);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to fetch standards for Topic ID: {TopicId}", topicId);
+                _logger.LogError(ex, "Failed to fetch standards for Course ID: {CourseId}", courseId);
                 throw;
             }
         }

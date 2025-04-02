@@ -3,6 +3,7 @@ using System;
 using LessonTree.DAL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LessonTree.DAL.Migrations
 {
     [DbContext(typeof(LessonTreeContext))]
-    partial class LessonTreeContextModelSnapshot : ModelSnapshot
+    [Migration("20250331205652_AddDistrictSchool")]
+    partial class AddDistrictSchool
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.2");
@@ -368,15 +371,9 @@ namespace LessonTree.DAL.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("CourseId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
-
-                    b.Property<int?>("DistrictId")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("StandardType")
                         .HasMaxLength(20)
@@ -386,14 +383,10 @@ namespace LessonTree.DAL.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("TopicId")
+                    b.Property<int>("TopicId")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CourseId");
-
-                    b.HasIndex("DistrictId");
 
                     b.HasIndex("TopicId");
 
@@ -887,25 +880,11 @@ namespace LessonTree.DAL.Migrations
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Standard", b =>
                 {
-                    b.HasOne("LessonTree.DAL.Domain.Course", "Course")
-                        .WithMany("Standards")
-                        .HasForeignKey("CourseId")
+                    b.HasOne("LessonTree.DAL.Domain.Topic", "Topic")
+                        .WithMany()
+                        .HasForeignKey("TopicId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("LessonTree.DAL.Domain.District", "District")
-                        .WithMany("Standards")
-                        .HasForeignKey("DistrictId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("LessonTree.DAL.Domain.Topic", "Topic")
-                        .WithMany("Standards")
-                        .HasForeignKey("TopicId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Course");
-
-                    b.Navigation("District");
 
                     b.Navigation("Topic");
                 });
@@ -1038,8 +1017,6 @@ namespace LessonTree.DAL.Migrations
 
                     b.Navigation("Schedules");
 
-                    b.Navigation("Standards");
-
                     b.Navigation("Topics");
                 });
 
@@ -1048,8 +1025,6 @@ namespace LessonTree.DAL.Migrations
                     b.Navigation("Schools");
 
                     b.Navigation("Staff");
-
-                    b.Navigation("Standards");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Lesson", b =>
@@ -1092,8 +1067,6 @@ namespace LessonTree.DAL.Migrations
                     b.Navigation("Lessons");
 
                     b.Navigation("Notes");
-
-                    b.Navigation("Standards");
 
                     b.Navigation("SubTopics");
                 });

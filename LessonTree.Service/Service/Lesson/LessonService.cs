@@ -34,7 +34,7 @@ public class LessonService : ILessonService
     {
         _logger.LogDebug("Fetching lesson by ID: {LessonId} in service", id);
         var lesson = await _lessonRepository.GetByIdAsync(id, q => q
-            .Include(l => l.SubTopic)
+            .Include(l => l.SubTopic).ThenInclude(s => s.Topic)
             .Include(l => l.Topic)
             .Include(l => l.User)
             .Include(l => l.Notes)

@@ -60,15 +60,21 @@ namespace LessonTree.API.Controllers
 
             var roles = await _userManager.GetRolesAsync(user);
             var claims = new List<Claim>
-    {
-        new Claim(ClaimTypes.Name, user.UserName),
-        new Claim("sub", user.Id.ToString()),
-        new Claim("lastName", user.LastName ?? ""),
-        new Claim("firstName", user.FirstName ?? ""),
-        new Claim("districtId", user.DistrictId?.ToString() ?? ""), // Add SchoolId claim
-        new Claim("schoolId", user.SchoolId?.ToString() ?? "") // Add SchoolId claim
-    };
+            {
+                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim("sub", user.Id.ToString()),
+                new Claim("lastName", user.LastName ?? ""),
+                new Claim("firstName", user.FirstName ?? ""),
+                new Claim("districtId", user.DistrictId?.ToString() ?? ""), // Add SchoolId claim
+                new Claim("schoolId", user.SchoolId?.ToString() ?? "") // Add SchoolId claim
+            };
             claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+
+            if (user.Departments != null && user.Departments.Any())
+            {
+                claims.AddRange(user.Departments.Select(dept => new Claim("departmentId", dept.Id.ToString())));
+                _logger.LogDebug("Added department claims for user {UserName}: {Departments}", user.UserName, string.Join(", ", user.Departments.Select(d => d.Id)));
+            }
 
             var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

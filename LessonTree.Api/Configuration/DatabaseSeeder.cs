@@ -1,6 +1,6 @@
-﻿// Full File
-using LessonTree.DAL;
+﻿using LessonTree.DAL;
 using LessonTree.DAL.Domain;
+using LessonTree.Models.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -14,7 +14,12 @@ namespace LessonTree.API.Configuration
 {
     public static class DatabaseSeeder
     {
-        public static async Task SeedDatabaseAsync(LessonTreeContext context, UserManager<User> userManager, ILogger logger, IHostEnvironment env)
+        public static async Task SeedDatabaseAsync(
+            LessonTreeContext context,
+            UserManager<User> userManager,
+            RoleManager<IdentityRole<int>> roleManager,
+            ILogger logger,
+            IHostEnvironment env)
         {
             try
             {
@@ -24,213 +29,366 @@ namespace LessonTree.API.Configuration
                     return;
                 }
 
-                logger.LogInformation("Seeding test data for Courses, Topics, SubTopics, and Lessons in Development mode...");
+                logger.LogInformation("Seeding test data in Development mode...");
 
-                // Clear existing data for a clean slate
+                // Clear existing data
                 context.LessonAttachments.RemoveRange(context.LessonAttachments);
-                context.LessonStandards.RemoveRange(context.LessonStandards);
+                context.LessonStandards.RemoveRange(context.LessonStandards); 
+                context.Notes.RemoveRange(context.Notes);           // Added
+                //context.ScheduleDays.RemoveRange(context.ScheduleDays); // Added
+                //context.Schedules.RemoveRange(context.Schedules);   // Added
                 context.Lessons.RemoveRange(context.Lessons);
                 context.SubTopics.RemoveRange(context.SubTopics);
                 context.Topics.RemoveRange(context.Topics);
                 context.Courses.RemoveRange(context.Courses);
                 context.Standards.RemoveRange(context.Standards);
                 context.Attachments.RemoveRange(context.Attachments);
+                context.Departments.RemoveRange(context.Departments);
+                context.Schools.RemoveRange(context.Schools);
+                context.Districts.RemoveRange(context.Districts);
                 await context.SaveChangesAsync();
 
-                // Seed Admin User (needed for ownership)
-                string adminUsername = "admin";
-                string adminPassword = "Admin123!";
-                var adminUser = await userManager.FindByNameAsync(adminUsername);
-                if (adminUser == null)
+                // Seed Roles
+                string[] roleNames = { "admin", "paidUser", "freeUser" };
+                foreach (var roleName in roleNames)
                 {
-                    logger.LogInformation("Creating admin user: {Username}", adminUsername);
-                    adminUser = new User { UserName = adminUsername, FirstName = "Wilson", LastName="Pickett" };
-                    var result = await userManager.CreateAsync(adminUser, adminPassword);
-                    if (!result.Succeeded)
+                    if (!await roleManager.RoleExistsAsync(roleName))
                     {
-                        logger.LogError("Failed to create admin user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
-                        throw new Exception("Admin user creation failed.");
+                        logger.LogInformation("Creating role: {RoleName}", roleName);
+                        var role = new IdentityRole<int> { Name = roleName };
+                        var result = await roleManager.CreateAsync(role);
+                        if (!result.Succeeded)
+                        {
+                            logger.LogError("Failed to create role {RoleName}: {Errors}", roleName, string.Join(", ", result.Errors.Select(e => e.Description)));
+                            throw new Exception($"Role {roleName} creation failed.");
+                        }
                     }
                 }
 
-                // Seed Non-Admin User (for ownership testing)
-                string testUserUsername = "testuser";
-                string testUserPassword = "Test123!";
-                var testUser = await userManager.FindByNameAsync(testUserUsername);
-                if (testUser == null)
+                // Seed Districts
+                var districts = new List<District>
                 {
-                    logger.LogInformation("Creating test user: {Username}", testUserUsername);
-                    testUser = new User { UserName = testUserUsername, FirstName = "Jerry", LastName = "Stackhouse" };
-                    var result = await userManager.CreateAsync(testUser, testUserPassword);
-                    if (!result.Succeeded)
+                    new District { Name = "Central District", Description = "Lorem ipsum dolor sit amet." },
+                    new District { Name = "Northern District", Description = "Consectetur adipiscing elit." }
+                };
+                context.Districts.AddRange(districts);
+                await context.SaveChangesAsync();
+
+                // Seed Schools
+                var schools = new List<School>
+                {
+                    new School { Name = "Central High", Description = "Sed do eiusmod tempor.", DistrictId = districts[0].Id },
+                    new School { Name = "North Middle", Description = "Ut labore et dolore magna.", DistrictId = districts[1].Id }
+                };
+                context.Schools.AddRange(schools);
+                await context.SaveChangesAsync();
+
+                // Seed Departments
+                var departments = new List<Department>
+                {
+                    new Department { Name = "English", Description = "Literature and grammar.", SchoolId = schools[0].Id },
+                    new Department { Name = "Math", Description = "Algebra and calculus.", SchoolId = schools[0].Id },
+                    new Department { Name = "Science", Description = "Physics and chemistry.", SchoolId = schools[1].Id }
+                };
+                context.Departments.AddRange(departments);
+                await context.SaveChangesAsync();
+
+                // Seed Users with Roles
+                var users = new List<(string Username, string Password, string FirstName, string LastName, string Role, int? DistrictId, int? SchoolId)>
+                {
+                    ("admin", "Admin123!", "Wilson", "Pickett", "admin", districts[0].Id, schools[0].Id),
+                    ("paiduser", "Paid123!", "Jane", "Doe", "paidUser", districts[0].Id, schools[0].Id),
+                    ("freeuser", "Free123!", "John", "Smith", "freeUser", districts[1].Id, schools[1].Id)
+                };
+
+                foreach (var (username, password, firstName, lastName, role, districtId, schoolId) in users)
+                {
+                    var user = await userManager.FindByNameAsync(username);
+                    if (user == null)
                     {
-                        logger.LogError("Failed to create test user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
-                        throw new Exception("Test user creation failed.");
+                        logger.LogInformation("Creating user: {Username}", username);
+                        user = new User
+                        {
+                            UserName = username,
+                            FirstName = firstName,
+                            LastName = lastName,
+                            DistrictId = districtId,
+                            SchoolId = schoolId
+                        };
+                        var result = await userManager.CreateAsync(user, password);
+                        if (!result.Succeeded)
+                        {
+                            logger.LogError("Failed to create user {Username}: {Errors}", username, string.Join(", ", result.Errors.Select(e => e.Description)));
+                            throw new Exception($"User {username} creation failed.");
+                        }
+
+                        result = await userManager.AddToRoleAsync(user, role);
+                        if (!result.Succeeded)
+                        {
+                            logger.LogError("Failed to assign role {Role} to user {Username}: {Errors}", role, username, string.Join(", ", result.Errors.Select(e => e.Description)));
+                            throw new Exception($"Role assignment failed for {username}.");
+                        }
+
+                        if (username == "admin" || username == "paiduser")
+                            user.Departments.Add(departments[0]); // English
+                        else
+                            user.Departments.Add(departments[2]); // Science
                     }
                 }
+                await context.SaveChangesAsync();
 
-                // Seed Test Courses
+                var adminUser = await userManager.FindByNameAsync("admin");
+                var paidUser = await userManager.FindByNameAsync("paiduser");
+                var freeUser = await userManager.FindByNameAsync("freeuser");
+
+                // Seed Courses
                 var courses = new List<Course>
                 {
-                    // Course 1: Nulls scattered about (owned by admin)
+                    // Admin: Course 1 - Topic -> SubTopic -> Lesson (with some nulls)
                     new Course
                     {
-                        Title = "Course with Nulls",
+                        Title = "Admin Hierarchical Course",
                         Description = null, // Null description
                         UserId = adminUser.Id,
                         Archived = false,
+                        Visibility = VisibilityType.Private,
                         Topics = new List<Topic>
                         {
                             new Topic
                             {
-                                Title = "Topic with Nulls",
-                                Description = null, // Null description
+                                Title = "Admin Topic 1",
+                                Description = "Core concepts",
                                 UserId = adminUser.Id,
                                 Archived = false,
+                                Visibility = VisibilityType.Private,
                                 SubTopics = new List<SubTopic>
                                 {
                                     new SubTopic
                                     {
-                                        Title = "SubTopic with Nulls",
+                                        Title = "SubTopic A",
                                         Description = null, // Null description
                                         UserId = adminUser.Id,
                                         Archived = false,
+                                        Visibility = VisibilityType.Private,
                                         Lessons = new List<Lesson>
                                         {
-                                            new Lesson
-                                            {
-                                                Title = "Lesson with Nulls",
-                                                Level = null, // Null level
-                                                Objective = "Test null handling",
-                                                Materials = null, // Null materials
-                                                ClassTime = "45 minutes",
-                                                Methods = null, // Null methods
-                                                SpecialNeeds = null, // Null special needs
-                                                Assessment = "Quiz",
-                                                UserId = adminUser.Id
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-
-                    // Course 2: Not owned by admin (testuser-owned, no subtopics)
-                    new Course
-                    {
-                        Title = "TestUser Course",
-                        Description = "Course owned by testuser, no subtopics.",
-                        UserId = testUser.Id,
-                        Archived = false,
-                        Topics = new List<Topic>
-                        {
-                            new Topic
-                            {
-                                Title = "Direct Lessons",
-                                Description = "Topic with lessons but no subtopics.",
-                                UserId = testUser.Id,
-                                Archived = false,
-                                Lessons = new List<Lesson>
-                                {
-                                    new Lesson
-                                    {
-                                        Title = "Basic Lesson",
-                                        Level = "9th Grade",
-                                        Objective = "Learn basics.",
-                                        Materials = "Textbook",
-                                        ClassTime = "40 minutes",
-                                        Methods = "Lecture",
-                                        SpecialNeeds = null,
-                                        Assessment = "Quiz",
-                                        UserId = testUser.Id
-                                    }
-                                }
-                            }
-                        }
-                    },
-
-                    // Course 3: Admin-owned with subtopics
-                    new Course
-                    {
-                        Title = "Admin Course with SubTopics",
-                        Description = "Admin-owned course with subtopics.",
-                        UserId = adminUser.Id,
-                        Archived = false,
-                        Topics = new List<Topic>
-                        {
-                            new Topic
-                            {
-                                Title = "Literature",
-                                Description = "Exploring literary works.",
-                                UserId = adminUser.Id,
-                                Archived = false,
-                                SubTopics = new List<SubTopic>
-                                {
-                                    new SubTopic
-                                    {
-                                        Title = "Shakespeare",
-                                        Description = "Study of Shakespeare's works.",
-                                        UserId = adminUser.Id,
-                                        Archived = false,
-                                        Lessons = new List<Lesson>
-                                        {
-                                            new Lesson
-                                            {
-                                                Title = "Hamlet",
-                                                Level = "11th Grade",
-                                                Objective = "Analyze Hamlet.",
-                                                Materials = "Play text",
-                                                ClassTime = "60 minutes",
-                                                Methods = "Discussion",
-                                                SpecialNeeds = "Audio version",
-                                                Assessment = "Essay",
-                                                UserId = adminUser.Id
-                                            }
+                                            new Lesson { Title = "Lesson 1", Objective = "Learn basics", Level = "10th", Materials = "Book", ClassTime = "45 min", Methods = "Lecture", Assessment = "Quiz", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                            new Lesson { Title = "Lesson 2", Objective = "Apply concepts", Level = "10th", Materials = null, ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                            new Lesson { Title = "Lesson 3", Objective = "Review", Level = "10th", Materials = "Notes", ClassTime = "40 min", Methods = null, Assessment = "Test", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private }
                                         }
                                     },
                                     new SubTopic
                                     {
-                                        Title = "Poetry",
-                                        Description = "Study of poetic forms.",
+                                        Title = "SubTopic B",
+                                        Description = "Advanced topics",
                                         UserId = adminUser.Id,
-                                        Archived = true, // Archived subtopic for testing
-                                        Lessons = new List<Lesson>()
+                                        Archived = false,
+                                        Visibility = VisibilityType.Private,
+                                        Lessons = new List<Lesson>
+                                        {
+                                            new Lesson { Title = "Lesson 4", Objective = "Deep dive", Level = "11th", Materials = "Text", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                            new Lesson { Title = "Lesson 5", Objective = "Practice", Level = "11th", Materials = "Worksheets", ClassTime = "45 min", Methods = "Exercises", Assessment = "Quiz", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                            new Lesson { Title = "Lesson 6", Objective = "Summary", Level = "11th", Materials = null, ClassTime = "50 min", Methods = "Review", Assessment = "Test", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private }
+                                        }
                                     }
                                 }
                             }
                         }
                     },
-
-                    // Course 4: Admin-owned without subtopics
+                    // Admin: Course 2 - Direct Lessons (with empty topic)
                     new Course
                     {
-                        Title = "Admin Course without SubTopics",
-                        Description = "Admin-owned course with direct lessons.",
+                        Title = "Admin Direct Lesson Course",
+                        Description = "Direct lesson focus",
                         UserId = adminUser.Id,
-                        Archived = true, // Archived course for testing
+                        Archived = false,
+                        Visibility = VisibilityType.Private,
                         Topics = new List<Topic>
                         {
                             new Topic
                             {
-                                Title = "Grammar",
-                                Description = "Mastering grammar rules.",
+                                Title = "Admin Direct Topic",
+                                Description = null, // Null description
                                 UserId = adminUser.Id,
                                 Archived = false,
+                                Visibility = VisibilityType.Private,
                                 Lessons = new List<Lesson>
                                 {
-                                    new Lesson
+                                    new Lesson { Title = "Direct Lesson 1", Objective = "Intro", Level = "9th", Materials = "Slides", ClassTime = "40 min", Methods = "Lecture", Assessment = "Quiz", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 2", Objective = "Practice", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 3", Objective = "Apply", Level = "9th", Materials = null, ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 4", Objective = "Review", Level = "9th", Materials = "Notes", ClassTime = "40 min", Methods = "Review", Assessment = "Quiz", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 5", Objective = "Advanced", Level = "9th", Materials = "Text", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 6", Objective = "Summary", Level = "9th", Materials = "Worksheets", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private }
+                                }
+                            },
+                            new Topic
+                            {
+                                Title = "Empty Topic",
+                                Description = "No lessons here",
+                                UserId = adminUser.Id,
+                                Archived = false,
+                                Visibility = VisibilityType.Private,
+                                Lessons = new List<Lesson>() // Empty array
+                            }
+                        }
+                    },
+                    // PaidUser: Course 1 - Topic -> SubTopic -> Lesson (Public)
+                    new Course
+                    {
+                        Title = "Paid Hierarchical Course",
+                        Description = "Public course with hierarchy",
+                        UserId = paidUser.Id,
+                        Archived = false,
+                        Visibility = VisibilityType.Public, // Public visibility
+                        Topics = new List<Topic>
+                        {
+                            new Topic
+                            {
+                                Title = "Paid Topic 1",
+                                Description = "Core concepts",
+                                UserId = paidUser.Id,
+                                Archived = false,
+                                Visibility = VisibilityType.Public,
+                                SubTopics = new List<SubTopic>
+                                {
+                                    new SubTopic
                                     {
-                                        Title = "Parts of Speech",
-                                        Level = "9th Grade",
-                                        Objective = "Identify parts of speech.",
-                                        Materials = "Workbook",
-                                        ClassTime = "30 minutes",
-                                        Methods = "Exercises",
-                                        SpecialNeeds = "Large print",
-                                        Assessment = "Test",
-                                        UserId = adminUser.Id
+                                        Title = "SubTopic A",
+                                        Description = "Basics",
+                                        UserId = paidUser.Id,
+                                        Archived = false,
+                                        Visibility = VisibilityType.Public,
+                                        Lessons = new List<Lesson>
+                                        {
+                                            new Lesson { Title = "Lesson 1", Objective = "Learn basics", Level = "10th", Materials = "Book", ClassTime = "45 min", Methods = "Lecture", Assessment = "Quiz", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public },
+                                            new Lesson { Title = "Lesson 2", Objective = "Apply concepts", Level = "10th", Materials = "Slides", ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public },
+                                            new Lesson { Title = "Lesson 3", Objective = "Review", Level = "10th", Materials = "Notes", ClassTime = "40 min", Methods = "Review", Assessment = "Test", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public }
+                                        }
+                                    },
+                                    new SubTopic
+                                    {
+                                        Title = "SubTopic B",
+                                        Description = "Advanced",
+                                        UserId = paidUser.Id,
+                                        Archived = false,
+                                        Visibility = VisibilityType.Public,
+                                        Lessons = new List<Lesson>
+                                        {
+                                            new Lesson { Title = "Lesson 4", Objective = "Deep dive", Level = "11th", Materials = "Text", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public },
+                                            new Lesson { Title = "Lesson 5", Objective = "Practice", Level = "11th", Materials = "Worksheets", ClassTime = "45 min", Methods = "Exercises", Assessment = "Quiz", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public },
+                                            new Lesson { Title = "Lesson 6", Objective = "Summary", Level = "11th", Materials = "Book", ClassTime = "50 min", Methods = "Review", Assessment = "Test", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public }
+                                        }
                                     }
+                                }
+                            }
+                        }
+                    },
+                    // PaidUser: Course 2 - Direct Lessons
+                    new Course
+                    {
+                        Title = "Paid Direct Lesson Course",
+                        Description = "Direct lesson focus",
+                        UserId = paidUser.Id,
+                        Archived = false,
+                        Visibility = VisibilityType.Private,
+                        Topics = new List<Topic>
+                        {
+                            new Topic
+                            {
+                                Title = "Paid Direct Topic",
+                                Description = "Direct lessons",
+                                UserId = paidUser.Id,
+                                Archived = false,
+                                Visibility = VisibilityType.Private,
+                                Lessons = new List<Lesson>
+                                {
+                                    new Lesson { Title = "Direct Lesson 1", Objective = "Intro", Level = "9th", Materials = "Slides", ClassTime = "40 min", Methods = "Lecture", Assessment = "Quiz", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 2", Objective = "Practice", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 3", Objective = "Apply", Level = "9th", Materials = "Notes", ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 4", Objective = "Review", Level = "9th", Materials = "Text", ClassTime = "40 min", Methods = "Review", Assessment = "Quiz", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 5", Objective = "Advanced", Level = "9th", Materials = "Worksheets", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 6", Objective = "Summary", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private }
+                                }
+                            }
+                        }
+                    },
+                    // FreeUser: Course 1 - Topic -> SubTopic -> Lesson
+                    new Course
+                    {
+                        Title = "Free Hierarchical Course",
+                        Description = "Hierarchy course",
+                        UserId = freeUser.Id,
+                        Archived = false,
+                        Visibility = VisibilityType.Private,
+                        Topics = new List<Topic>
+                        {
+                            new Topic
+                            {
+                                Title = "Free Topic 1",
+                                Description = "Core concepts",
+                                UserId = freeUser.Id,
+                                Archived = false,
+                                Visibility = VisibilityType.Private,
+                                SubTopics = new List<SubTopic>
+                                {
+                                    new SubTopic
+                                    {
+                                        Title = "SubTopic A",
+                                        Description = "Basics",
+                                        UserId = freeUser.Id,
+                                        Archived = false,
+                                        Visibility = VisibilityType.Private,
+                                        Lessons = new List<Lesson>
+                                        {
+                                            new Lesson { Title = "Lesson 1", Objective = "Learn basics", Level = "10th", Materials = "Book", ClassTime = "45 min", Methods = "Lecture", Assessment = "Quiz", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                            new Lesson { Title = "Lesson 2", Objective = "Apply concepts", Level = "10th", Materials = "Slides", ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                            new Lesson { Title = "Lesson 3", Objective = "Review", Level = "10th", Materials = "Notes", ClassTime = "40 min", Methods = "Review", Assessment = "Test", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private }
+                                        }
+                                    },
+                                    new SubTopic
+                                    {
+                                        Title = "SubTopic B",
+                                        Description = "Advanced",
+                                        UserId = freeUser.Id,
+                                        Archived = false,
+                                        Visibility = VisibilityType.Private,
+                                        Lessons = new List<Lesson>
+                                        {
+                                            new Lesson { Title = "Lesson 4", Objective = "Deep dive", Level = "11th", Materials = "Text", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                            new Lesson { Title = "Lesson 5", Objective = "Practice", Level = "11th", Materials = "Worksheets", ClassTime = "45 min", Methods = "Exercises", Assessment = "Quiz", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                            new Lesson { Title = "Lesson 6", Objective = "Summary", Level = "11th", Materials = "Book", ClassTime = "50 min", Methods = "Review", Assessment = "Test", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    // FreeUser: Course 2 - Direct Lessons
+                    new Course
+                    {
+                        Title = "Free Direct Lesson Course",
+                        Description = "Direct lesson focus",
+                        UserId = freeUser.Id,
+                        Archived = false,
+                        Visibility = VisibilityType.Private,
+                        Topics = new List<Topic>
+                        {
+                            new Topic
+                            {
+                                Title = "Free Direct Topic",
+                                Description = "Direct lessons",
+                                UserId = freeUser.Id,
+                                Archived = false,
+                                Visibility = VisibilityType.Private,
+                                Lessons = new List<Lesson>
+                                {
+                                    new Lesson { Title = "Direct Lesson 1", Objective = "Intro", Level = "9th", Materials = "Slides", ClassTime = "40 min", Methods = "Lecture", Assessment = "Quiz", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 2", Objective = "Practice", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 3", Objective = "Apply", Level = "9th", Materials = "Notes", ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 4", Objective = "Review", Level = "9th", Materials = "Text", ClassTime = "40 min", Methods = "Review", Assessment = "Quiz", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 5", Objective = "Advanced", Level = "9th", Materials = "Worksheets", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
+                                    new Lesson { Title = "Direct Lesson 6", Objective = "Summary", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private }
                                 }
                             }
                         }
@@ -238,6 +396,67 @@ namespace LessonTree.API.Configuration
                 };
 
                 context.Courses.AddRange(courses);
+                await context.SaveChangesAsync();
+
+                var standards = new List<Standard>();
+                foreach (var course in courses)
+                {
+                    standards.AddRange(new List<Standard>
+                    {
+                        new Standard
+                        {
+                            Title = $"{course.Title} Standard 1",
+                            Description = "Core standard",
+                            CourseId = course.Id,
+                            TopicId = course.Topics.FirstOrDefault()?.Id, // Link to first topic
+                            DistrictId = course.User.DistrictId, // Link to user's district
+                            StandardType = "State"
+                        },
+                        new Standard
+                        {
+                            Title = $"{course.Title} Standard 2",
+                            Description = "Skill standard",
+                            CourseId = course.Id,
+                            TopicId = course.Topics.FirstOrDefault()?.Id, // Link to first topic
+                            DistrictId = course.User.DistrictId,
+                            StandardType = "National"
+                        },
+                        new Standard
+                        {
+                            Title = $"{course.Title} Standard 3",
+                            Description = "Knowledge standard",
+                            CourseId = course.Id,
+                            TopicId = course.Topics.FirstOrDefault()?.Id, // Link to first topic
+                            DistrictId = course.User.DistrictId,
+                            StandardType = "State"
+                        },
+                        new Standard
+                        {
+                            Title = $"{course.Title} Standard 4",
+                            Description = "Application standard",
+                            CourseId = course.Id,
+                            DistrictId = course.User.DistrictId,
+                            StandardType = "National"
+                        }
+                    });
+                }
+                context.Standards.AddRange(standards);
+                await context.SaveChangesAsync();
+
+                // Link Standards to Lessons (example: link all 4 standards to the first lesson of each course)
+                var lessonStandards = new List<LessonStandard>();
+                foreach (var course in courses)
+                {
+                    var firstLesson = course.Topics.SelectMany(t => t.Lessons)
+                        .Concat(course.Topics.SelectMany(t => t.SubTopics.SelectMany(st => st.Lessons)))
+                        .First();
+                    var courseStandards = standards.Where(s => s.CourseId == course.Id).ToList();
+                    foreach (var standard in courseStandards)
+                    {
+                        lessonStandards.Add(new LessonStandard { LessonId = firstLesson.Id, StandardId = standard.Id });
+                    }
+                }
+                context.LessonStandards.AddRange(lessonStandards);
                 await context.SaveChangesAsync();
 
                 logger.LogInformation("Test data seeded successfully in Development mode.");

@@ -69,7 +69,7 @@ builder.Services.Configure<JsonOptions>(options =>
 
 var app = builder.Build();
 
-var logger = app.Services.GetRequiredService<ILogger<Program>>(); // Moved logger outside scope
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
 if (args.Contains("--seed"))
 {
@@ -77,13 +77,14 @@ if (args.Contains("--seed"))
     {
         var context = scope.ServiceProvider.GetRequiredService<LessonTreeContext>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>(); // Added RoleManager
         var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
 
         logger.LogInformation("Seeding database...");
         try
         {
-            // Updated call to match new DatabaseSeeder signature
-            await DatabaseSeeder.SeedDatabaseAsync(context, userManager, logger, env);
+            // Updated call: Added roleManager parameter
+            await DatabaseSeeder.SeedDatabaseAsync(context, userManager, roleManager, logger, env);
             logger.LogInformation("Database seeding completed.");
         }
         catch (Exception ex)

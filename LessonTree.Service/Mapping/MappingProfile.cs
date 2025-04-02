@@ -48,6 +48,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.HasChildren, opt => opt.MapFrom(src => src.Topics.Any()))
             .ForMember(dest => dest.Archived, opt => opt.MapFrom(src => src.Archived))
             .ForMember(dest => dest.Visibility, opt => opt.MapFrom(src => src.Visibility))
+            .ForMember(dest => dest.Standards, opt => opt.MapFrom(src => src.Standards))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes));
 
         // Topic to TopicResource
@@ -118,12 +119,28 @@ public class MappingProfile : Profile
         CreateMap<Standard, StandardResource>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))  // Added
+            .ForMember(dest => dest.TopicId, opt => opt.MapFrom(src => src.TopicId))   // Already nullable
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
+            .ForMember(dest => dest.StandardType, opt => opt.MapFrom(src => src.StandardType));
+
+        // Update StandardCreateResource to Standard mapping
+        CreateMap<StandardCreateResource, Standard>()
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))  // Added
             .ForMember(dest => dest.TopicId, opt => opt.MapFrom(src => src.TopicId))
             .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
             .ForMember(dest => dest.StandardType, opt => opt.MapFrom(src => src.StandardType));
 
-        CreateMap<StandardCreateResource, Standard>();
-        CreateMap<StandardUpdateResource, Standard>();
+        // Update StandardUpdateResource to Standard mapping
+        CreateMap<StandardUpdateResource, Standard>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))  // Added
+            .ForMember(dest => dest.TopicId, opt => opt.MapFrom(src => src.TopicId))
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
+            .ForMember(dest => dest.StandardType, opt => opt.MapFrom(src => src.StandardType));
+
         CreateMap<CourseCreateResource, Course>().ReverseMap();
         CreateMap<CourseUpdateResource, Course>().ReverseMap();
         CreateMap<TopicCreateResource, Topic>().ReverseMap();
