@@ -86,6 +86,23 @@ public class SubTopicService : ISubTopicService
         }
     }
 
+    // Add SortOrder method
+    public async Task UpdateSortOrderAsync(int subTopicId, int sortOrder)
+    {
+        _logger.LogDebug("Updating sort order for SubTopic ID: {SubTopicId} to {SortOrder}", subTopicId, sortOrder);
+        var subTopic = await _subTopicRepository.GetByIdAsync(subTopicId);
+        if (subTopic == null)
+        {
+            _logger.LogError("SubTopic with ID {SubTopicId} not found", subTopicId);
+            throw new ArgumentException("SubTopic not found");
+        }
+
+        subTopic.SortOrder = sortOrder;
+        await _subTopicRepository.UpdateAsync(subTopic);
+        _logger.LogInformation("Sort order updated for SubTopic ID: {SubTopicId} to {SortOrder}", subTopicId, sortOrder);
+    }
+
+    // Update Get methods to sort by SortOrder
     public async Task<List<SubTopicResource>> GetSubtopicsByTopicIdAsync(int topicId, int userId, ArchiveFilter filter = ArchiveFilter.Active)
     {
         _logger.LogDebug("Fetching subtopics for Topic ID: {TopicId}, User ID: {UserId}, Filter: {Filter}", topicId, userId, filter);
@@ -103,7 +120,9 @@ public class SubTopicService : ISubTopicService
                 _ => throw new ArgumentOutOfRangeException(nameof(filter), "Invalid filter value")
             };
 
-            var subTopics = await query.ToListAsync();
+            var subTopics = await query
+                .OrderBy(s => s.SortOrder) // Sort by SortOrder
+                .ToListAsync();
             return _mapper.Map<List<SubTopicResource>>(subTopics ?? new List<SubTopic>());
         }
         catch (Exception ex)

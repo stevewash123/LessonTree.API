@@ -138,4 +138,37 @@ public class TopicController : ControllerBase
             copyResource.TopicId, newTopic.Id, copyResource.NewCourseId);
         return CreatedAtAction(nameof(GetTopic), new { id = newTopic.Id }, newTopic);
     }
+
+    // Add SortOrder endpoint
+    [HttpPut("{topicId}/sortOrder")]
+    public async Task<IActionResult> UpdateTopicSortOrder(int topicId, [FromBody] int sortOrder)
+    {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Updating sort order for Topic ID: {TopicId} to {SortOrder} for User ID: {UserId}", topicId, sortOrder, userId);
+
+        var topic = await _service.GetDomainTopicByIdAsync(topicId);
+        if (topic == null)
+        {
+            _logger.LogError("Topic with ID {TopicId} not found", topicId);
+            return NotFound();
+        }
+        if (topic.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to update sort order for topic ID {TopicId} owned by another user", userId, topicId);
+            return Forbid();
+        }
+
+        try
+        {
+            await _service.UpdateSortOrderAsync(topicId, sortOrder);
+            _logger.LogInformation("Updated sort order for Topic ID: {TopicId} to {SortOrder}", topicId, sortOrder);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update sort order for Topic ID: {TopicId}", topicId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
 }

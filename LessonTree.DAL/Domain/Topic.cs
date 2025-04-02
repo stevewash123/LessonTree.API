@@ -17,6 +17,7 @@ namespace LessonTree.DAL.Domain
         public bool Archived { get; set; } = false;
         public VisibilityType Visibility { get; set; } = VisibilityType.Private;
 
-        public virtual List<Standard> Standards { get; set; } = new List<Standard>();
+        public virtual List<Standard> Standards { get; set; } = new List<Standard>(); 
+        public int SortOrder { get; set; } = 0; // Default to 0
     }
 }

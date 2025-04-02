@@ -22,5 +22,6 @@ namespace LessonTree.BLL.Service
         Task AddStandardToLessonAsync(int lessonId, int standardId);
         Task RemoveStandardFromLessonAsync(int lessonId, int standardId);
         Task<LessonResource> CopyLessonAsync(int lessonId, int? newSubTopicId, int? newTopicId, int userId); // Updated
+        Task UpdateSortOrderAsync(int lessonId, int sortOrder);
     }
 }

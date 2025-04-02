@@ -87,6 +87,23 @@ public class TopicService : ITopicService
         return _mapper.Map<List<TopicResource>>(topics ?? new List<Topic>());
     }
 
+    // Add SortOrder method
+    public async Task UpdateSortOrderAsync(int topicId, int sortOrder)
+    {
+        _logger.LogDebug("Updating sort order for Topic ID: {TopicId} to {SortOrder}", topicId, sortOrder);
+        var topic = await _topicRepository.GetByIdAsync(topicId);
+        if (topic == null)
+        {
+            _logger.LogError("Topic with ID {TopicId} not found", topicId);
+            throw new ArgumentException("Topic not found");
+        }
+
+        topic.SortOrder = sortOrder;
+        await _topicRepository.UpdateAsync(topic);
+        _logger.LogInformation("Sort order updated for Topic ID: {TopicId} to {SortOrder}", topicId, sortOrder);
+    }
+
+    // Update Get methods to sort by SortOrder
     public async Task<List<TopicResource>> GetTopicsByCourseAsync(int courseId, int userId, ArchiveFilter filter = ArchiveFilter.Active)
     {
         _logger.LogDebug("Fetching topics for Course ID: {CourseId}, User ID: {UserId}, Filter: {Filter}", courseId, userId, filter);
@@ -103,7 +120,9 @@ public class TopicService : ITopicService
             _ => throw new ArgumentOutOfRangeException(nameof(filter), "Invalid filter value")
         };
 
-        var topics = await query.ToListAsync();
+        var topics = await query
+            .OrderBy(t => t.SortOrder) // Sort by SortOrder
+            .ToListAsync();
         return _mapper.Map<List<TopicResource>>(topics ?? new List<Topic>());
     }
 

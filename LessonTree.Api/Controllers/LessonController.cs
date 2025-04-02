@@ -242,11 +242,44 @@ public class LessonController : ControllerBase
         }
     }
 
+    [HttpPut("{lessonId}/sortOrder")]
+    public async Task<IActionResult> UpdateLessonSortOrder(int lessonId, [FromBody] int sortOrder)
+    {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Updating sort order for Lesson ID: {LessonId} to {SortOrder} for User ID: {UserId}", lessonId, sortOrder, userId);
+
+        var lesson = await _lessonService.GetDomainLessonByIdAsync(lessonId);
+        if (lesson == null)
+        {
+            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
+            return NotFound();
+        }
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to update sort order for lesson ID {LessonId} owned by another user", userId, lessonId);
+            return Forbid();
+        }
+
+        try
+        {
+            await _lessonService.UpdateSortOrderAsync(lessonId, sortOrder);
+            _logger.LogInformation("Updated sort order for Lesson ID: {LessonId} to {SortOrder}", lessonId, sortOrder);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update sort order for Lesson ID: {LessonId}", lessonId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    // Update MoveLesson to handle TopicId and SortOrder
     [HttpPost("move")]
     public async Task<IActionResult> MoveLesson([FromBody] LessonMoveResource moveResource)
     {
         int userId = GetCurrentUserId();
-        _logger.LogDebug("Moving Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId} for User ID: {UserId}", moveResource.LessonId, moveResource.NewSubTopicId, userId);
+        _logger.LogDebug("Moving Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}, Topic ID: {NewTopicId} for User ID: {UserId}",
+            moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId, userId);
 
         var lesson = await _lessonService.GetDomainLessonByIdAsync(moveResource.LessonId);
         if (lesson == null)
@@ -262,8 +295,9 @@ public class LessonController : ControllerBase
 
         try
         {
-            await _lessonService.MoveLessonAsync(moveResource.LessonId, moveResource.NewSubTopicId, null);
-            _logger.LogInformation("Moved Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}", moveResource.LessonId, moveResource.NewSubTopicId);
+            await _lessonService.MoveLessonAsync(moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId);
+            _logger.LogInformation("Moved Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}, Topic ID: {NewTopicId}",
+                moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId);
             return Ok();
         }
         catch (ArgumentException ex)
@@ -369,4 +403,6 @@ public class LessonController : ControllerBase
             return StatusCode(500, "Internal server error");
         }
     }
+
+
 }

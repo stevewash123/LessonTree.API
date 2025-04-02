@@ -34,5 +34,6 @@ namespace LessonTree.DAL.Domain
         public virtual List<Note> Notes { get; set; } = new List<Note>();
         public bool Archived { get; set; } = false;
         public VisibilityType Visibility { get; set; } = VisibilityType.Private;
+        public int SortOrder { get; set; } = 0; // Default to 0
     }
 }

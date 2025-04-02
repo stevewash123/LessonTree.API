@@ -9,8 +9,11 @@ namespace LessonTree.Models.DTO
         public int? TopicId { get; set; }
         public int CourseId { get; set; }
         public string NodeId { get; set; }
+        public int SortOrder { get; set; }
         public string Title { get; set; }
         public string Objective { get; set; }
+        public Boolean Archived { get; set; }
+        public string Visibility { get; set; } = "Private";
     }
 
     public class LessonCreateResource
@@ -26,6 +29,7 @@ namespace LessonTree.Models.DTO
         public string? Methods { get; set; }
         public string? SpecialNeeds { get; set; }
         public string? Assessment { get; set; }
+        public int SortOrder { get; set; }
     }
 
     public class LessonUpdateResource
@@ -40,7 +44,8 @@ namespace LessonTree.Models.DTO
         public string? SpecialNeeds { get; set; }
         public string? Assessment { get; set; }
         public VisibilityType Visibility { get; set; }
-        public bool Archived { get; set; } 
+        public bool Archived { get; set; }
+        public int SortOrder { get; set; }
     }
 
     public class LessonMoveResource

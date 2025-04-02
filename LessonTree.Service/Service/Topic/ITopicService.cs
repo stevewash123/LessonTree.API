@@ -17,5 +17,6 @@ namespace LessonTree.BLL.Service
         Task DeleteAsync(int id);
         Task MoveTopicAsync(int topicId, int newCourseId, int userId);
         Task<TopicResource> CopyTopicAsync(int topicId, int newCourseId, int userId);
+        Task UpdateSortOrderAsync(int topicId, int sortOrder);
     }
 }

@@ -8,7 +8,8 @@ namespace LessonTree.Models.DTO
         public int CourseId { get; set; }  // Added
         public int? TopicId { get; set; }  // Changed to nullable to match domain model
         public string? Description { get; set; }  
-        public string? StandardType { get; set; }  
+        public string? StandardType { get; set; }
+        public object TopicTitle { get; set; }
     }
 
     public class StandardCreateResource

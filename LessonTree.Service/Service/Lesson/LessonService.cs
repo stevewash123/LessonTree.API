@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 public class LessonService : ILessonService
 {
     private readonly ILessonRepository _lessonRepository;
+    private readonly ITopicRepository _topicRepository;
     private readonly ISubTopicRepository _subTopicRepository;
     private readonly IStandardRepository _standardRepository;
     private readonly ILogger<LessonService> _logger;
@@ -18,12 +19,14 @@ public class LessonService : ILessonService
 
     public LessonService(
         ILessonRepository lessonRepository,
+        ITopicRepository topicRepository,
         ISubTopicRepository subTopicRepository,
         IStandardRepository standardRepository,
         ILogger<LessonService> logger,
         IMapper mapper)
     {
         _lessonRepository = lessonRepository;
+        _topicRepository = topicRepository;
         _subTopicRepository = subTopicRepository;
         _standardRepository = standardRepository;
         _logger = logger;
@@ -80,12 +83,26 @@ public class LessonService : ILessonService
         return lessons;
     }
 
+    public async Task UpdateSortOrderAsync(int lessonId, int sortOrder)
+    {
+        _logger.LogDebug("Updating sort order for Lesson ID: {LessonId} to {SortOrder}", lessonId, sortOrder);
+        var lesson = await _lessonRepository.GetByIdAsync(lessonId);
+        if (lesson == null)
+        {
+            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
+            throw new ArgumentException("Lesson not found");
+        }
+
+        lesson.SortOrder = sortOrder;
+        await _lessonRepository.UpdateAsync(lesson);
+        _logger.LogInformation("Sort order updated for Lesson ID: {LessonId} to {SortOrder}", lessonId, sortOrder);
+    }
+
+    // Update Get methods to sort by SortOrder
     public async Task<List<LessonResource>> GetLessonsBySubtopic(int subTopicId, int? userId = null, ArchiveFilter filter = ArchiveFilter.Active)
     {
-        _logger.LogDebug("Fetching lessons by SubTopic ID: {SubTopicId} in service. UserId: {UserId}, Filter: {Filter}",
-            subTopicId, userId, filter);
-
-        var query = _lessonRepository.GetBySubTopicId(subTopicId, true) // Fetch all initially, filter below
+        _logger.LogDebug("Fetching lessons by SubTopic ID: {SubTopicId} in service. UserId: {UserId}, Filter: {Filter}", subTopicId, userId, filter);
+        var query = _lessonRepository.GetBySubTopicId(subTopicId, true)
             .Where(l => !userId.HasValue || l.UserId == userId.Value);
 
         query = filter switch
@@ -97,6 +114,7 @@ public class LessonService : ILessonService
         };
 
         var lessons = await query
+            .OrderBy(l => l.SortOrder) // Sort by SortOrder
             .ProjectTo<LessonResource>(_mapper.ConfigurationProvider)
             .ToListAsync();
 
@@ -106,10 +124,8 @@ public class LessonService : ILessonService
 
     public async Task<List<LessonResource>> GetLessonsByTopic(int topicId, int? userId = null, ArchiveFilter filter = ArchiveFilter.Active)
     {
-        _logger.LogDebug("Fetching lessons by Topic ID: {TopicId} in service. UserId: {UserId}, Filter: {Filter}",
-            topicId, userId, filter);
-
-        var query = _lessonRepository.GetByTopicId(topicId, true) // Fetch all initially, filter below
+        _logger.LogDebug("Fetching lessons by Topic ID: {TopicId} in service. UserId: {UserId}, Filter: {Filter}", topicId, userId, filter);
+        var query = _lessonRepository.GetByTopicId(topicId, true)
             .Where(l => !userId.HasValue || l.UserId == userId.Value);
 
         query = filter switch
@@ -121,6 +137,7 @@ public class LessonService : ILessonService
         };
 
         var lessons = await query
+            .OrderBy(l => l.SortOrder) // Sort by SortOrder
             .ProjectTo<LessonResource>(_mapper.ConfigurationProvider)
             .ToListAsync();
 
@@ -233,9 +250,7 @@ public class LessonService : ILessonService
 
     public async Task MoveLessonAsync(int lessonId, int? newSubTopicId, int? newTopicId)
     {
-        _logger.LogDebug("Moving Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId} or Topic ID: {NewTopicId} in service",
-            lessonId, newSubTopicId, newTopicId);
-
+        _logger.LogDebug("Moving Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId} or Topic ID: {NewTopicId} in service", lessonId, newSubTopicId, newTopicId);
         var lesson = await _lessonRepository.GetByIdAsync(lessonId, q => q.Include(l => l.SubTopic).Include(l => l.Topic));
         if (lesson == null)
         {
@@ -255,6 +270,7 @@ public class LessonService : ILessonService
             throw new ArgumentException("Lesson must be moved to either a SubTopic or a Topic.");
         }
 
+        int sortOrder;
         if (newSubTopicId.HasValue)
         {
             var newSubTopic = await _subTopicRepository.GetByIdAsync(newSubTopicId.Value);
@@ -265,23 +281,29 @@ public class LessonService : ILessonService
             }
             lesson.SubTopicId = newSubTopicId;
             lesson.TopicId = null;
+            sortOrder = (await _lessonRepository.GetBySubTopicId(newSubTopicId.Value).MaxAsync(l => (int?)l.SortOrder) ?? -1) + 1;
         }
-        else if (newTopicId.HasValue)
+        else
         {
-            // Assuming a TopicRepository exists; if not, adjust accordingly
             var topicExists = await _lessonRepository.GetByTopicId(newTopicId.Value).AnyAsync();
             if (!topicExists)
             {
-                _logger.LogError("Topic with ID {TopicId} not found", newTopicId);
-                throw new ArgumentException("Topic not found");
+                var topic = await _topicRepository.GetByIdAsync(newTopicId.Value);
+                if (topic == null)
+                {
+                    _logger.LogError("Topic with ID {TopicId} not found", newTopicId);
+                    throw new ArgumentException("Topic not found");
+                }
             }
             lesson.TopicId = newTopicId;
             lesson.SubTopicId = null;
+            sortOrder = (await _lessonRepository.GetByTopicId(newTopicId.Value).MaxAsync(l => (int?)l.SortOrder) ?? -1) + 1;
         }
 
+        lesson.SortOrder = sortOrder;
         await _lessonRepository.UpdateAsync(lesson);
-        _logger.LogInformation("Lesson ID: {LessonId} moved to SubTopic ID: {NewSubTopicId} or Topic ID: {NewTopicId}",
-            lessonId, newSubTopicId, newTopicId);
+        _logger.LogInformation("Lesson ID: {LessonId} moved to SubTopic ID: {NewSubTopicId} or Topic ID: {NewTopicId} with SortOrder: {SortOrder}",
+            lessonId, newSubTopicId, newTopicId, sortOrder);
     }
 
     public async Task AddStandardToLessonAsync(int lessonId, int standardId)

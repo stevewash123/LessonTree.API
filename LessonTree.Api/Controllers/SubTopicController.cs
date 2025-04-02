@@ -212,5 +212,38 @@ namespace LessonTree.API.Controllers
                 return StatusCode(500, new { status = "error", message = ex.Message });
             }
         }
+
+        // Add SortOrder endpoint
+        [HttpPut("{subTopicId}/sortOrder")]
+        public async Task<IActionResult> UpdateSubTopicSortOrder(int subTopicId, [FromBody] int sortOrder)
+        {
+            int userId = GetCurrentUserId();
+            _logger.LogDebug("Updating sort order for SubTopic ID: {SubTopicId} to {SortOrder} for User ID: {UserId}", subTopicId, sortOrder, userId);
+
+            var subTopic = await _service.GetDomainSubTopicByIdAsync(subTopicId);
+            if (subTopic == null)
+            {
+                _logger.LogError("SubTopic with ID {SubTopicId} not found", subTopicId);
+                return NotFound();
+            }
+            if (subTopic.UserId != userId)
+            {
+                _logger.LogWarning("User ID {UserId} attempted to update sort order for subtopic ID {SubTopicId} owned by another user", userId, subTopicId);
+                return Forbid();
+            }
+
+            try
+            {
+                await _service.UpdateSortOrderAsync(subTopicId, sortOrder);
+                _logger.LogInformation("Updated sort order for SubTopic ID: {SubTopicId} to {SortOrder}", subTopicId, sortOrder);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update sort order for SubTopic ID: {SubTopicId}", subTopicId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
     }
 }

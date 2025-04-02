@@ -62,6 +62,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Lessons, opt => opt.MapFrom(src => src.Lessons))
             .ForMember(dest => dest.HasChildren, opt => opt.MapFrom(src => src.SubTopics.Any() || src.Lessons.Any()))
             .ForMember(dest => dest.Archived, opt => opt.MapFrom(src => src.Archived))
+            .ForMember(dest => dest.SortOrder, opt => opt.MapFrom(src => src.SortOrder))
             .ForMember(dest => dest.Visibility, opt => opt.MapFrom(src => src.Visibility))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes));
 
@@ -76,6 +77,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Lessons, opt => opt.MapFrom(src => src.Lessons ?? new List<Lesson>()))
             .ForMember(dest => dest.HasChildren, opt => opt.MapFrom(src => src.Lessons.Any()))
             .ForMember(dest => dest.Archived, opt => opt.MapFrom(src => src.Archived))
+            .ForMember(dest => dest.SortOrder, opt => opt.MapFrom(src => src.SortOrder))
             .ForMember(dest => dest.Visibility, opt => opt.MapFrom(src => src.Visibility))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes));
 
@@ -87,6 +89,9 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.Objective, opt => opt.MapFrom(src => src.Objective))
             .ForMember(dest => dest.SubTopicId, opt => opt.MapFrom(src => src.SubTopicId))
+            .ForMember(dest => dest.SortOrder, opt => opt.MapFrom(src => src.SortOrder))
+            .ForMember(dest => dest.Archived, opt => opt.MapFrom(src => src.Archived))
+            .ForMember(dest => dest.Visibility, opt => opt.MapFrom(src => src.Visibility))
             .ForMember(dest => dest.TopicId, opt => opt.MapFrom(src => src.TopicId));
 
         // Lesson to LessonDetailResource
@@ -122,6 +127,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))  // Added
             .ForMember(dest => dest.TopicId, opt => opt.MapFrom(src => src.TopicId))   // Already nullable
             .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
+            .ForMember(dest => dest.TopicTitle, opt => opt.MapFrom(src => src.Topic != null ? src.Topic.Title : string.Empty))
             .ForMember(dest => dest.StandardType, opt => opt.MapFrom(src => src.StandardType));
 
         // Update StandardCreateResource to Standard mapping

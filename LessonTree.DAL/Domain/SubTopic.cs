@@ -16,5 +16,6 @@ namespace LessonTree.DAL.Domain
         public bool IsDefault { get; set; } = false;
         public virtual List<Note> Notes { get; set; } = new List<Note>();
         public bool Archived { get; set; } = false;
+        public int SortOrder { get; set; } = 0; // Default to 0
     }
 }
