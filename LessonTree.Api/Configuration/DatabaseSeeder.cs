@@ -31,12 +31,10 @@ namespace LessonTree.API.Configuration
 
                 logger.LogInformation("Seeding test data in Development mode...");
 
-                // Clear existing data
+                // Clear existing data (unchanged)
                 context.LessonAttachments.RemoveRange(context.LessonAttachments);
-                context.LessonStandards.RemoveRange(context.LessonStandards); 
-                context.Notes.RemoveRange(context.Notes);           // Added
-                //context.ScheduleDays.RemoveRange(context.ScheduleDays); // Added
-                //context.Schedules.RemoveRange(context.Schedules);   // Added
+                context.LessonStandards.RemoveRange(context.LessonStandards);
+                context.Notes.RemoveRange(context.Notes);
                 context.Lessons.RemoveRange(context.Lessons);
                 context.SubTopics.RemoveRange(context.SubTopics);
                 context.Topics.RemoveRange(context.Topics);
@@ -48,7 +46,7 @@ namespace LessonTree.API.Configuration
                 context.Districts.RemoveRange(context.Districts);
                 await context.SaveChangesAsync();
 
-                // Seed Roles
+                // Seed Roles (unchanged)
                 string[] roleNames = { "admin", "paidUser", "freeUser" };
                 foreach (var roleName in roleNames)
                 {
@@ -65,7 +63,7 @@ namespace LessonTree.API.Configuration
                     }
                 }
 
-                // Seed Districts
+                // Seed Districts (unchanged)
                 var districts = new List<District>
                 {
                     new District { Name = "Central District", Description = "Lorem ipsum dolor sit amet." },
@@ -74,7 +72,7 @@ namespace LessonTree.API.Configuration
                 context.Districts.AddRange(districts);
                 await context.SaveChangesAsync();
 
-                // Seed Schools
+                // Seed Schools (unchanged)
                 var schools = new List<School>
                 {
                     new School { Name = "Central High", Description = "Sed do eiusmod tempor.", DistrictId = districts[0].Id },
@@ -83,7 +81,7 @@ namespace LessonTree.API.Configuration
                 context.Schools.AddRange(schools);
                 await context.SaveChangesAsync();
 
-                // Seed Departments
+                // Seed Departments (unchanged)
                 var departments = new List<Department>
                 {
                     new Department { Name = "English", Description = "Literature and grammar.", SchoolId = schools[0].Id },
@@ -93,7 +91,7 @@ namespace LessonTree.API.Configuration
                 context.Departments.AddRange(departments);
                 await context.SaveChangesAsync();
 
-                // Seed Users with Roles
+                // Seed Users with Roles (unchanged)
                 var users = new List<(string Username, string Password, string FirstName, string LastName, string Role, int? DistrictId, int? SchoolId)>
                 {
                     ("admin", "Admin123!", "Wilson", "Pickett", "admin", districts[0].Id, schools[0].Id),
@@ -141,14 +139,14 @@ namespace LessonTree.API.Configuration
                 var paidUser = await userManager.FindByNameAsync("paiduser");
                 var freeUser = await userManager.FindByNameAsync("freeuser");
 
-                // Seed Courses
+                // Seed Courses with SortOrder for Topics, SubTopics, and Lessons
                 var courses = new List<Course>
                 {
                     // Admin: Course 1 - Topic -> SubTopic -> Lesson (with some nulls)
                     new Course
                     {
                         Title = "Admin Hierarchical Course",
-                        Description = null, // Null description
+                        Description = null,
                         UserId = adminUser.Id,
                         Archived = false,
                         Visibility = VisibilityType.Private,
@@ -161,20 +159,22 @@ namespace LessonTree.API.Configuration
                                 UserId = adminUser.Id,
                                 Archived = false,
                                 Visibility = VisibilityType.Private,
+                                SortOrder = 0, // First topic in course
                                 SubTopics = new List<SubTopic>
                                 {
                                     new SubTopic
                                     {
                                         Title = "SubTopic A",
-                                        Description = null, // Null description
+                                        Description = null,
                                         UserId = adminUser.Id,
                                         Archived = false,
                                         Visibility = VisibilityType.Private,
+                                        SortOrder = 0, // First subtopic in topic
                                         Lessons = new List<Lesson>
                                         {
-                                            new Lesson { Title = "Lesson 1", Objective = "Learn basics", Level = "10th", Materials = "Book", ClassTime = "45 min", Methods = "Lecture", Assessment = "Quiz", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                            new Lesson { Title = "Lesson 2", Objective = "Apply concepts", Level = "10th", Materials = null, ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                            new Lesson { Title = "Lesson 3", Objective = "Review", Level = "10th", Materials = "Notes", ClassTime = "40 min", Methods = null, Assessment = "Test", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private }
+                                            new Lesson { Title = "Lesson 1", Objective = "Learn basics", Level = "10th", Materials = "Book", ClassTime = "45 min", Methods = "Lecture", Assessment = "Quiz", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 0 },
+                                            new Lesson { Title = "Lesson 2", Objective = "Apply concepts", Level = "10th", Materials = null, ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 1 },
+                                            new Lesson { Title = "Lesson 3", Objective = "Review", Level = "10th", Materials = "Notes", ClassTime = "40 min", Methods = null, Assessment = "Test", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 2 }
                                         }
                                     },
                                     new SubTopic
@@ -184,11 +184,12 @@ namespace LessonTree.API.Configuration
                                         UserId = adminUser.Id,
                                         Archived = false,
                                         Visibility = VisibilityType.Private,
+                                        SortOrder = 1, // Second subtopic in topic
                                         Lessons = new List<Lesson>
                                         {
-                                            new Lesson { Title = "Lesson 4", Objective = "Deep dive", Level = "11th", Materials = "Text", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                            new Lesson { Title = "Lesson 5", Objective = "Practice", Level = "11th", Materials = "Worksheets", ClassTime = "45 min", Methods = "Exercises", Assessment = "Quiz", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                            new Lesson { Title = "Lesson 6", Objective = "Summary", Level = "11th", Materials = null, ClassTime = "50 min", Methods = "Review", Assessment = "Test", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private }
+                                            new Lesson { Title = "Lesson 4", Objective = "Deep dive", Level = "11th", Materials = "Text", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 0 },
+                                            new Lesson { Title = "Lesson 5", Objective = "Practice", Level = "11th", Materials = "Worksheets", ClassTime = "45 min", Methods = "Exercises", Assessment = "Quiz", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 1 },
+                                            new Lesson { Title = "Lesson 6", Objective = "Summary", Level = "11th", Materials = null, ClassTime = "50 min", Methods = "Review", Assessment = "Test", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 2 }
                                         }
                                     }
                                 }
@@ -208,18 +209,19 @@ namespace LessonTree.API.Configuration
                             new Topic
                             {
                                 Title = "Admin Direct Topic",
-                                Description = null, // Null description
+                                Description = null,
                                 UserId = adminUser.Id,
                                 Archived = false,
                                 Visibility = VisibilityType.Private,
+                                SortOrder = 0, // First topic in course
                                 Lessons = new List<Lesson>
                                 {
-                                    new Lesson { Title = "Direct Lesson 1", Objective = "Intro", Level = "9th", Materials = "Slides", ClassTime = "40 min", Methods = "Lecture", Assessment = "Quiz", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 2", Objective = "Practice", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 3", Objective = "Apply", Level = "9th", Materials = null, ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 4", Objective = "Review", Level = "9th", Materials = "Notes", ClassTime = "40 min", Methods = "Review", Assessment = "Quiz", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 5", Objective = "Advanced", Level = "9th", Materials = "Text", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 6", Objective = "Summary", Level = "9th", Materials = "Worksheets", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private }
+                                    new Lesson { Title = "Direct Lesson 1", Objective = "Intro", Level = "9th", Materials = "Slides", ClassTime = "40 min", Methods = "Lecture", Assessment = "Quiz", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 0 },
+                                    new Lesson { Title = "Direct Lesson 2", Objective = "Practice", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 1 },
+                                    new Lesson { Title = "Direct Lesson 3", Objective = "Apply", Level = "9th", Materials = null, ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 2 },
+                                    new Lesson { Title = "Direct Lesson 4", Objective = "Review", Level = "9th", Materials = "Notes", ClassTime = "40 min", Methods = "Review", Assessment = "Quiz", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 3 },
+                                    new Lesson { Title = "Direct Lesson 5", Objective = "Advanced", Level = "9th", Materials = "Text", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 4 },
+                                    new Lesson { Title = "Direct Lesson 6", Objective = "Summary", Level = "9th", Materials = "Worksheets", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 5 }
                                 }
                             },
                             new Topic
@@ -229,6 +231,7 @@ namespace LessonTree.API.Configuration
                                 UserId = adminUser.Id,
                                 Archived = false,
                                 Visibility = VisibilityType.Private,
+                                SortOrder = 1, // Second topic in course
                                 Lessons = new List<Lesson>() // Empty array
                             }
                         }
@@ -240,7 +243,7 @@ namespace LessonTree.API.Configuration
                         Description = "Public course with hierarchy",
                         UserId = paidUser.Id,
                         Archived = false,
-                        Visibility = VisibilityType.Public, // Public visibility
+                        Visibility = VisibilityType.Public,
                         Topics = new List<Topic>
                         {
                             new Topic
@@ -250,6 +253,7 @@ namespace LessonTree.API.Configuration
                                 UserId = paidUser.Id,
                                 Archived = false,
                                 Visibility = VisibilityType.Public,
+                                SortOrder = 0, // First topic in course
                                 SubTopics = new List<SubTopic>
                                 {
                                     new SubTopic
@@ -259,11 +263,12 @@ namespace LessonTree.API.Configuration
                                         UserId = paidUser.Id,
                                         Archived = false,
                                         Visibility = VisibilityType.Public,
+                                        SortOrder = 0, // First subtopic in topic
                                         Lessons = new List<Lesson>
                                         {
-                                            new Lesson { Title = "Lesson 1", Objective = "Learn basics", Level = "10th", Materials = "Book", ClassTime = "45 min", Methods = "Lecture", Assessment = "Quiz", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public },
-                                            new Lesson { Title = "Lesson 2", Objective = "Apply concepts", Level = "10th", Materials = "Slides", ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public },
-                                            new Lesson { Title = "Lesson 3", Objective = "Review", Level = "10th", Materials = "Notes", ClassTime = "40 min", Methods = "Review", Assessment = "Test", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public }
+                                            new Lesson { Title = "Lesson 1", Objective = "Learn basics", Level = "10th", Materials = "Book", ClassTime = "45 min", Methods = "Lecture", Assessment = "Quiz", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public, SortOrder = 0 },
+                                            new Lesson { Title = "Lesson 2", Objective = "Apply concepts", Level = "10th", Materials = "Slides", ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public, SortOrder = 1 },
+                                            new Lesson { Title = "Lesson 3", Objective = "Review", Level = "10th", Materials = "Notes", ClassTime = "40 min", Methods = "Review", Assessment = "Test", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public, SortOrder = 2 }
                                         }
                                     },
                                     new SubTopic
@@ -273,11 +278,12 @@ namespace LessonTree.API.Configuration
                                         UserId = paidUser.Id,
                                         Archived = false,
                                         Visibility = VisibilityType.Public,
+                                        SortOrder = 1, // Second subtopic in topic
                                         Lessons = new List<Lesson>
                                         {
-                                            new Lesson { Title = "Lesson 4", Objective = "Deep dive", Level = "11th", Materials = "Text", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public },
-                                            new Lesson { Title = "Lesson 5", Objective = "Practice", Level = "11th", Materials = "Worksheets", ClassTime = "45 min", Methods = "Exercises", Assessment = "Quiz", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public },
-                                            new Lesson { Title = "Lesson 6", Objective = "Summary", Level = "11th", Materials = "Book", ClassTime = "50 min", Methods = "Review", Assessment = "Test", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public }
+                                            new Lesson { Title = "Lesson 4", Objective = "Deep dive", Level = "11th", Materials = "Text", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public, SortOrder = 0 },
+                                            new Lesson { Title = "Lesson 5", Objective = "Practice", Level = "11th", Materials = "Worksheets", ClassTime = "45 min", Methods = "Exercises", Assessment = "Quiz", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public, SortOrder = 1 },
+                                            new Lesson { Title = "Lesson 6", Objective = "Summary", Level = "11th", Materials = "Book", ClassTime = "50 min", Methods = "Review", Assessment = "Test", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Public, SortOrder = 2 }
                                         }
                                     }
                                 }
@@ -301,14 +307,15 @@ namespace LessonTree.API.Configuration
                                 UserId = paidUser.Id,
                                 Archived = false,
                                 Visibility = VisibilityType.Private,
+                                SortOrder = 0, // First topic in course
                                 Lessons = new List<Lesson>
                                 {
-                                    new Lesson { Title = "Direct Lesson 1", Objective = "Intro", Level = "9th", Materials = "Slides", ClassTime = "40 min", Methods = "Lecture", Assessment = "Quiz", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 2", Objective = "Practice", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 3", Objective = "Apply", Level = "9th", Materials = "Notes", ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 4", Objective = "Review", Level = "9th", Materials = "Text", ClassTime = "40 min", Methods = "Review", Assessment = "Quiz", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 5", Objective = "Advanced", Level = "9th", Materials = "Worksheets", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 6", Objective = "Summary", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private }
+                                    new Lesson { Title = "Direct Lesson 1", Objective = "Intro", Level = "9th", Materials = "Slides", ClassTime = "40 min", Methods = "Lecture", Assessment = "Quiz", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 0 },
+                                    new Lesson { Title = "Direct Lesson 2", Objective = "Practice", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 1 },
+                                    new Lesson { Title = "Direct Lesson 3", Objective = "Apply", Level = "9th", Materials = "Notes", ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 2 },
+                                    new Lesson { Title = "Direct Lesson 4", Objective = "Review", Level = "9th", Materials = "Text", ClassTime = "40 min", Methods = "Review", Assessment = "Quiz", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 3 },
+                                    new Lesson { Title = "Direct Lesson 5", Objective = "Advanced", Level = "9th", Materials = "Worksheets", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 4 },
+                                    new Lesson { Title = "Direct Lesson 6", Objective = "Summary", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = paidUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 5 }
                                 }
                             }
                         }
@@ -330,6 +337,7 @@ namespace LessonTree.API.Configuration
                                 UserId = freeUser.Id,
                                 Archived = false,
                                 Visibility = VisibilityType.Private,
+                                SortOrder = 0, // First topic in course
                                 SubTopics = new List<SubTopic>
                                 {
                                     new SubTopic
@@ -339,11 +347,12 @@ namespace LessonTree.API.Configuration
                                         UserId = freeUser.Id,
                                         Archived = false,
                                         Visibility = VisibilityType.Private,
+                                        SortOrder = 0, // First subtopic in topic
                                         Lessons = new List<Lesson>
                                         {
-                                            new Lesson { Title = "Lesson 1", Objective = "Learn basics", Level = "10th", Materials = "Book", ClassTime = "45 min", Methods = "Lecture", Assessment = "Quiz", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                            new Lesson { Title = "Lesson 2", Objective = "Apply concepts", Level = "10th", Materials = "Slides", ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                            new Lesson { Title = "Lesson 3", Objective = "Review", Level = "10th", Materials = "Notes", ClassTime = "40 min", Methods = "Review", Assessment = "Test", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private }
+                                            new Lesson { Title = "Lesson 1", Objective = "Learn basics", Level = "10th", Materials = "Book", ClassTime = "45 min", Methods = "Lecture", Assessment = "Quiz", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 0 },
+                                            new Lesson { Title = "Lesson 2", Objective = "Apply concepts", Level = "10th", Materials = "Slides", ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 1 },
+                                            new Lesson { Title = "Lesson 3", Objective = "Review", Level = "10th", Materials = "Notes", ClassTime = "40 min", Methods = "Review", Assessment = "Test", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 2 }
                                         }
                                     },
                                     new SubTopic
@@ -353,11 +362,12 @@ namespace LessonTree.API.Configuration
                                         UserId = freeUser.Id,
                                         Archived = false,
                                         Visibility = VisibilityType.Private,
+                                        SortOrder = 1, // Second subtopic in topic
                                         Lessons = new List<Lesson>
                                         {
-                                            new Lesson { Title = "Lesson 4", Objective = "Deep dive", Level = "11th", Materials = "Text", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                            new Lesson { Title = "Lesson 5", Objective = "Practice", Level = "11th", Materials = "Worksheets", ClassTime = "45 min", Methods = "Exercises", Assessment = "Quiz", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                            new Lesson { Title = "Lesson 6", Objective = "Summary", Level = "11th", Materials = "Book", ClassTime = "50 min", Methods = "Review", Assessment = "Test", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private }
+                                            new Lesson { Title = "Lesson 4", Objective = "Deep dive", Level = "11th", Materials = "Text", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 0 },
+                                            new Lesson { Title = "Lesson 5", Objective = "Practice", Level = "11th", Materials = "Worksheets", ClassTime = "45 min", Methods = "Exercises", Assessment = "Quiz", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 1 },
+                                            new Lesson { Title = "Lesson 6", Objective = "Summary", Level = "11th", Materials = "Book", ClassTime = "50 min", Methods = "Review", Assessment = "Test", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 2 }
                                         }
                                     }
                                 }
@@ -381,14 +391,15 @@ namespace LessonTree.API.Configuration
                                 UserId = freeUser.Id,
                                 Archived = false,
                                 Visibility = VisibilityType.Private,
+                                SortOrder = 0, // First topic in course
                                 Lessons = new List<Lesson>
                                 {
-                                    new Lesson { Title = "Direct Lesson 1", Objective = "Intro", Level = "9th", Materials = "Slides", ClassTime = "40 min", Methods = "Lecture", Assessment = "Quiz", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 2", Objective = "Practice", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 3", Objective = "Apply", Level = "9th", Materials = "Notes", ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 4", Objective = "Review", Level = "9th", Materials = "Text", ClassTime = "40 min", Methods = "Review", Assessment = "Quiz", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 5", Objective = "Advanced", Level = "9th", Materials = "Worksheets", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private },
-                                    new Lesson { Title = "Direct Lesson 6", Objective = "Summary", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private }
+                                    new Lesson { Title = "Direct Lesson 1", Objective = "Intro", Level = "9th", Materials = "Slides", ClassTime = "40 min", Methods = "Lecture", Assessment = "Quiz", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 0 },
+                                    new Lesson { Title = "Direct Lesson 2", Objective = "Practice", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 1 },
+                                    new Lesson { Title = "Direct Lesson 3", Objective = "Apply", Level = "9th", Materials = "Notes", ClassTime = "50 min", Methods = "Discussion", Assessment = "Essay", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 2 },
+                                    new Lesson { Title = "Direct Lesson 4", Objective = "Review", Level = "9th", Materials = "Text", ClassTime = "40 min", Methods = "Review", Assessment = "Quiz", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 3 },
+                                    new Lesson { Title = "Direct Lesson 5", Objective = "Advanced", Level = "9th", Materials = "Worksheets", ClassTime = "60 min", Methods = "Group work", Assessment = "Project", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 4 },
+                                    new Lesson { Title = "Direct Lesson 6", Objective = "Summary", Level = "9th", Materials = "Book", ClassTime = "45 min", Methods = "Exercises", Assessment = "Test", UserId = freeUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 5 }
                                 }
                             }
                         }
@@ -398,6 +409,7 @@ namespace LessonTree.API.Configuration
                 context.Courses.AddRange(courses);
                 await context.SaveChangesAsync();
 
+                // Seed Standards (unchanged)
                 var standards = new List<Standard>();
                 foreach (var course in courses)
                 {
@@ -408,8 +420,8 @@ namespace LessonTree.API.Configuration
                             Title = $"{course.Title} Standard 1",
                             Description = "Core standard",
                             CourseId = course.Id,
-                            TopicId = course.Topics.FirstOrDefault()?.Id, // Link to first topic
-                            DistrictId = course.User.DistrictId, // Link to user's district
+                            TopicId = course.Topics.FirstOrDefault()?.Id,
+                            DistrictId = course.User.DistrictId,
                             StandardType = "State"
                         },
                         new Standard
@@ -417,7 +429,7 @@ namespace LessonTree.API.Configuration
                             Title = $"{course.Title} Standard 2",
                             Description = "Skill standard",
                             CourseId = course.Id,
-                            TopicId = course.Topics.FirstOrDefault()?.Id, // Link to first topic
+                            TopicId = course.Topics.FirstOrDefault()?.Id,
                             DistrictId = course.User.DistrictId,
                             StandardType = "National"
                         },
@@ -426,7 +438,7 @@ namespace LessonTree.API.Configuration
                             Title = $"{course.Title} Standard 3",
                             Description = "Knowledge standard",
                             CourseId = course.Id,
-                            TopicId = course.Topics.FirstOrDefault()?.Id, // Link to first topic
+                            TopicId = course.Topics.FirstOrDefault()?.Id,
                             DistrictId = course.User.DistrictId,
                             StandardType = "State"
                         },
@@ -443,7 +455,7 @@ namespace LessonTree.API.Configuration
                 context.Standards.AddRange(standards);
                 await context.SaveChangesAsync();
 
-                // Link Standards to Lessons (example: link all 4 standards to the first lesson of each course)
+                // Link Standards to Lessons (unchanged)
                 var lessonStandards = new List<LessonStandard>();
                 foreach (var course in courses)
                 {
@@ -459,7 +471,7 @@ namespace LessonTree.API.Configuration
                 context.LessonStandards.AddRange(lessonStandards);
                 await context.SaveChangesAsync();
 
-                logger.LogInformation("Test data seeded successfully in Development mode.");
+                logger.LogInformation("Test data seeded successfully in Development mode with SortOrder populated.");
             }
             catch (Exception ex)
             {
