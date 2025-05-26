@@ -6,7 +6,7 @@ namespace LessonTree.DAL.Repositories
     public interface IUserRepository
     {
         User GetById(int id);
-        User GetByUserName(string userName); // Updated from GetByUsername
+        User GetByUserName(string userName);
         List<User> GetAll();
         void Add(User user);
         void Update(User user);

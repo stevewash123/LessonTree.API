@@ -1,4 +1,7 @@
-﻿// Full File
+﻿// RESPONSIBILITY: Handles HTTP requests for Topic CRUD operations
+// DOES NOT: Handle business logic or data access directly
+// CALLED BY: Angular UI via HTTP requests
+
 using LessonTree.BLL.Service;
 using LessonTree.Models.DTO;
 using LessonTree.Models.Enums;
@@ -88,9 +91,31 @@ public class TopicController : ControllerBase
     public async Task<IActionResult> UpdateTopic(int id, [FromBody] TopicUpdateResource topicUpdateResource)
     {
         if (id != topicUpdateResource.Id) return BadRequest();
-        await _service.UpdateAsync(topicUpdateResource);
-        _logger.LogInformation("Updated topic with ID: {TopicId}", id);
-        return NoContent();
+
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Updating topic with ID: {TopicId} for User ID: {UserId}", id, userId);
+
+        try
+        {
+            var updatedTopic = await _service.UpdateAsync(topicUpdateResource, userId);
+            _logger.LogInformation("Updated topic with ID: {TopicId}", id);
+            return Ok(updatedTopic);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Topic with ID {TopicId} not found for update", id);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "User ID {UserId} attempted to update topic ID {TopicId} owned by another user", userId, id);
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while updating topic with ID {TopicId}: {Message}", id, ex.Message);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { status = "error", message = "An unexpected error occurred while updating the topic." });
+        }
     }
 
     [HttpDelete("{id}")]

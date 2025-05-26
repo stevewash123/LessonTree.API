@@ -26,10 +26,10 @@ namespace LessonTree.DAL.Repositories
             return user;
         }
 
-        public User GetByUserName(string userName) // Updated from GetByUsername
+        public User GetByUserName(string userName)
         {
             _logger.LogDebug("Retrieving user by UserName: {UserName}", userName);
-            var user = _context.Users.SingleOrDefault(u => u.UserName == userName); // Updated from Username
+            var user = _context.Users.SingleOrDefault(u => u.UserName == userName);
             if (user == null)
                 _logger.LogWarning("User with UserName {UserName} not found", userName);
             return user;
@@ -43,18 +43,18 @@ namespace LessonTree.DAL.Repositories
 
         public void Add(User user)
         {
-            _logger.LogDebug("Adding user: {UserName}", user.UserName); // Updated from Username
+            _logger.LogDebug("Adding user: {UserName}", user.UserName);
             _context.Users.Add(user);
             _context.SaveChanges();
-            _logger.LogInformation("Added user with ID: {UserId}, UserName: {UserName}", user.Id, user.UserName); // Updated from Username
+            _logger.LogInformation("Added user with ID: {UserId}, UserName: {UserName}", user.Id, user.UserName);
         }
 
         public void Update(User user)
         {
-            _logger.LogDebug("Updating user: {UserName}", user.UserName); // Updated from Username
+            _logger.LogDebug("Updating user: {UserName}", user.UserName);
             _context.Users.Update(user);
             _context.SaveChanges();
-            _logger.LogInformation("Updated user with ID: {UserId}, UserName: {UserName}", user.Id, user.UserName); // Updated from Username
+            _logger.LogInformation("Updated user with ID: {UserId}, UserName: {UserName}", user.Id, user.UserName);
         }
 
         public void Delete(int id)

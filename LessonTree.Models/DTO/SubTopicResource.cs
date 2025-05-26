@@ -13,8 +13,10 @@ namespace LessonTree.Models.DTO
         public int CourseId { get; set; }
         public bool HasChildren { get; set; }
         public bool Archived { get; set; }
+        public int UserId { get; set; }
         public int SortOrder { get; set; }
-        public VisibilityType Visibility { get; set; }
+        public string Visibility { get; set; }
+        public string NodeType { get; set; } = "SubTopic"; // Add nodeType
         public List<LessonResource> Lessons { get; set; } = new List<LessonResource>();
         public List<NoteResource> Notes { get; set; } = new List<NoteResource>();
     }
@@ -24,17 +26,16 @@ namespace LessonTree.Models.DTO
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
         public int TopicId { get; set; }
-        public VisibilityType Visibility { get; set; } = VisibilityType.Private;
+        public string Visibility { get; set; } = "Private";
         public int SortOrder { get; set; }
     }
 
-    // no links, links can only be changed by move
     public class SubTopicUpdateResource
     {
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public VisibilityType Visibility { get; set; }
+        public string Visibility { get; set; }
         public bool Archived { get; set; }
         public int SortOrder { get; set; }
     }

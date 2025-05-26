@@ -1,4 +1,8 @@
-﻿using LessonTree.BLL.Service;
+﻿// RESPONSIBILITY: Handles HTTP requests for SubTopic CRUD operations
+// DOES NOT: Handle business logic or data access directly
+// CALLED BY: Angular UI via HTTP requests
+
+using LessonTree.BLL.Service;
 using LessonTree.DAL.Domain;
 using LessonTree.Models.DTO;
 using LessonTree.Models.Enums;
@@ -106,9 +110,9 @@ namespace LessonTree.API.Controllers
                 return Forbid();
             }
 
-            await _service.UpdateAsync(subTopicUpdateResource);
+            var updatedSubTopic = await _service.UpdateAsync(subTopicUpdateResource, userId);
             _logger.LogInformation("Updated subtopic with ID: {SubTopicId}, Title: {Title}", id, subTopicUpdateResource.Title);
-            return NoContent();
+            return Ok(updatedSubTopic);
         }
 
         [HttpDelete("{id}")]

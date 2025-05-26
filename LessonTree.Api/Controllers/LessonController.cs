@@ -1,4 +1,7 @@
-﻿using LessonTree.BLL.Service;
+﻿// RESPONSIBILITY: Handles HTTP requests for Lesson CRUD operations
+// DOES NOT: Handle business logic or data access directly
+// CALLED BY: Angular UI via HTTP requestsusing LessonTree.BLL.Service;
+using LessonTree.BLL.Service;
 using LessonTree.DAL.Domain;
 using LessonTree.Models.DTO;
 using LessonTree.Models.Enums;
@@ -122,9 +125,9 @@ public class LessonController : ControllerBase
             return Forbid();
         }
 
-        await _lessonService.UpdateAsync(lessonUpdateResource);
+        var updatedLesson = await _lessonService.UpdateAsync(lessonUpdateResource, userId);
         _logger.LogInformation("Updated lesson with ID: {LessonId}, Title: {Title}", id, lessonUpdateResource.Title);
-        return NoContent();
+        return Ok(updatedLesson);
     }
 
     [HttpDelete("{id}")]

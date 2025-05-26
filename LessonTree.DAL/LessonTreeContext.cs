@@ -133,5 +133,8 @@ namespace LessonTree.DAL
         public DbSet<District> Districts { get; set; }
         public DbSet<School> Schools { get; set; }
         public DbSet<Department> Departments { get; set; }
+        public DbSet<Schedule> Schedules { get; set; }
+        public DbSet<ScheduleDay> ScheduleDays { get; set; }
+        public DbSet<UserConfiguration> UserConfigurations { get; set; }
     }
 }

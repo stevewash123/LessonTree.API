@@ -81,8 +81,11 @@ namespace LessonTree.API.Controllers
                 return BadRequest(new ProblemDetails { Title = "ID mismatch", Detail = "Route ID must match DTO ID" });
             }
             await _service.UpdateAsync(courseUpdateResource, userId);
+
+            // FIX: Return the updated course instead of NoContent
+            var updatedCourse = await _service.GetByIdAsync(id, userId);
             _logger.LogInformation("Course with ID {Id} updated successfully", id);
-            return NoContent();
+            return Ok(updatedCourse);
         }
 
         [HttpDelete("{id}")]

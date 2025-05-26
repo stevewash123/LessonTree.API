@@ -26,10 +26,10 @@ namespace LessonTree.BLL.Service
             return user;
         }
 
-        public User GetByUserName(string userName) // Updated from GetByUsername
+        public User GetByUserName(string userName)
         {
             _logger.LogDebug("Fetching user by UserName: {UserName}", userName);
-            var user = _repository.GetByUserName(userName); // Updated from GetByUsername
+            var user = _repository.GetByUserName(userName);
             if (user == null)
                 _logger.LogWarning("User with UserName {UserName} not found in service", userName);
             return user;
@@ -43,16 +43,19 @@ namespace LessonTree.BLL.Service
 
         public void Add(User user)
         {
-            _logger.LogDebug("Adding user: {UserName}", user.UserName); // Updated from Username
+            _logger.LogDebug("Adding user: {UserName}", user.UserName);
             _repository.Add(user);
             _logger.LogInformation("User added with ID: {UserId}", user.Id);
         }
 
-        public void Update(User user)
+        public User Update(User user)
         {
-            _logger.LogDebug("Updating user: {UserName}", user.UserName); // Updated from Username
+            _logger.LogDebug("Updating user: {UserName}", user.UserName);
             _repository.Update(user);
             _logger.LogInformation("User updated with ID: {UserId}", user.Id);
+
+            // Return the updated entity
+            return _repository.GetById(user.Id);
         }
 
         public void Delete(int id)

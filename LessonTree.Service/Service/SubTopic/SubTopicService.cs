@@ -1,4 +1,6 @@
-﻿// Full File
+﻿// RESPONSIBILITY: Business logic for SubTopic operations, coordinates between controller and repository
+// DOES NOT: Handle HTTP concerns or direct data access
+// CALLED BY: SubTopicController
 using AutoMapper;
 using LessonTree.BLL.Service;
 using LessonTree.DAL.Domain;
@@ -153,15 +155,23 @@ public class SubTopicService : ISubTopicService
         return createdId;
     }
 
-    public async Task UpdateAsync(SubTopicUpdateResource subTopicUpdateResource)
+    
+    public async Task<SubTopicResource> UpdateAsync(SubTopicUpdateResource subTopicUpdateResource, int userId)
     {
-        _logger.LogDebug("Attempting to update subtopic: {Title}", subTopicUpdateResource.Title);
+        _logger.LogDebug("Attempting to update subtopic: {Title} for User ID: {UserId}", subTopicUpdateResource.Title, userId);
 
         // Fetch the existing SubTopic
         var existingSubTopic = await _subTopicRepository.GetByIdAsync(subTopicUpdateResource.Id);
         if (existingSubTopic == null)
         {
             throw new KeyNotFoundException($"SubTopic with ID {subTopicUpdateResource.Id} not found.");
+        }
+
+        // Verify ownership
+        if (existingSubTopic.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to update subtopic ID {SubTopicId} owned by another user", userId, subTopicUpdateResource.Id);
+            throw new UnauthorizedAccessException("SubTopic not owned by user");
         }
 
         // Check if the SubTopic is default
@@ -178,6 +188,9 @@ public class SubTopicService : ISubTopicService
         // Persist the changes
         await _subTopicRepository.UpdateAsync(existingSubTopic);
         _logger.LogInformation("SubTopic updated with ID: {SubTopicId}", subTopicUpdateResource.Id);
+
+        // Return the updated entity
+        return await GetByIdAsync(existingSubTopic.Id, userId);
     }
 
     public async Task DeleteAsync(int id)

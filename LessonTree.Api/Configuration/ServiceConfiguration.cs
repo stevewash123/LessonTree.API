@@ -54,6 +54,7 @@ namespace LessonTree.API.Configuration
             builder.Services.AddTransient<ISubTopicService, SubTopicService>();
             builder.Services.AddTransient<ILessonService, LessonService>();
             builder.Services.AddTransient<IStandardService, StandardService>();
+            builder.Services.AddTransient<IScheduleRepository, ScheduleRepository>();
             builder.Services.AddTransient<IAttachmentService, AttachmentService>();
 
             builder.Services.AddHealthChecks()

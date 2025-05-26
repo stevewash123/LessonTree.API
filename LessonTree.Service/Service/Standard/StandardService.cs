@@ -77,7 +77,7 @@ namespace LessonTree.BLL.Service
             }
         }
 
-        public async Task UpdateAsync(StandardUpdateResource standardUpdateResource)
+        public async Task<StandardResource> UpdateAsync(StandardUpdateResource standardUpdateResource)
         {
             _logger.LogDebug("Updating standard with ID: {StandardId}, Title: {Title} in service",
                 standardUpdateResource.Id, standardUpdateResource.Title);
@@ -92,6 +92,9 @@ namespace LessonTree.BLL.Service
                 _mapper.Map(standardUpdateResource, existingStandard);
                 await _repository.UpdateAsync(existingStandard);
                 _logger.LogInformation("Standard updated with ID: {StandardId}", existingStandard.Id);
+
+                // Return the updated entity
+                return await GetByIdAsync(existingStandard.Id) ?? throw new InvalidOperationException("Updated standard could not be retrieved");
             }
             catch (Exception ex)
             {

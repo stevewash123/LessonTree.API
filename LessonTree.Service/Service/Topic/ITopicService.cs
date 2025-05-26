@@ -13,7 +13,7 @@ namespace LessonTree.BLL.Service
         Task<List<TopicResource>> GetAllAsync(int userId, ArchiveFilter filter = ArchiveFilter.Active);
         Task<List<TopicResource>> GetTopicsByCourseAsync(int courseId, int userId, ArchiveFilter filter = ArchiveFilter.Active);
         Task<int> AddAsync(TopicCreateResource topicCreateResource, int userId);
-        Task UpdateAsync(TopicUpdateResource topicUpdateResource);
+        Task<TopicResource> UpdateAsync(TopicUpdateResource topicUpdateResource, int userId);
         Task DeleteAsync(int id);
         Task MoveTopicAsync(int topicId, int newCourseId, int userId);
         Task<TopicResource> CopyTopicAsync(int topicId, int newCourseId, int userId);

@@ -136,9 +136,9 @@ public class TopicService : ITopicService
         return createdTopicId;
     }
 
-    public async Task UpdateAsync(TopicUpdateResource topicUpdateResource)
+    public async Task<TopicResource> UpdateAsync(TopicUpdateResource topicUpdateResource, int userId)
     {
-        _logger.LogDebug("Updating topic with ID: {TopicId}", topicUpdateResource.Id);
+        _logger.LogDebug("Updating topic with ID: {TopicId} for User ID: {UserId}", topicUpdateResource.Id, userId);
         var existingTopic = await _topicRepository.GetByIdAsync(topicUpdateResource.Id);
         if (existingTopic == null)
         {
@@ -146,9 +146,19 @@ public class TopicService : ITopicService
             throw new ArgumentException("Topic not found");
         }
 
+        // Verify ownership
+        if (existingTopic.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to update topic ID {TopicId} owned by another user", userId, topicUpdateResource.Id);
+            throw new UnauthorizedAccessException("Topic not owned by user");
+        }
+
         _mapper.Map(topicUpdateResource, existingTopic);
         await _topicRepository.UpdateAsync(existingTopic);
         _logger.LogInformation("Topic updated with ID: {TopicId}", existingTopic.Id);
+
+        // Return the updated entity
+        return await GetByIdAsync(existingTopic.Id, userId);
     }
 
     public async Task DeleteAsync(int id)

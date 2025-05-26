@@ -34,7 +34,8 @@ namespace LessonTree.DAL.Repositories
             {
                 query = include(query);
             }
-            return await query.FirstOrDefaultAsync(c => c.Id == id) ?? new Course();
+            // FIX: Return null instead of new Course() when not found
+            return await query.FirstOrDefaultAsync(c => c.Id == id);
         }
 
         public async Task AddAsync(Course course)

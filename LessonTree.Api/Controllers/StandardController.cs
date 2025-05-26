@@ -91,9 +91,9 @@ namespace LessonTree.API.Controllers
             }
             try
             {
-                await _service.UpdateAsync(standardUpdateResource);
+                var updatedStandard = await _service.UpdateAsync(standardUpdateResource);
                 _logger.LogInformation("Successfully updated standard with ID: {StandardId}", id);
-                return NoContent();
+                return Ok(updatedStandard);
             }
             catch (ArgumentException ex)
             {

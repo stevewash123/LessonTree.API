@@ -14,7 +14,7 @@ namespace LessonTree.API.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _service;
-        private readonly ILogger<UserController> _logger; // Add logging
+        private readonly ILogger<UserController> _logger;
 
         public UserController(IUserService service, ILogger<UserController> logger)
         {
@@ -30,8 +30,8 @@ namespace LessonTree.API.Controllers
             var userResources = users.Select(u => new UserResource
             {
                 Id = u.Id,
-                Username = u.UserName, // Updated from Username
-                Password = null // Exclude password for security
+                Username = u.UserName,
+                Password = null
             }).ToList();
             _logger.LogDebug("Returning {Count} users", userResources.Count);
             return Ok(userResources);
@@ -51,11 +51,11 @@ namespace LessonTree.API.Controllers
             {
                 Id = user.Id,
                 Username = user.UserName,
-                FirstName = user.FirstName, // Map FullName
-                LastName = user.LastName, // Map FullName
+                FirstName = user.FirstName,
+                LastName = user.LastName,
                 Password = null
             };
-            _logger.LogDebug("Returning user: {UserName}", user.UserName); // Updated from Username
+            _logger.LogDebug("Returning user: {UserName}", user.UserName);
             return Ok(userResource);
         }
 
@@ -74,11 +74,10 @@ namespace LessonTree.API.Controllers
                 _logger.LogError("User with ID {UserId} not found", id);
                 return NotFound();
             }
-            //user.UserName = userResource.Username; 
             user.FirstName = userResource.FirstName;
             user.LastName = userResource.LastName;
             _service.Update(user);
-            _logger.LogInformation("Updated user with ID: {UserId}, UserName: {UserName}", id, user.UserName); // Updated from Username
+            _logger.LogInformation("Updated user with ID: {UserId}, UserName: {UserName}", id, user.UserName);
             return NoContent();
         }
 

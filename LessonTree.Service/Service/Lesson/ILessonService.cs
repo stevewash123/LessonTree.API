@@ -1,4 +1,8 @@
-﻿using LessonTree.DAL.Domain;
+﻿// RESPONSIBILITY: Business logic for Lesson operations, coordinates between controller and repository
+// DOES NOT: Handle HTTP concerns or direct data access
+// CALLED BY: LessonController
+// using LessonTree.DAL.Domain;
+using LessonTree.DAL.Domain;
 using LessonTree.Models.DTO;
 using LessonTree.Models.Enums;
 using System.Collections.Generic;
@@ -14,7 +18,7 @@ namespace LessonTree.BLL.Service
         Task<List<LessonResource>> GetLessonsBySubtopic(int subTopicId, int? userId = null, ArchiveFilter filter = ArchiveFilter.Active); 
         Task<List<LessonResource>> GetLessonsByTopic(int topicId, int? userId = null, ArchiveFilter filter = ArchiveFilter.Active);
         Task<int> AddAsync(LessonCreateResource lessonCreateResource, int userId);
-        Task UpdateAsync(LessonUpdateResource lessonUpdateResource);
+        Task<LessonDetailResource> UpdateAsync(LessonUpdateResource lessonUpdateResource, int userId);
         Task DeleteAsync(int id);
         Task AddAttachmentAsync(int lessonId, int attachmentId);
         Task RemoveAttachmentAsync(int lessonId, int attachmentId);

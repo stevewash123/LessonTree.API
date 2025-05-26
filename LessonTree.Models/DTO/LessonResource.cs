@@ -2,7 +2,7 @@
 
 namespace LessonTree.Models.DTO
 {
-    public class LessonResource  // only what's needed for the tree
+    public class LessonResource
     {
         public int Id { get; set; }
         public int? SubTopicId { get; set; }
@@ -12,18 +12,20 @@ namespace LessonTree.Models.DTO
         public int SortOrder { get; set; }
         public string Title { get; set; }
         public string Objective { get; set; }
-        public Boolean Archived { get; set; }
+        public bool Archived { get; set; }
         public string Visibility { get; set; } = "Private";
+        public int UserId { get; set; } 
+        public string NodeType { get; set; } = "Lesson";
     }
 
     public class LessonCreateResource
     {
-        public string Title { get; set; }
-        public int? SubTopicId { get; set; } // Set at creation, not editable later except by move
-        public int? TopicId { get; set; }    // Set at creation, not editable later except by move
+        public string Title { get; set; } = string.Empty;
+        public int? SubTopicId { get; set; }
+        public int? TopicId { get; set; }
         public string Visibility { get; set; } = "Private";
         public string? Level { get; set; }
-        public string Objective { get; set; }
+        public string Objective { get; set; } = string.Empty;
         public string? Materials { get; set; }
         public string? ClassTime { get; set; }
         public string? Methods { get; set; }
@@ -43,16 +45,17 @@ namespace LessonTree.Models.DTO
         public string? Methods { get; set; }
         public string? SpecialNeeds { get; set; }
         public string? Assessment { get; set; }
-        public VisibilityType Visibility { get; set; }
+        public string Visibility { get; set; }
         public bool Archived { get; set; }
         public int SortOrder { get; set; }
+        public string NodeType { get; set; } = "Lesson"; // Add nodeType
     }
 
     public class LessonMoveResource
     {
         public int LessonId { get; set; }
-        public int? NewSubTopicId { get; set; } // Nullable to support moving to Topic
-        public int? NewTopicId { get; set; }    // Nullable to support moving to SubTopic
+        public int? NewSubTopicId { get; set; }
+        public int? NewTopicId { get; set; }
     }
 
     public class LessonDetailResource
@@ -69,8 +72,9 @@ namespace LessonTree.Models.DTO
         public string? Methods { get; set; }
         public string? SpecialNeeds { get; set; }
         public string? Assessment { get; set; }
-        public bool Archived { get; set; } // Added
-        public VisibilityType Visibility { get; set; }
+        public bool Archived { get; set; }
+        public string Visibility { get; set; }
+        public string NodeType { get; set; } = "Lesson"; // Add nodeType
         public List<StandardResource> Standards { get; set; } = new List<StandardResource>();
         public List<AttachmentResource> Attachments { get; set; }
         public List<NoteResource> Notes { get; set; } = new List<NoteResource>();

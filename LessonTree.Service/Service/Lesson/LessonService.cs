@@ -167,10 +167,10 @@ public class LessonService : ILessonService
         return createdLessonId;
     }
 
-    public async Task UpdateAsync(LessonUpdateResource lessonUpdateResource)
+    public async Task<LessonDetailResource> UpdateAsync(LessonUpdateResource lessonUpdateResource, int userId)
     {
-        _logger.LogDebug("Updating lesson with ID: {LessonId}, Title: {Title} in service",
-            lessonUpdateResource.Id, lessonUpdateResource.Title);
+        _logger.LogDebug("Updating lesson with ID: {LessonId}, Title: {Title} for User ID: {UserId}",
+            lessonUpdateResource.Id, lessonUpdateResource.Title, userId);
 
         var existingLesson = await _lessonRepository.GetByIdAsync(lessonUpdateResource.Id);
         if (existingLesson == null)
@@ -179,9 +179,19 @@ public class LessonService : ILessonService
             throw new ArgumentException("Lesson not found");
         }
 
+        // Verify ownership
+        if (existingLesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to update lesson ID {LessonId} owned by another user", userId, lessonUpdateResource.Id);
+            throw new UnauthorizedAccessException("Lesson not owned by user");
+        }
+
         _mapper.Map(lessonUpdateResource, existingLesson);
         await _lessonRepository.UpdateAsync(existingLesson);
         _logger.LogInformation("Lesson updated with ID: {LessonId}, Title: {Title}", existingLesson.Id, existingLesson.Title);
+
+        // Return the updated entity
+        return await GetByIdAsync(existingLesson.Id) ?? throw new InvalidOperationException("Updated lesson could not be retrieved");
     }
 
     public async Task DeleteAsync(int id)

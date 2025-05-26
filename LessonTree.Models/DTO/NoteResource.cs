@@ -7,7 +7,7 @@ namespace LessonTree.Models.DTO
     {
         public int Id { get; set; }
         public string Content { get; set; } = string.Empty;
-        public VisibilityType Visibility { get; set; } = VisibilityType.Private;
+        public string Visibility { get; set; } = "Private";
         public DateTime CreatedDate { get; set; }
         public int? TeamId { get; set; }
         public int CreatedBy { get; set; }
@@ -21,7 +21,7 @@ namespace LessonTree.Models.DTO
     public class NoteCreateResource
     {
         public string Content { get; set; } = string.Empty;
-        public VisibilityType Visibility { get; set; } = VisibilityType.Private;
+        public string Visibility { get; set; } = "Private";
         // Polymorphic fields
         public int? CourseId { get; set; }
         public int? TopicId { get; set; }
@@ -33,6 +33,6 @@ namespace LessonTree.Models.DTO
     {
         public int Id { get; set; }
         public string Content { get; set; } = string.Empty;
-        public VisibilityType Visibility { get; set; } = VisibilityType.Private;
+        public string Visibility { get; set; } = "Private";
     }
 }
