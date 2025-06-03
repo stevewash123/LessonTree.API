@@ -13,8 +13,10 @@ namespace LessonTree.Models.DTO
         public int CourseId { get; set; }
         public int UserId { get; set; }
         public DateTime StartDate { get; set; }
-        public int NumSchoolDays { get; set; }
+        public DateTime EndDate { get; set; }
         public List<ScheduleDayResource>? ScheduleDays { get; set; }
         public List<string>? TeachingDays { get; set; }  // Optional per TypeScript
+
+        public bool IsLocked { get; set; }
     }
 }

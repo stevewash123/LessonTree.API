@@ -1,5 +1,6 @@
 ﻿using LessonTree.DAL.Domain;
 using LessonTree.DAL.Repositories;
+using LessonTree.Models.DTO;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
@@ -56,16 +57,49 @@ namespace LessonTree.API.Controllers
             return Ok(created);
         }
 
-        [HttpPut("day")]
-        public async Task<IActionResult> UpdateScheduleDay([FromBody] ScheduleDay scheduleDay)
+        // Configuration updates only - NO ScheduleDays
+        [HttpPut("{scheduleId}/config")]
+        public async Task<IActionResult> UpdateScheduleConfig(int scheduleId, [FromBody] ScheduleConfigUpdateResource config)
         {
-            _logger.LogInformation("PUT schedule/day called for schedule day ID {ScheduleDayId}", scheduleDay.Id);
-            var updated = await _scheduleRepository.UpdateScheduleDayAsync(scheduleDay);
+            _logger.LogInformation("PUT schedule/{scheduleId}/config called", scheduleId);
+
+            if (scheduleId != config.Id)
+            {
+                _logger.LogWarning("Schedule ID mismatch: URL {UrlId} vs Body {BodyId}", scheduleId, config.Id);
+                return BadRequest("Schedule ID mismatch");
+            }
+
+            var updated = await _scheduleRepository.UpdateConfigAsync(config);
             if (updated == null)
             {
-                _logger.LogWarning("Schedule day ID {ScheduleDayId} not found", scheduleDay.Id);
+                _logger.LogWarning("Schedule ID {ScheduleId} not found for config update", scheduleId);
                 return NotFound();
             }
+
+            _logger.LogInformation("Schedule ID {ScheduleId} config updated successfully", scheduleId);
+            return Ok(updated);
+        }
+
+        // ScheduleDays updates only - NO config fields
+        [HttpPut("{scheduleId}/days")]
+        public async Task<IActionResult> UpdateScheduleDays(int scheduleId, [FromBody] ScheduleDaysUpdateResource scheduleDays)
+        {
+            _logger.LogInformation("PUT schedule/{scheduleId}/days called with {DayCount} days", scheduleId, scheduleDays.ScheduleDays.Count);
+
+            if (scheduleId != scheduleDays.ScheduleId)
+            {
+                _logger.LogWarning("Schedule ID mismatch: URL {UrlId} vs Body {BodyId}", scheduleId, scheduleDays.ScheduleId);
+                return BadRequest("Schedule ID mismatch");
+            }
+
+            var updated = await _scheduleRepository.UpdateScheduleDaysAsync(scheduleId, scheduleDays.ScheduleDays);
+            if (updated == null)
+            {
+                _logger.LogWarning("Schedule ID {ScheduleId} not found for days update", scheduleId);
+                return NotFound();
+            }
+
+            _logger.LogInformation("Schedule ID {ScheduleId} days updated successfully", scheduleId);
             return Ok(updated);
         }
     }

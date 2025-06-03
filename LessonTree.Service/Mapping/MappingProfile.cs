@@ -222,9 +222,10 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
             .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
-            .ForMember(dest => dest.NumSchoolDays, opt => opt.MapFrom(src => src.NumSchoolDays))
+            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
             .ForMember(dest => dest.ScheduleDays, opt => opt.MapFrom(src => src.ScheduleDays))
-            .ForMember(dest => dest.TeachingDays, opt => opt.Ignore()); // Handle in controller if needed
+            .ForMember(dest => dest.IsLocked, opt => opt.MapFrom(src => src.IsLocked))
+            .ForMember(dest => dest.TeachingDays, opt => opt.Ignore()); 
 
         CreateMap<ScheduleDay, ScheduleDayResource>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
@@ -238,15 +239,17 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
             .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
-            .ForMember(dest => dest.NumSchoolDays, opt => opt.MapFrom(src => src.NumSchoolDays))
+            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
             .ForMember(dest => dest.ScheduleDays, opt => opt.Ignore()) // Handle in service
             .ForMember(dest => dest.UserId, opt => opt.Ignore()); // Set in controller
 
-        CreateMap<ScheduleUpdateResource, Schedule>()
+        CreateMap<ScheduleConfigUpdateResource, Schedule>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.TeachingDays, opt => opt.MapFrom(src => src.TeachingDays))
+            .ForMember(dest => dest.IsLocked, opt => opt.MapFrom(src => src.IsLocked))
             .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
-            .ForMember(dest => dest.NumSchoolDays, opt => opt.MapFrom(src => src.NumSchoolDays));
+            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate));
 
         // =============================================================================
         // ATTACHMENT AND STANDARD MAPPINGS

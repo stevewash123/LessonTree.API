@@ -22,17 +22,26 @@ namespace LessonTree.Models.DTO
         public string Title { get; set; } = string.Empty;
         public int CourseId { get; set; }
         public DateTime StartDate { get; set; }
-        public int NumSchoolDays { get; set; }
+        public DateTime EndDate { get; set; }
         public List<string>? TeachingDays { get; set; }
     }
 
-    public class ScheduleUpdateResource
+    public class ScheduleConfigUpdateResource
     {
         public int Id { get; set; }
-        public string Title { get; set; } = string.Empty;
+        public string Title { get; set; }
         public DateTime StartDate { get; set; }
-        public int NumSchoolDays { get; set; }
-        public List<string>? TeachingDays { get; set; }
+        public DateTime EndDate { get; set; }
+        public string TeachingDays { get; set; }
+        public bool IsLocked { get; set; }
+        // NO ScheduleDays
+    }
+
+    public class ScheduleDaysUpdateResource
+    {
+        public int ScheduleId { get; set; }
+        public List<ScheduleDayResource> ScheduleDays { get; set; }
+        // NO config fields
     }
 
 }

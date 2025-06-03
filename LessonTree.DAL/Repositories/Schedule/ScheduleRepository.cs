@@ -1,4 +1,5 @@
 ﻿using LessonTree.DAL.Domain;
+using LessonTree.Models.DTO;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -42,7 +43,6 @@ namespace LessonTree.DAL.Repositories
             _logger.LogInformation("Creating new schedule for course ID {CourseId} with title {Title}", schedule.CourseId, schedule.Title);
             _context.Schedules.Add(schedule);
             await _context.SaveChangesAsync();
-            await GenerateScheduleAsync(schedule.Id);
             return schedule;
         }
 
@@ -54,78 +54,53 @@ namespace LessonTree.DAL.Repositories
             return scheduleDay;
         }
 
-        public async Task<ScheduleDay?> UpdateScheduleDayAsync(ScheduleDay scheduleDay)
+        public async Task<Schedule?> UpdateConfigAsync(ScheduleConfigUpdateResource config)
         {
-            _logger.LogInformation("Updating schedule day ID {ScheduleDayId}", scheduleDay.Id);
-            var existing = await _context.ScheduleDays.FindAsync(scheduleDay.Id);
+            _logger.LogInformation("Updating schedule config for ID {ScheduleId}", config.Id);
+
+            var existing = await _context.Schedules.FindAsync(config.Id);
             if (existing == null)
-            {
-                _logger.LogWarning("Schedule day ID {ScheduleDayId} not found", scheduleDay.Id);
                 return null;
-            }
-            existing.Date = scheduleDay.Date;
-            existing.LessonId = scheduleDay.LessonId;
-            existing.SpecialCode = scheduleDay.SpecialCode;
-            existing.Comment = scheduleDay.Comment;
+
+            // Update ONLY config fields
+            existing.Title = config.Title;
+            existing.StartDate = config.StartDate;
+            existing.EndDate = config.EndDate;
+            existing.TeachingDays = config.TeachingDays;
+            existing.IsLocked = config.IsLocked;
+
             await _context.SaveChangesAsync();
             return existing;
         }
 
-        public async Task GenerateScheduleAsync(int scheduleId)
+        public async Task<Schedule?> UpdateScheduleDaysAsync(int scheduleId, List<ScheduleDayResource> scheduleDayResources)
         {
-            _logger.LogInformation("Generating schedule for schedule ID {ScheduleId}", scheduleId);
-            var schedule = await _context.Schedules
-                .Include(s => s.Course)
-                .ThenInclude(c => c.Topics)
-                .ThenInclude(t => t.Lessons.Where(l => !l.Archived))
-                .Include(s => s.Course)
-                .ThenInclude(c => c.Topics)
-                .ThenInclude(t => t.SubTopics)
-                .ThenInclude(st => st.Lessons.Where(l => !l.Archived))
+            _logger.LogInformation("Updating schedule days for ID {ScheduleId}", scheduleId);
+
+            var existing = await _context.Schedules
+                .Include(s => s.ScheduleDays)
                 .FirstOrDefaultAsync(s => s.Id == scheduleId);
-            if (schedule == null)
-            {
-                _logger.LogError("Schedule ID {ScheduleId} not found", scheduleId);
-                throw new InvalidOperationException("Schedule not found");
-            }
 
-            var lessons = new List<Lesson>();
-            foreach (var topic in schedule.Course.Topics.OrderBy(t => t.SortOrder))
-            {
-                lessons.AddRange(topic.Lessons.OrderBy(l => l.SortOrder));
-                foreach (var subTopic in topic.SubTopics.OrderBy(st => st.SortOrder))
-                {
-                    lessons.AddRange(subTopic.Lessons.OrderBy(l => l.SortOrder));
-                }
-            }
+            if (existing == null)
+                return null;
 
-            if (!lessons.Any())
-            {
-                _logger.LogWarning("No non-archived lessons found for course ID {CourseId}", schedule.CourseId);
-                return;
-            }
+            // Replace ONLY ScheduleDays - leave config untouched
+            _context.ScheduleDays.RemoveRange(existing.ScheduleDays);
 
-            schedule.ScheduleDays = new List<ScheduleDay>();
-            int lessonIndex = 0;
-            for (int i = 0; i < schedule.NumSchoolDays; i++)
+            // Map from ScheduleDayResource to ScheduleDay domain objects
+            existing.ScheduleDays = scheduleDayResources.Select(sdr => new ScheduleDay
             {
-                var currentDate = schedule.StartDate.AddDays(i);
-                if (currentDate.DayOfWeek == DayOfWeek.Saturday || currentDate.DayOfWeek == DayOfWeek.Sunday)
-                    continue; // Skip weekends
-
-                var scheduleDay = new ScheduleDay
-                {
-                    Date = currentDate,
-                    LessonId = lessonIndex < lessons.Count ? lessons[lessonIndex].Id : null,
-                    ScheduleId = schedule.Id
-                };
-                schedule.ScheduleDays.Add(scheduleDay);
-                lessonIndex = (lessonIndex + 1) % lessons.Count; // Cycle through lessons
-            }
+                ScheduleId = scheduleId,
+                Date = sdr.Date,
+                LessonId = sdr.LessonId,
+                SpecialCode = sdr.SpecialCode,
+                Comment = sdr.Comment
+            }).ToList();
 
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Schedule generated with ID {ScheduleId}", schedule.Id);
+            return existing;
         }
+
     }
 
     

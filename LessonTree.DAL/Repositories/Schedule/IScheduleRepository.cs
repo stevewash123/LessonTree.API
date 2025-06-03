@@ -1,4 +1,5 @@
 ﻿using LessonTree.DAL.Domain;
+using LessonTree.Models.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +14,7 @@ namespace LessonTree.DAL.Repositories
         Task<List<Schedule>> GetByCourseIdAsync(int courseId);
         Task<Schedule> CreateAsync(Schedule schedule);
         Task<ScheduleDay> AddScheduleDayAsync(ScheduleDay scheduleDay);
-        Task<ScheduleDay?> UpdateScheduleDayAsync(ScheduleDay scheduleDay);
-        Task GenerateScheduleAsync(int scheduleId);
+        Task<Schedule?> UpdateScheduleDaysAsync(int scheduleId, List<ScheduleDayResource> scheduleDayResources);
+        Task<Schedule?> UpdateConfigAsync(ScheduleConfigUpdateResource config);
     }
 }
