@@ -198,58 +198,76 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Archived, opt => opt.MapFrom(src => src.Archived))
             .ForMember(dest => dest.SortOrder, opt => opt.MapFrom(src => src.SortOrder));
 
+        // **PARTIAL FILE** - Updated User and UserConfiguration mappings for JWT strategy
+        // RESPONSIBILITY: AutoMapper configuration aligned with clean JWT DTOs
+        // DOES NOT: Map removed properties (FullName, Password, Id/UserId in config)
+        // CALLED BY: Controllers when mapping between domain and resource models
+
         // =============================================================================
-        // USER MAPPINGS
+        // UPDATED USER MAPPINGS (JWT Strategy)
         // =============================================================================
         CreateMap<User, UserResource>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.UserName))
             .ForMember(dest => dest.FirstName, opt => opt.MapFrom(src => src.FirstName))
             .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.LastName))
-            .ForMember(dest => dest.District, opt => opt.MapFrom(src => src.DistrictId)) // ADDED
-            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => // ADDED - computed in mapping
-                !string.IsNullOrEmpty(src.LastName)
-                    ? $"{src.LastName}, {src.FirstName}"
-                    : src.FirstName ?? src.UserName))
-            .ForMember(dest => dest.Password, opt => opt.Ignore()); // Never map password out
+            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+            .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.PhoneNumber))
+            .ForMember(dest => dest.District, opt => opt.MapFrom(src => src.DistrictId))
+            .ForMember(dest => dest.Configuration, opt => opt.MapFrom(src => src.Configuration))
+            .ForMember(dest => dest.Password, opt => opt.Ignore()); // REMOVED: Security - never map password to DTO
+
+        CreateMap<UserCreateResource, User>()
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Username))
+            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+            .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.Phone))
+            .ForMember(dest => dest.FirstName, opt => opt.MapFrom(src => src.FirstName))
+            .ForMember(dest => dest.LastName, opt => opt.MapFrom(src => src.LastName))
+            .ForMember(dest => dest.DistrictId, opt => opt.MapFrom(src => src.District))
+            .ForMember(dest => dest.Id, opt => opt.Ignore());
 
         // =============================================================================
-        // SCHEDULE MAPPINGS (NEW)
+        // UPDATED USER CONFIGURATION MAPPINGS (Clean JWT Strategy)
         // =============================================================================
-        CreateMap<Schedule, ScheduleResource>()
+        CreateMap<UserConfiguration, UserConfigurationResource>()
+            .ForMember(dest => dest.LastUpdated, opt => opt.MapFrom(src => src.LastUpdated))
+            .ForMember(dest => dest.SchoolYear, opt => opt.MapFrom(src => src.SchoolYear))
+            .ForMember(dest => dest.PeriodsPerDay, opt => opt.MapFrom(src => src.PeriodsPerDay))
+            .ForMember(dest => dest.PeriodAssignments, opt => opt.MapFrom(src => src.PeriodAssignments));
+        // REMOVED: Id, UserId mappings - clean 1:1 relationship in JWT strategy
+
+        CreateMap<UserConfigurationResource, UserConfiguration>()
+            .ForMember(dest => dest.LastUpdated, opt => opt.MapFrom(src => src.LastUpdated))
+            .ForMember(dest => dest.SchoolYear, opt => opt.MapFrom(src => src.SchoolYear))
+            .ForMember(dest => dest.PeriodsPerDay, opt => opt.MapFrom(src => src.PeriodsPerDay))
+            .ForMember(dest => dest.PeriodAssignments, opt => opt.MapFrom(src => src.PeriodAssignments))
+            .ForMember(dest => dest.Id, opt => opt.Ignore())       // Set by repository
+            .ForMember(dest => dest.UserId, opt => opt.Ignore())   // Set by repository
+            .ForMember(dest => dest.SettingsJson, opt => opt.Ignore()); // REMOVED: Using structured properties
+
+        // =============================================================================
+        // UPDATED PERIOD ASSIGNMENT MAPPINGS (Cleaned up duplicates)
+        // =============================================================================
+        CreateMap<PeriodAssignment, PeriodAssignmentResource>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.Period, opt => opt.MapFrom(src => src.Period))
             .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
-            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
-            .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
-            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
-            .ForMember(dest => dest.ScheduleDays, opt => opt.MapFrom(src => src.ScheduleDays))
-            .ForMember(dest => dest.IsLocked, opt => opt.MapFrom(src => src.IsLocked))
-            .ForMember(dest => dest.TeachingDays, opt => opt.Ignore()); 
+            .ForMember(dest => dest.SectionName, opt => opt.MapFrom(src => src.SectionName))
+            .ForMember(dest => dest.Room, opt => opt.MapFrom(src => src.Room))
+            .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes))
+            .ForMember(dest => dest.BackgroundColor, opt => opt.MapFrom(src => src.BackgroundColor))
+            .ForMember(dest => dest.FontColor, opt => opt.MapFrom(src => src.FontColor));
 
-        CreateMap<ScheduleDay, ScheduleDayResource>()
+        CreateMap<PeriodAssignmentResource, PeriodAssignment>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.ScheduleId, opt => opt.MapFrom(src => src.ScheduleId))
-            .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Date))
-            .ForMember(dest => dest.LessonId, opt => opt.MapFrom(src => src.LessonId))
-            .ForMember(dest => dest.SpecialCode, opt => opt.MapFrom(src => src.SpecialCode))
-            .ForMember(dest => dest.Comment, opt => opt.MapFrom(src => src.Comment));
-
-        CreateMap<ScheduleCreateResource, Schedule>()
-            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.Period, opt => opt.MapFrom(src => src.Period))
             .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
-            .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
-            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
-            .ForMember(dest => dest.ScheduleDays, opt => opt.Ignore()) // Handle in service
-            .ForMember(dest => dest.UserId, opt => opt.Ignore()); // Set in controller
-
-        CreateMap<ScheduleConfigUpdateResource, Schedule>()
-            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
-            .ForMember(dest => dest.TeachingDays, opt => opt.MapFrom(src => src.TeachingDays))
-            .ForMember(dest => dest.IsLocked, opt => opt.MapFrom(src => src.IsLocked))
-            .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
-            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate));
+            .ForMember(dest => dest.SectionName, opt => opt.MapFrom(src => src.SectionName))
+            .ForMember(dest => dest.Room, opt => opt.MapFrom(src => src.Room))
+            .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes))
+            .ForMember(dest => dest.BackgroundColor, opt => opt.MapFrom(src => src.BackgroundColor))
+            .ForMember(dest => dest.FontColor, opt => opt.MapFrom(src => src.FontColor))
+            .ForMember(dest => dest.UserConfigurationId, opt => opt.Ignore()); // Set by repository
 
         // =============================================================================
         // ATTACHMENT AND STANDARD MAPPINGS

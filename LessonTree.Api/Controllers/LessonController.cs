@@ -1,6 +1,7 @@
 ﻿// RESPONSIBILITY: Handles HTTP requests for Lesson CRUD operations
 // DOES NOT: Handle business logic or data access directly
 // CALLED BY: Angular UI via HTTP requestsusing LessonTree.BLL.Service;
+using LessonTree.API.Controllers;
 using LessonTree.BLL.Service;
 using LessonTree.DAL.Domain;
 using LessonTree.Models.DTO;
@@ -13,7 +14,7 @@ using System.Security.Claims;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-public class LessonController : ControllerBase
+public class LessonController : BaseController
 {
     private readonly ILessonService _lessonService;
     private readonly IAttachmentService _attachmentService;
@@ -29,16 +30,7 @@ public class LessonController : ControllerBase
         _logger = logger;
     }
 
-    private int GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-        {
-            _logger.LogError("Failed to extract UserId from JWT claims");
-            throw new UnauthorizedAccessException("User ID not found in token");
-        }
-        return userId;
-    }
+    
     [HttpGet]
     public async Task<IActionResult> GetLessons(ArchiveFilter filter = ArchiveFilter.Active)
     {

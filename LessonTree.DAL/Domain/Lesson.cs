@@ -30,7 +30,7 @@ namespace LessonTree.DAL.Domain
         public int? TopicId { get; set; } // New: Optional direct link to Topic
         public virtual Topic? Topic { get; set; } // New
         public virtual List<LessonAttachment> LessonAttachments { get; set; } = new List<LessonAttachment>();
-        public virtual List<ScheduleDay> ScheduleDays { get; set; } = new List<ScheduleDay>();
+        public virtual List<ScheduleEvent> ScheduleEvents { get; set; } = new List<ScheduleEvent>();
         public virtual List<Note> Notes { get; set; } = new List<Note>();
         public bool Archived { get; set; } = false;
         public VisibilityType Visibility { get; set; } = VisibilityType.Private;

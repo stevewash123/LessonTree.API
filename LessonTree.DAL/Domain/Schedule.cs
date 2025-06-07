@@ -12,9 +12,10 @@ namespace LessonTree.DAL.Domain
         public int UserId { get; set; }
         public virtual User User { get; set; }
         public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }  // ← Changed from NumSchoolDays
+        public DateTime EndDate { get; set; }
         public bool IsLocked { get; set; } = false;
         public string TeachingDays { get; set; } = "Monday,Tuesday,Wednesday,Thursday,Friday";
-        public List<ScheduleDay> ScheduleDays { get; set; } = new List<ScheduleDay>();
+
+        public List<ScheduleEvent> ScheduleEvents { get; set; } = new List<ScheduleEvent>(); // NEW
     }
 }

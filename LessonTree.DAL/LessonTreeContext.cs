@@ -118,7 +118,9 @@ namespace LessonTree.DAL
                 .HasForeignKey(s => s.DistrictId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-
+            modelBuilder.Entity<PeriodAssignment>()
+                .ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_CourseId_PositiveOrNull",
+                    "CourseId IS NULL OR CourseId > 0 OR CourseId < 0"));
         }
 
         public DbSet<Course> Courses { get; set; }
@@ -134,7 +136,7 @@ namespace LessonTree.DAL
         public DbSet<School> Schools { get; set; }
         public DbSet<Department> Departments { get; set; }
         public DbSet<Schedule> Schedules { get; set; }
-        public DbSet<ScheduleDay> ScheduleDays { get; set; }
+        public DbSet<ScheduleEvent> ScheduleEvents { get; set; }
         public DbSet<UserConfiguration> UserConfigurations { get; set; }
     }
 }

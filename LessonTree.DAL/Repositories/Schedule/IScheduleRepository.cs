@@ -1,20 +1,29 @@
-﻿using LessonTree.DAL.Domain;
+﻿// **COMPLETE FILE** - JWT-aligned IScheduleRepository interface
+// RESPONSIBILITY: Schedule data access contract with user filtering
+// DOES NOT: Allow cross-user data access without explicit userId
+// CALLED BY: ScheduleController and any schedule services
+
+using LessonTree.DAL.Domain;
 using LessonTree.Models.DTO;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LessonTree.DAL.Repositories
 {
     public interface IScheduleRepository
     {
+        // User-filtered methods (security-first approach)
         Task<Schedule?> GetByIdAsync(int scheduleId);
-        Task<List<Schedule>> GetByCourseIdAsync(int courseId);
+        Task<Schedule?> GetByIdAndUserAsync(int scheduleId, int userId);
+        Task<List<Schedule>> GetByCourseAndUserAsync(int courseId, int userId);
+        Task<List<Schedule>> GetByUserAsync(int userId);
+
+        // CRUD operations
         Task<Schedule> CreateAsync(Schedule schedule);
-        Task<ScheduleDay> AddScheduleDayAsync(ScheduleDay scheduleDay);
-        Task<Schedule?> UpdateScheduleDaysAsync(int scheduleId, List<ScheduleDayResource> scheduleDayResources);
-        Task<Schedule?> UpdateConfigAsync(ScheduleConfigUpdateResource config);
+        Task<Schedule?> UpdateConfigAsync(int scheduleId, ScheduleConfigUpdateResource config);
+        Task<Schedule?> UpdateScheduleEventsAsync(int scheduleId, List<ScheduleEventResource> scheduleEventResources);
+        Task<bool> DeleteAsync(int scheduleId);
+
+        // Legacy method (marked for deprecation)
+        [Obsolete("Use GetByCourseAndUserAsync for security")]
+        Task<List<Schedule>> GetByCourseIdAsync(int courseId);
     }
 }

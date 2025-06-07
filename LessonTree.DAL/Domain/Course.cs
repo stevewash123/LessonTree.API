@@ -2,7 +2,6 @@
 
 namespace LessonTree.DAL.Domain
 {
-    using LessonTree.Models.Enums;
     public class Course
     {
         public int Id { get; set; }

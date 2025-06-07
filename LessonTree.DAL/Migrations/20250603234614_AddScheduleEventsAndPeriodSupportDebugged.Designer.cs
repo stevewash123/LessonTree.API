@@ -3,6 +3,7 @@ using System;
 using LessonTree.DAL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LessonTree.DAL.Migrations
 {
     [DbContext(typeof(LessonTreeContext))]
-    partial class LessonTreeContextModelSnapshot : ModelSnapshot
+    [Migration("20250603234614_AddScheduleEventsAndPeriodSupportDebugged")]
+    partial class AddScheduleEventsAndPeriodSupportDebugged
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.2");
@@ -329,12 +332,11 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CourseId");
+
                     b.HasIndex("UserConfigurationId");
 
-                    b.ToTable("PeriodAssignment", t =>
-                        {
-                            t.HasCheckConstraint("CK_PeriodAssignment_CourseId_PositiveOrNull", "CourseId IS NULL OR CourseId > 0 OR CourseId < 0");
-                        });
+                    b.ToTable("PeriodAssignment");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Schedule", b =>
@@ -927,11 +929,17 @@ namespace LessonTree.DAL.Migrations
 
             modelBuilder.Entity("LessonTree.DAL.Domain.PeriodAssignment", b =>
                 {
+                    b.HasOne("LessonTree.DAL.Domain.Course", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId");
+
                     b.HasOne("LessonTree.DAL.Domain.UserConfiguration", "UserConfiguration")
                         .WithMany("PeriodAssignments")
                         .HasForeignKey("UserConfigurationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Course");
 
                     b.Navigation("UserConfiguration");
                 });

@@ -3,20 +3,26 @@ using LessonTree.DAL.Repositories;
 using LessonTree.Models.DTO;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using AutoMapper;
 using System.Threading.Tasks;
 
 namespace LessonTree.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ScheduleController : ControllerBase
+    public class ScheduleController : BaseController
     {
         private readonly IScheduleRepository _scheduleRepository;
+        private readonly IMapper _mapper;
         private readonly ILogger<ScheduleController> _logger;
 
-        public ScheduleController(IScheduleRepository scheduleRepository, ILogger<ScheduleController> logger)
+        public ScheduleController(
+            IScheduleRepository scheduleRepository,
+            IMapper mapper,
+            ILogger<ScheduleController> logger)
         {
             _scheduleRepository = scheduleRepository;
+            _mapper = mapper;
             _logger = logger;
         }
 
@@ -30,7 +36,9 @@ namespace LessonTree.API.Controllers
                 _logger.LogWarning("Schedule ID {ScheduleId} not found", scheduleId);
                 return NotFound();
             }
-            return Ok(schedule);
+
+            var resource = _mapper.Map<ScheduleResource>(schedule);
+            return Ok(resource);
         }
 
         [HttpGet("course/{courseId}")]
@@ -38,26 +46,24 @@ namespace LessonTree.API.Controllers
         {
             _logger.LogInformation("GET schedule/course/{courseId} called", courseId);
             var schedules = await _scheduleRepository.GetByCourseIdAsync(courseId);
-            return Ok(schedules);
+            var resources = _mapper.Map<List<ScheduleResource>>(schedules);
+            return Ok(resources);
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateSchedule([FromBody] Schedule schedule)
+        public async Task<IActionResult> CreateSchedule([FromBody] ScheduleCreateResource createResource)
         {
-            _logger.LogInformation("POST schedule called for course ID {CourseId} with title {Title}", schedule.CourseId, schedule.Title);
+            _logger.LogInformation("POST schedule called for course ID {CourseId} with title {Title}", createResource.CourseId, createResource.Title);
+
+            var schedule = _mapper.Map<Schedule>(createResource);
+            // Set UserId from current user context (implement as needed)
+            // schedule.UserId = GetCurrentUserId();
+
             var created = await _scheduleRepository.CreateAsync(schedule);
-            return CreatedAtAction(nameof(GetSchedule), new { scheduleId = created.Id }, created);
+            var resource = _mapper.Map<ScheduleResource>(created);
+            return CreatedAtAction(nameof(GetSchedule), new { scheduleId = created.Id }, resource);
         }
 
-        [HttpPost("day")]
-        public async Task<IActionResult> AddScheduleDay([FromBody] ScheduleDay scheduleDay)
-        {
-            _logger.LogInformation("POST schedule/day called for schedule ID {ScheduleId}", scheduleDay.ScheduleId);
-            var created = await _scheduleRepository.AddScheduleDayAsync(scheduleDay);
-            return Ok(created);
-        }
-
-        // Configuration updates only - NO ScheduleDays
         [HttpPut("{scheduleId}/config")]
         public async Task<IActionResult> UpdateScheduleConfig(int scheduleId, [FromBody] ScheduleConfigUpdateResource config)
         {
@@ -69,7 +75,7 @@ namespace LessonTree.API.Controllers
                 return BadRequest("Schedule ID mismatch");
             }
 
-            var updated = await _scheduleRepository.UpdateConfigAsync(config);
+            var updated = await _scheduleRepository.UpdateConfigAsync(scheduleId, config);
             if (updated == null)
             {
                 _logger.LogWarning("Schedule ID {ScheduleId} not found for config update", scheduleId);
@@ -77,30 +83,31 @@ namespace LessonTree.API.Controllers
             }
 
             _logger.LogInformation("Schedule ID {ScheduleId} config updated successfully", scheduleId);
-            return Ok(updated);
+            var resource = _mapper.Map<ScheduleResource>(updated);
+            return Ok(resource);
         }
 
-        // ScheduleDays updates only - NO config fields
-        [HttpPut("{scheduleId}/days")]
-        public async Task<IActionResult> UpdateScheduleDays(int scheduleId, [FromBody] ScheduleDaysUpdateResource scheduleDays)
+        [HttpPut("{scheduleId}/events")]
+        public async Task<IActionResult> UpdateScheduleEvents(int scheduleId, [FromBody] ScheduleEventsUpdateResource scheduleEvents)
         {
-            _logger.LogInformation("PUT schedule/{scheduleId}/days called with {DayCount} days", scheduleId, scheduleDays.ScheduleDays.Count);
+            _logger.LogInformation("PUT schedule/{scheduleId}/events called with {EventCount} events", scheduleId, scheduleEvents.ScheduleEvents.Count);
 
-            if (scheduleId != scheduleDays.ScheduleId)
+            if (scheduleId != scheduleEvents.ScheduleId)
             {
-                _logger.LogWarning("Schedule ID mismatch: URL {UrlId} vs Body {BodyId}", scheduleId, scheduleDays.ScheduleId);
+                _logger.LogWarning("Schedule ID mismatch: URL {UrlId} vs Body {BodyId}", scheduleId, scheduleEvents.ScheduleId);
                 return BadRequest("Schedule ID mismatch");
             }
 
-            var updated = await _scheduleRepository.UpdateScheduleDaysAsync(scheduleId, scheduleDays.ScheduleDays);
+            var updated = await _scheduleRepository.UpdateScheduleEventsAsync(scheduleId, scheduleEvents.ScheduleEvents);
             if (updated == null)
             {
-                _logger.LogWarning("Schedule ID {ScheduleId} not found for days update", scheduleId);
+                _logger.LogWarning("Schedule ID {ScheduleId} not found for events update", scheduleId);
                 return NotFound();
             }
 
-            _logger.LogInformation("Schedule ID {ScheduleId} days updated successfully", scheduleId);
-            return Ok(updated);
+            _logger.LogInformation("Schedule ID {ScheduleId} events updated successfully", scheduleId);
+            var resource = _mapper.Map<ScheduleResource>(updated);
+            return Ok(resource);
         }
     }
 }

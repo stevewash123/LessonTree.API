@@ -3,6 +3,7 @@ using System;
 using LessonTree.DAL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LessonTree.DAL.Migrations
 {
     [DbContext(typeof(LessonTreeContext))]
-    partial class LessonTreeContextModelSnapshot : ModelSnapshot
+    [Migration("20250606124035_AddPeriodAssignements")]
+    partial class AddPeriodAssignements
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.2");
@@ -304,6 +307,9 @@ namespace LessonTree.DAL.Migrations
                     b.Property<int?>("CourseId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("CourseId1")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("FontColor")
                         .IsRequired()
                         .HasMaxLength(7)
@@ -328,6 +334,10 @@ namespace LessonTree.DAL.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("CourseId1");
 
                     b.HasIndex("UserConfigurationId");
 
@@ -927,11 +937,23 @@ namespace LessonTree.DAL.Migrations
 
             modelBuilder.Entity("LessonTree.DAL.Domain.PeriodAssignment", b =>
                 {
+                    b.HasOne("LessonTree.DAL.Domain.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("FK_PeriodAssignment_Courses_CourseId_Positive_Only");
+
+                    b.HasOne("LessonTree.DAL.Domain.Course", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId1");
+
                     b.HasOne("LessonTree.DAL.Domain.UserConfiguration", "UserConfiguration")
                         .WithMany("PeriodAssignments")
                         .HasForeignKey("UserConfigurationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Course");
 
                     b.Navigation("UserConfiguration");
                 });

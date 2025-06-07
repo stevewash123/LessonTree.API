@@ -9,7 +9,7 @@ namespace LessonTree.API.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-    public class StandardController : ControllerBase
+    public class StandardController : BaseController
     {
         private readonly IStandardService _service;
         private readonly ILogger<StandardController> _logger;

@@ -8,13 +8,14 @@ using LessonTree.DAL.Domain;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using LessonTree.API.Controllers;
 
 namespace LessonTree.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-    public class NoteController : ControllerBase
+    public class NoteController : BaseController
     {
         private readonly INotesRepository _notesRepository;
         private readonly IUserRepository _userRepository;
@@ -27,17 +28,6 @@ namespace LessonTree.Controllers
             _userRepository = userRepository;
             _mapper = mapper;
             _logger = logger;
-        }
-
-        private int GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-            {
-                _logger.LogError("Failed to extract UserId from JWT claims");
-                throw new UnauthorizedAccessException("User ID not found in token");
-            }
-            return userId;
         }
 
 

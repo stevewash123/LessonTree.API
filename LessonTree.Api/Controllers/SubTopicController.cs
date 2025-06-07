@@ -16,7 +16,7 @@ namespace LessonTree.API.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-    public class SubTopicController : ControllerBase
+    public class SubTopicController : BaseController
     {
         private readonly ISubTopicService _service;
         private readonly ILogger<SubTopicController> _logger;
@@ -25,17 +25,6 @@ namespace LessonTree.API.Controllers
         {
             _service = service;
             _logger = logger;
-        }
-
-        private int GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-            {
-                _logger.LogError("Failed to extract UserId from JWT claims");
-                throw new UnauthorizedAccessException("User ID not found in token");
-            }
-            return userId;
         }
 
         [HttpGet("{id}")]

@@ -2,6 +2,7 @@
 // DOES NOT: Handle business logic or data access directly
 // CALLED BY: Angular UI via HTTP requests
 
+using LessonTree.API.Controllers;
 using LessonTree.BLL.Service;
 using LessonTree.Models.DTO;
 using LessonTree.Models.Enums;
@@ -13,7 +14,7 @@ using System.Security.Claims;
 [Route("api/[controller]")]
 [ApiController]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-public class TopicController : ControllerBase
+public class TopicController : BaseController
 {
     private readonly ITopicService _service;
     private readonly ILogger<TopicController> _logger;
@@ -22,17 +23,6 @@ public class TopicController : ControllerBase
     {
         _service = service;
         _logger = logger;
-    }
-
-    private int GetCurrentUserId()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
-        {
-            _logger.LogError("Failed to extract UserId from JWT claims");
-            throw new UnauthorizedAccessException("User ID not found in token");
-        }
-        return userId;
     }
 
     [HttpGet]

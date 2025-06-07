@@ -1,5 +1,9 @@
-﻿using LessonTree.BLL.Service;
-using LessonTree.Models;
+﻿// **COMPLETE FILE** - UserController with clean JWT approach
+// RESPONSIBILITY: User endpoints without UserId access on DTOs
+// DOES NOT: Access UserConfigurationResource.UserId (doesn't exist)
+// CALLED BY: Angular frontend with JWT tokens
+
+using LessonTree.BLL.Service;
 using LessonTree.Models.DTO;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -26,13 +30,7 @@ namespace LessonTree.API.Controllers
         public IActionResult GetUsers()
         {
             _logger.LogDebug("Entering GetUsers");
-            var users = _service.GetAll();
-            var userResources = users.Select(u => new UserResource
-            {
-                Id = u.Id,
-                Username = u.UserName,
-                Password = null
-            }).ToList();
+            var userResources = _service.GetAllUserResources();
             _logger.LogDebug("Returning {Count} users", userResources.Count);
             return Ok(userResources);
         }
@@ -41,21 +39,14 @@ namespace LessonTree.API.Controllers
         public IActionResult GetUser(int id)
         {
             _logger.LogDebug("Entering GetUser with ID: {UserId}", id);
-            var user = _service.GetById(id);
-            if (user == null)
+            var userResource = _service.GetUserResourceById(id);
+            if (userResource == null)
             {
                 _logger.LogError("User with ID {UserId} not found", id);
                 return NotFound();
             }
-            var userResource = new UserResource
-            {
-                Id = user.Id,
-                Username = user.UserName,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Password = null
-            };
-            _logger.LogDebug("Returning user: {UserName}", user.UserName);
+
+            _logger.LogDebug("Returning user: {UserName}", userResource.Username);
             return Ok(userResource);
         }
 
@@ -66,19 +57,18 @@ namespace LessonTree.API.Controllers
             if (id != userResource.Id)
             {
                 _logger.LogWarning("ID mismatch: URL ID {UrlId} does not match body ID {BodyId}", id, userResource.Id);
-                return BadRequest();
+                return BadRequest("ID mismatch");
             }
-            var user = _service.GetById(id);
-            if (user == null)
+
+            var updatedUserResource = _service.UpdateFromResource(id, userResource);
+            if (updatedUserResource == null)
             {
-                _logger.LogError("User with ID {UserId} not found", id);
+                _logger.LogError("User with ID {UserId} not found for update", id);
                 return NotFound();
             }
-            user.FirstName = userResource.FirstName;
-            user.LastName = userResource.LastName;
-            _service.Update(user);
-            _logger.LogInformation("Updated user with ID: {UserId}, UserName: {UserName}", id, user.UserName);
-            return NoContent();
+
+            _logger.LogInformation("Updated user with ID: {UserId}", id);
+            return Ok(updatedUserResource);
         }
 
         [HttpDelete("{id}")]
@@ -88,6 +78,63 @@ namespace LessonTree.API.Controllers
             _service.Delete(id);
             _logger.LogInformation("Deleted user with ID: {UserId}", id);
             return NoContent();
+        }
+
+        [HttpGet("{id}/configuration")]
+        public IActionResult GetUserConfiguration(int id)
+        {
+            _logger.LogDebug("Entering GetUserConfiguration for user ID: {UserId}", id);
+
+            try
+            {
+                var userConfig = _service.GetUserConfiguration(id);
+                if (userConfig == null)
+                {
+                    _logger.LogWarning("User with ID {UserId} not found", id);
+                    return NotFound("User not found");
+                }
+
+                _logger.LogDebug("Returning user configuration for user ID: {UserId}", id);
+                return Ok(userConfig);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving user configuration for user ID: {UserId}", id);
+                return StatusCode(500, "Error retrieving user configuration");
+            }
+        }
+
+        [HttpPut("{id}/configuration")]
+        public IActionResult UpdateUserConfiguration(int id, [FromBody] UserConfigurationUpdate configUpdate)  // FIXED: Use UserConfigurationUpdate
+        {
+            _logger.LogDebug("Entering UpdateUserConfiguration for user ID: {UserId}", id);
+
+            if (configUpdate == null)
+            {
+                _logger.LogWarning("User configuration update request is null for user ID: {UserId}", id);
+                return BadRequest("User configuration data is required");
+            }
+
+            // REMOVED: UserId validation - clean DTO doesn't have UserId property
+            // The repository will handle setting UserId internally
+
+            try
+            {
+                var updatedConfig = _service.UpdateUserConfiguration(id, configUpdate);  // Now passes correct DTO type
+                if (updatedConfig == null)
+                {
+                    _logger.LogError("User with ID {UserId} not found for configuration update", id);
+                    return NotFound("User not found");
+                }
+
+                _logger.LogInformation("Updated user configuration for user ID: {UserId}", id);
+                return Ok(updatedConfig);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating user configuration for user ID: {UserId}", id);
+                return StatusCode(500, "Error updating user configuration");
+            }
         }
     }
 }
