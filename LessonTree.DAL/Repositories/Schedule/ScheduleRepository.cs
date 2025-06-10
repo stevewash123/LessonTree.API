@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace LessonTree.DAL.Repositories
 {
-   
+
     public class ScheduleRepository : IScheduleRepository
     {
         private readonly LessonTreeContext _context;
@@ -26,139 +26,260 @@ namespace LessonTree.DAL.Repositories
             _logger = logger;
         }
 
-        public async Task<Schedule?> GetByIdAsync(int scheduleId)
+        // === MASTER SCHEDULE OPERATIONS ===
+
+        public async Task<Schedule?> GetByUserIdAsync(int userId)
         {
-            _logger.LogDebug("Fetching schedule with ID {ScheduleId}", scheduleId);
-            return await _context.Schedules
-                .Include(s => s.ScheduleEvents)
-                    .ThenInclude(se => se.Lesson)
-                .FirstOrDefaultAsync(s => s.Id == scheduleId);
+            _logger.LogInformation($"GetByUserIdAsync: Fetching schedule for user {userId}");
+
+            var schedule = await _context.Schedules
+                .Include(s => s.ScheduleEvents.OrderBy(e => e.Date).ThenBy(e => e.Period))
+                    .ThenInclude(e => e.Lesson) // Include lesson data for display
+                .FirstOrDefaultAsync(s => s.UserId == userId);
+
+            if (schedule != null)
+            {
+                _logger.LogInformation($"GetByUserIdAsync: Found schedule {schedule.Id} with {schedule.ScheduleEvents.Count} events for user {userId}");
+            }
+            else
+            {
+                _logger.LogInformation($"GetByUserIdAsync: No schedule found for user {userId}");
+            }
+
+            return schedule;
         }
 
-        public async Task<Schedule?> GetByIdAndUserAsync(int scheduleId, int userId)
+        public async Task<Schedule?> GetByIdAsync(int id)
         {
-            _logger.LogDebug("Fetching schedule {ScheduleId} for user {UserId}", scheduleId, userId);
-            return await _context.Schedules
-                .Include(s => s.ScheduleEvents)
-                    .ThenInclude(se => se.Lesson)
-                .FirstOrDefaultAsync(s => s.Id == scheduleId && s.UserId == userId);
-        }
+            _logger.LogInformation($"GetByIdAsync: Fetching schedule {id}");
 
-        public async Task<List<Schedule>> GetByCourseAndUserAsync(int courseId, int userId)
-        {
-            _logger.LogDebug("Fetching schedules for course {CourseId} and user {UserId}", courseId, userId);
-            return await _context.Schedules
-                .Where(s => s.CourseId == courseId && s.UserId == userId)
-                .Include(s => s.ScheduleEvents)
-                    .ThenInclude(se => se.Lesson)
-                .ToListAsync();
-        }
+            var schedule = await _context.Schedules
+                .Include(s => s.ScheduleEvents.OrderBy(e => e.Date).ThenBy(e => e.Period))
+                    .ThenInclude(e => e.Lesson)
+                .Include(s => s.User) // Include user for validation
+                .FirstOrDefaultAsync(s => s.Id == id);
 
-        public async Task<List<Schedule>> GetByUserAsync(int userId)
-        {
-            _logger.LogDebug("Fetching all schedules for user {UserId}", userId);
-            return await _context.Schedules
-                .Where(s => s.UserId == userId)
-                .Include(s => s.ScheduleEvents)
-                    .ThenInclude(se => se.Lesson)
-                .OrderBy(s => s.Title)
-                .ToListAsync();
+            if (schedule != null)
+            {
+                _logger.LogInformation($"GetByIdAsync: Found schedule {id} for user {schedule.UserId} with {schedule.ScheduleEvents.Count} events");
+            }
+            else
+            {
+                _logger.LogWarning($"GetByIdAsync: Schedule {id} not found");
+            }
+
+            return schedule;
         }
 
         public async Task<Schedule> CreateAsync(Schedule schedule)
         {
-            _logger.LogInformation("Creating schedule for user {UserId}, course {CourseId} with title {Title}",
-                schedule.UserId, schedule.CourseId, schedule.Title);
+            _logger.LogInformation($"CreateAsync: Creating schedule '{schedule.Title}' for user {schedule.UserId}");
+
+            // Verify user doesn't already have a schedule
+            var existingSchedule = await GetByUserIdAsync(schedule.UserId);
+            if (existingSchedule != null)
+            {
+                throw new InvalidOperationException($"User {schedule.UserId} already has a schedule (ID: {existingSchedule.Id})");
+            }
 
             _context.Schedules.Add(schedule);
             await _context.SaveChangesAsync();
-            return schedule;
+
+            _logger.LogInformation($"CreateAsync: Created schedule {schedule.Id} for user {schedule.UserId}");
+
+            // Return with includes
+            return await GetByIdAsync(schedule.Id) ?? schedule;
         }
 
-        public async Task<Schedule?> UpdateConfigAsync(int scheduleId, ScheduleConfigUpdateResource config)
+        public async Task<Schedule> UpdateAsync(Schedule schedule)
         {
-            _logger.LogDebug("Updating config for schedule {ScheduleId}", scheduleId);
+            _logger.LogInformation($"UpdateAsync: Updating schedule {schedule.Id}");
 
-            var existing = await _context.Schedules.FindAsync(scheduleId);
-            if (existing == null)
+            var existingSchedule = await _context.Schedules.FindAsync(schedule.Id);
+            if (existingSchedule == null)
             {
-                _logger.LogWarning("Schedule {ScheduleId} not found for config update", scheduleId);
-                return null;
+                throw new ArgumentException($"Schedule {schedule.Id} not found");
             }
 
-            // Update ONLY config fields - no ID validation needed in clean architecture
-            existing.Title = config.Title;
-            existing.StartDate = config.StartDate;
-            existing.EndDate = config.EndDate;
-            existing.TeachingDays = config.TeachingDays;
-            existing.IsLocked = config.IsLocked;
+            // Update configuration fields (don't update events here)
+            existingSchedule.Title = schedule.Title;
+            existingSchedule.StartDate = schedule.StartDate;
+            existingSchedule.EndDate = schedule.EndDate;
+            existingSchedule.TeachingDays = schedule.TeachingDays;
+            existingSchedule.IsLocked = schedule.IsLocked;
 
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Updated config for schedule {ScheduleId}", scheduleId);
-            return existing;
+
+            _logger.LogInformation($"UpdateAsync: Updated schedule {schedule.Id}");
+
+            // Return with includes
+            return await GetByIdAsync(schedule.Id) ?? existingSchedule;
         }
 
-        public async Task<Schedule?> UpdateScheduleEventsAsync(int scheduleId, List<ScheduleEventResource> scheduleEventResources)
+        public async Task DeleteAsync(int id)
         {
-            _logger.LogDebug("Updating events for schedule {ScheduleId} with {EventCount} events",
-                scheduleId, scheduleEventResources.Count);
+            _logger.LogInformation($"DeleteAsync: Deleting schedule {id}");
 
-            var existing = await _context.Schedules
+            var schedule = await _context.Schedules
                 .Include(s => s.ScheduleEvents)
-                .FirstOrDefaultAsync(s => s.Id == scheduleId);
+                .FirstOrDefaultAsync(s => s.Id == id);
 
-            if (existing == null)
+            if (schedule == null)
             {
-                _logger.LogWarning("Schedule {ScheduleId} not found for events update", scheduleId);
-                return null;
+                throw new ArgumentException($"Schedule {id} not found");
             }
 
-            // Clear existing events
-            _context.ScheduleEvents.RemoveRange(existing.ScheduleEvents);
-
-            // Add new events from resource
-            existing.ScheduleEvents = scheduleEventResources.Select(eventResource => new ScheduleEvent
-            {
-                ScheduleId = scheduleId,
-                Date = eventResource.Date,
-                Period = eventResource.Period,
-                LessonId = eventResource.LessonId,
-                SpecialCode = eventResource.SpecialCode,
-                Comment = eventResource.Comment
-            }).ToList();
-
+            _context.Schedules.Remove(schedule);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Updated {EventCount} events for schedule {ScheduleId}",
-                scheduleEventResources.Count, scheduleId);
-            return existing;
+
+            _logger.LogInformation($"DeleteAsync: Deleted schedule {id} and {schedule.ScheduleEvents.Count} associated events");
         }
 
-        public async Task<bool> DeleteAsync(int scheduleId)
-        {
-            _logger.LogDebug("Deleting schedule {ScheduleId}", scheduleId);
+        // === SCHEDULE EVENT OPERATIONS ===
 
-            var existing = await _context.Schedules.FindAsync(scheduleId);
-            if (existing == null)
+        public async Task<Schedule> UpdateScheduleEventsAsync(int scheduleId, List<ScheduleEvent> events)
+        {
+            _logger.LogInformation($"UpdateScheduleEventsAsync: Updating {events.Count} events for schedule {scheduleId}");
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                _logger.LogWarning("Schedule {ScheduleId} not found for deletion", scheduleId);
-                return false;
+                var schedule = await _context.Schedules
+                    .Include(s => s.ScheduleEvents)
+                    .FirstOrDefaultAsync(s => s.Id == scheduleId);
+
+                if (schedule == null)
+                {
+                    throw new ArgumentException($"Schedule {scheduleId} not found");
+                }
+
+                // Remove existing events
+                _context.ScheduleEvents.RemoveRange(schedule.ScheduleEvents);
+
+                // Add new events
+                foreach (var evt in events)
+                {
+                    evt.ScheduleId = scheduleId; // Ensure correct schedule ID
+                    evt.Id = 0; // Reset ID for new entities
+                }
+
+                _context.ScheduleEvents.AddRange(events);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                _logger.LogInformation($"UpdateScheduleEventsAsync: Updated {events.Count} events for schedule {scheduleId}");
+
+                // Return updated schedule with events
+                return await GetByIdAsync(scheduleId) ?? schedule;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, $"UpdateScheduleEventsAsync: Failed to update events for schedule {scheduleId}");
+                throw;
+            }
+        }
+
+        public async Task<ScheduleEvent> AddScheduleEventAsync(ScheduleEvent scheduleEvent)
+        {
+            _logger.LogInformation($"AddScheduleEventAsync: Adding event for schedule {scheduleEvent.ScheduleId} on {scheduleEvent.Date:yyyy-MM-dd} period {scheduleEvent.Period}");
+
+            // Verify schedule exists
+            var schedule = await _context.Schedules.FindAsync(scheduleEvent.ScheduleId);
+            if (schedule == null)
+            {
+                throw new ArgumentException($"Schedule {scheduleEvent.ScheduleId} not found");
             }
 
-            _context.Schedules.Remove(existing);
+            // Check for existing event at same date/period
+            var existingEvent = await _context.ScheduleEvents
+                .FirstOrDefaultAsync(e => e.ScheduleId == scheduleEvent.ScheduleId &&
+                                       e.Date.Date == scheduleEvent.Date.Date &&
+                                       e.Period == scheduleEvent.Period);
+
+            if (existingEvent != null)
+            {
+                throw new InvalidOperationException($"Event already exists for schedule {scheduleEvent.ScheduleId} on {scheduleEvent.Date:yyyy-MM-dd} period {scheduleEvent.Period}");
+            }
+
+            _context.ScheduleEvents.Add(scheduleEvent);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Deleted schedule {ScheduleId}", scheduleId);
-            return true;
+
+            _logger.LogInformation($"AddScheduleEventAsync: Added event {scheduleEvent.Id}");
+
+            // Return with includes
+            return await _context.ScheduleEvents
+                .Include(e => e.Lesson)
+                .FirstOrDefaultAsync(e => e.Id == scheduleEvent.Id) ?? scheduleEvent;
         }
 
-        // Legacy method for backward compatibility (deprecated)
-        [Obsolete("Use GetByCourseAndUserAsync for security")]
-        public async Task<List<Schedule>> GetByCourseIdAsync(int courseId)
+        public async Task<ScheduleEvent> UpdateScheduleEventAsync(ScheduleEvent scheduleEvent)
         {
-            _logger.LogWarning("Using deprecated GetByCourseIdAsync - should use GetByCourseAndUserAsync");
-            return await _context.Schedules
-                .Where(s => s.CourseId == courseId)
-                .Include(s => s.ScheduleEvents)
+            _logger.LogInformation($"UpdateScheduleEventAsync: Updating event {scheduleEvent.Id}");
+
+            var existingEvent = await _context.ScheduleEvents.FindAsync(scheduleEvent.Id);
+            if (existingEvent == null)
+            {
+                throw new ArgumentException($"ScheduleEvent {scheduleEvent.Id} not found");
+            }
+
+            // Update fields
+            existingEvent.CourseId = scheduleEvent.CourseId;
+            existingEvent.Date = scheduleEvent.Date;
+            existingEvent.Period = scheduleEvent.Period;
+            existingEvent.LessonId = scheduleEvent.LessonId;
+            existingEvent.EventType = scheduleEvent.EventType;
+            existingEvent.EventCategory = scheduleEvent.EventCategory;
+            existingEvent.Comment = scheduleEvent.Comment;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation($"UpdateScheduleEventAsync: Updated event {scheduleEvent.Id}");
+
+            // Return with includes
+            return await _context.ScheduleEvents
+                .Include(e => e.Lesson)
+                .FirstOrDefaultAsync(e => e.Id == scheduleEvent.Id) ?? existingEvent;
+        }
+
+        public async Task DeleteScheduleEventAsync(int scheduleEventId)
+        {
+            _logger.LogInformation($"DeleteScheduleEventAsync: Deleting event {scheduleEventId}");
+
+            var scheduleEvent = await _context.ScheduleEvents.FindAsync(scheduleEventId);
+            if (scheduleEvent == null)
+            {
+                throw new ArgumentException($"ScheduleEvent {scheduleEventId} not found");
+            }
+
+            _context.ScheduleEvents.Remove(scheduleEvent);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation($"DeleteScheduleEventAsync: Deleted event {scheduleEventId}");
+        }
+
+        // === QUERY OPERATIONS ===
+
+        public async Task<List<Schedule>> GetSchedulesByUserIdAsync(int userId)
+        {
+            _logger.LogInformation($"GetSchedulesByUserIdAsync: Fetching all schedules for user {userId}");
+
+            var schedules = await _context.Schedules
+                .Include(s => s.ScheduleEvents.OrderBy(e => e.Date).ThenBy(e => e.Period))
+                .Where(s => s.UserId == userId)
+                .OrderByDescending(s => s.StartDate)
                 .ToListAsync();
+
+            _logger.LogInformation($"GetSchedulesByUserIdAsync: Found {schedules.Count} schedules for user {userId}");
+
+            return schedules;
+        }
+
+        public async Task<bool> UserHasScheduleAsync(int userId)
+        {
+            return await _context.Schedules.AnyAsync(s => s.UserId == userId);
         }
     }
+
 }

@@ -3,6 +3,7 @@ using System;
 using LessonTree.DAL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LessonTree.DAL.Migrations
 {
     [DbContext(typeof(LessonTreeContext))]
-    partial class LessonTreeContextModelSnapshot : ModelSnapshot
+    [Migration("20250608173744_ForMasterSchedule2")]
+    partial class ForMasterSchedule2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.2");
@@ -323,28 +326,16 @@ namespace LessonTree.DAL.Migrations
                     b.Property<int?>("SpecialPeriodType")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("TeachingDays")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("UserConfigurationId")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserConfigurationId", "Period", "TeachingDays")
-                        .HasDatabaseName("IX_PeriodAssignments_UserConfig_Period_TeachingDays");
+                    b.HasIndex("UserConfigurationId");
 
-                    b.ToTable("PeriodAssignments", t =>
+                    b.ToTable("PeriodAssignment", t =>
                         {
-                            t.HasCheckConstraint("CK_PeriodAssignment_CourseId_Positive", "CourseId IS NULL OR CourseId > 0");
-
-                            t.HasCheckConstraint("CK_PeriodAssignment_ExclusiveAssignment", "(CourseId IS NOT NULL AND SpecialPeriodType IS NULL) OR (CourseId IS NULL AND SpecialPeriodType IS NOT NULL)");
-
-                            t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_NotEmpty", "TeachingDays IS NOT NULL AND LENGTH(TRIM(TeachingDays)) > 0");
-
-                            t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_ValidDays", "TeachingDays NOT LIKE '%[^MondayTueswdhFrig,]%' AND \r\n                        (TeachingDays LIKE '%Monday%' OR \r\n                        TeachingDays LIKE '%Tuesday%' OR \r\n                        TeachingDays LIKE '%Wednesday%' OR \r\n                        TeachingDays LIKE '%Thursday%' OR \r\n                        TeachingDays LIKE '%Friday%' OR\r\n                        TeachingDays LIKE '%Saturday%' OR\r\n                        TeachingDays LIKE '%Sunday%')");
+                            t.HasCheckConstraint("CK_PeriodAssignment_CourseId_PositiveOrNull", "CourseId IS NULL OR CourseId > 0 OR CourseId < 0");
                         });
                 });
 
@@ -658,9 +649,6 @@ namespace LessonTree.DAL.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT");
 
@@ -673,9 +661,6 @@ namespace LessonTree.DAL.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("SettingsJson")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("StartDate")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("UserId")

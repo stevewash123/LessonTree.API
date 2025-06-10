@@ -1,10 +1,11 @@
-﻿// **COMPLETE FILE** - UserController with clean JWT approach
-// RESPONSIBILITY: User endpoints without UserId access on DTOs
+﻿// **COMPLETE FILE** - UserController with period assignment validation
+// RESPONSIBILITY: User endpoints with enhanced configuration validation
 // DOES NOT: Access UserConfigurationResource.UserId (doesn't exist)
 // CALLED BY: Angular frontend with JWT tokens
 
 using LessonTree.BLL.Service;
 using LessonTree.Models.DTO;
+using LessonTree.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,11 +19,16 @@ namespace LessonTree.API.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _service;
+        private readonly IPeriodAssignmentValidationService _validationService;
         private readonly ILogger<UserController> _logger;
 
-        public UserController(IUserService service, ILogger<UserController> logger)
+        public UserController(
+            IUserService service,
+            IPeriodAssignmentValidationService validationService,
+            ILogger<UserController> logger)
         {
             _service = service;
+            _validationService = validationService;
             _logger = logger;
         }
 
@@ -105,7 +111,7 @@ namespace LessonTree.API.Controllers
         }
 
         [HttpPut("{id}/configuration")]
-        public IActionResult UpdateUserConfiguration(int id, [FromBody] UserConfigurationUpdate configUpdate)  // FIXED: Use UserConfigurationUpdate
+        public IActionResult UpdateUserConfiguration(int id, [FromBody] UserConfigurationUpdate configUpdate)
         {
             _logger.LogDebug("Entering UpdateUserConfiguration for user ID: {UserId}", id);
 
@@ -115,12 +121,31 @@ namespace LessonTree.API.Controllers
                 return BadRequest("User configuration data is required");
             }
 
-            // REMOVED: UserId validation - clean DTO doesn't have UserId property
-            // The repository will handle setting UserId internally
+            // NEW: Validate period assignments before saving
+            if (configUpdate.PeriodAssignments?.Any() == true)
+            {
+                var validationResult = _validationService.ValidatePeriodAssignments(
+                    configUpdate.PeriodAssignments,
+                    configUpdate.PeriodsPerDay);
+
+                if (!validationResult.IsValid)
+                {
+                    _logger.LogWarning($"Period assignment validation failed for user {id}: {string.Join(", ", validationResult.Errors)}");
+
+                    return BadRequest(new
+                    {
+                        message = "Period assignment validation failed",
+                        errors = validationResult.Errors,
+                        canGenerate = false
+                    });
+                }
+
+                _logger.LogInformation($"Period assignment validation passed for user {id}");
+            }
 
             try
             {
-                var updatedConfig = _service.UpdateUserConfiguration(id, configUpdate);  // Now passes correct DTO type
+                var updatedConfig = _service.UpdateUserConfiguration(id, configUpdate);
                 if (updatedConfig == null)
                 {
                     _logger.LogError("User with ID {UserId} not found for configuration update", id);
@@ -128,13 +153,46 @@ namespace LessonTree.API.Controllers
                 }
 
                 _logger.LogInformation("Updated user configuration for user ID: {UserId}", id);
-                return Ok(updatedConfig);
+
+                // Return success with validation status
+                return Ok(new
+                {
+                    configuration = updatedConfig,
+                    canGenerate = true,
+                    validationMessage = "Configuration is valid and ready for schedule generation"
+                });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating user configuration for user ID: {UserId}", id);
                 return StatusCode(500, "Error updating user configuration");
             }
+        }
+
+        // NEW: Validation-only endpoint for real-time validation
+        [HttpPost("{id}/configuration/validate")]
+        public IActionResult ValidatePeriodAssignments(int id, [FromBody] UserConfigurationUpdate configUpdate)
+        {
+            _logger.LogDebug("Entering ValidatePeriodAssignments for user ID: {UserId}", id);
+
+            if (configUpdate?.PeriodAssignments?.Any() != true)
+            {
+                return Ok(new { isValid = true, canGenerate = false, message = "No period assignments to validate" });
+            }
+
+            var validationResult = _validationService.ValidatePeriodAssignments(
+                configUpdate.PeriodAssignments,
+                configUpdate.PeriodsPerDay);
+
+            return Ok(new
+            {
+                isValid = validationResult.IsValid,
+                canGenerate = validationResult.IsValid,
+                errors = validationResult.Errors,
+                message = validationResult.IsValid
+                    ? "Configuration is valid and ready for schedule generation"
+                    : "Configuration has validation errors"
+            });
         }
     }
 }

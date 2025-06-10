@@ -7,6 +7,7 @@ using AutoMapper;
 using LessonTree.DAL.Domain;
 using LessonTree.Models.DTO;
 using LessonTree.Models.Enums;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 public class MappingProfile : Profile
 {
@@ -248,11 +249,18 @@ public class MappingProfile : Profile
         // =============================================================================
         // UPDATED PERIOD ASSIGNMENT MAPPINGS (Cleaned up duplicates)
         // =============================================================================
+        // **UPDATED PERIOD ASSIGNMENT MAPPINGS** - Remove SectionName, Add SpecialPeriodType
+        // Replace the existing PeriodAssignment mappings in MappingProfile.cs with these:
+
+        // UPDATED PERIOD ASSIGNMENT MAPPINGS (Standardized string[] TeachingDays)
+        // =============================================================================
         CreateMap<PeriodAssignment, PeriodAssignmentResource>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Period, opt => opt.MapFrom(src => src.Period))
             .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
-            .ForMember(dest => dest.SectionName, opt => opt.MapFrom(src => src.SectionName))
+            .ForMember(dest => dest.SpecialPeriodType, opt => opt.MapFrom(src =>
+                src.SpecialPeriodType.HasValue ? src.SpecialPeriodType.Value.ToString() : null))
+            .ForMember(dest => dest.TeachingDays, opt => opt.MapFrom<PeriodAssignmentTeachingDaysToArrayResolver>())
             .ForMember(dest => dest.Room, opt => opt.MapFrom(src => src.Room))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes))
             .ForMember(dest => dest.BackgroundColor, opt => opt.MapFrom(src => src.BackgroundColor))
@@ -262,12 +270,14 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Period, opt => opt.MapFrom(src => src.Period))
             .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
-            .ForMember(dest => dest.SectionName, opt => opt.MapFrom(src => src.SectionName))
+            .ForMember(dest => dest.SpecialPeriodType, opt => opt.MapFrom<SpecialPeriodTypeResolver>())
+            .ForMember(dest => dest.TeachingDays, opt => opt.MapFrom<PeriodAssignmentTeachingDaysToStringResolver>())
             .ForMember(dest => dest.Room, opt => opt.MapFrom(src => src.Room))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes))
             .ForMember(dest => dest.BackgroundColor, opt => opt.MapFrom(src => src.BackgroundColor))
             .ForMember(dest => dest.FontColor, opt => opt.MapFrom(src => src.FontColor))
             .ForMember(dest => dest.UserConfigurationId, opt => opt.Ignore()); // Set by repository
+
 
         // =============================================================================
         // ATTACHMENT AND STANDARD MAPPINGS
@@ -302,6 +312,76 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
             .ForMember(dest => dest.StandardType, opt => opt.MapFrom(src => src.StandardType));
 
+
+
+        // =============================================================================
+        // UPDATED SCHEDULE MAPPINGS (Standardized string[] TeachingDays)
+        // =============================================================================
+        CreateMap<Schedule, ScheduleResource>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
+            .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
+            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
+            .ForMember(dest => dest.IsLocked, opt => opt.MapFrom(src => src.IsLocked))
+            .ForMember(dest => dest.TeachingDays, opt => opt.MapFrom<ScheduleTeachingDaysToArrayResolver>())
+            .ForMember(dest => dest.ScheduleEvents, opt => opt.MapFrom(src => src.ScheduleEvents));
+
+        CreateMap<ScheduleCreateResource, Schedule>()
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
+            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
+            .ForMember(dest => dest.TeachingDays, opt => opt.MapFrom<ScheduleCreateTeachingDaysToStringResolver>())
+            .ForMember(dest => dest.UserId, opt => opt.Ignore()) // Set in controller
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.IsLocked, opt => opt.Ignore());
+
+        CreateMap<ScheduleConfigUpdateResource, Schedule>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.StartDate, opt => opt.MapFrom(src => src.StartDate))
+            .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
+            .ForMember(dest => dest.TeachingDays, opt => opt.MapFrom<ScheduleConfigTeachingDaysToStringResolver>())
+            .ForMember(dest => dest.IsLocked, opt => opt.MapFrom(src => src.IsLocked))
+            .ForMember(dest => dest.UserId, opt => opt.Ignore()); // Don't update UserId
+
+        // =============================================================================
+        // NEW SCHEDULE EVENT MAPPINGS
+        // =============================================================================
+        CreateMap<ScheduleEvent, ScheduleEventResource>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.ScheduleId, opt => opt.MapFrom(src => src.ScheduleId))
+            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
+            .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Date))
+            .ForMember(dest => dest.Period, opt => opt.MapFrom(src => src.Period))
+            .ForMember(dest => dest.LessonId, opt => opt.MapFrom(src => src.LessonId))
+            .ForMember(dest => dest.EventType, opt => opt.MapFrom(src => src.EventType))
+            .ForMember(dest => dest.EventCategory, opt => opt.MapFrom(src => src.EventCategory))
+            .ForMember(dest => dest.Comment, opt => opt.MapFrom(src => src.Comment));
+
+        CreateMap<ScheduleEventCreateResource, ScheduleEvent>()
+            .ForMember(dest => dest.ScheduleId, opt => opt.MapFrom(src => src.ScheduleId))
+            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
+            .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Date))
+            .ForMember(dest => dest.Period, opt => opt.MapFrom(src => src.Period))
+            .ForMember(dest => dest.LessonId, opt => opt.MapFrom(src => src.LessonId))
+            .ForMember(dest => dest.EventType, opt => opt.MapFrom(src => src.EventType))
+            .ForMember(dest => dest.EventCategory, opt => opt.MapFrom(src => src.EventCategory))
+            .ForMember(dest => dest.Comment, opt => opt.MapFrom(src => src.Comment))
+            .ForMember(dest => dest.Id, opt => opt.Ignore()); // Set by repository
+
+        CreateMap<ScheduleEventUpdateResource, ScheduleEvent>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
+            .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Date))
+            .ForMember(dest => dest.Period, opt => opt.MapFrom(src => src.Period))
+            .ForMember(dest => dest.LessonId, opt => opt.MapFrom(src => src.LessonId))
+            .ForMember(dest => dest.EventType, opt => opt.MapFrom(src => src.EventType))
+            .ForMember(dest => dest.EventCategory, opt => opt.MapFrom(src => src.EventCategory))
+            .ForMember(dest => dest.Comment, opt => opt.MapFrom(src => src.Comment))
+            .ForMember(dest => dest.ScheduleId, opt => opt.Ignore()); // Don't update ScheduleId
+
+
         // =============================================================================
         // REVERSE MAPPINGS
         // =============================================================================
@@ -313,35 +393,17 @@ public class MappingProfile : Profile
         CreateMap<SubTopicUpdateResource, SubTopic>().ReverseMap();
         CreateMap<LessonCreateResource, Lesson>().ReverseMap();
         CreateMap<LessonUpdateResource, Lesson>().ReverseMap();
+
+
     }
 }
 
-public class NoteParentResolver : IValueResolver<Note, NoteResource, string>
-{
-    public string Resolve(Note source, NoteResource destination, string destMember, ResolutionContext context)
-    {
-        if (source.CourseId.HasValue)
-        {
-            return "Course";
-        }
-        if (source.TopicId.HasValue)
-        {
-            return "Topic";
-        }
-        if (source.SubTopicId.HasValue)
-        {
-            return "SubTopic";
-        }
-        if (source.LessonId.HasValue)
-        {
-            return "Lesson";
-        }
-        throw new Exception("Note must have one and only one parent.");
-    }
-}
+
+
+
 
 // =============================================================================
-// VISIBILITY CONVERSION HELPER
+// UTILITY MAPPING HELPERS
 // =============================================================================
 public static class VisibilityConverter
 {
@@ -354,5 +416,100 @@ public static class VisibilityConverter
             "public" => VisibilityType.Public,
             _ => VisibilityType.Private // Default fallback
         };
+    }
+}
+
+
+
+// =============================================================================
+// CORRECTED RESOLVERS FOR STANDARDIZED string[] TEACHING DAYS
+// =============================================================================
+
+// Convert comma-delimited string (Schedule domain) to string[] (ScheduleResource DTO)
+public class ScheduleTeachingDaysToArrayResolver : IValueResolver<Schedule, ScheduleResource, string[]>
+{
+    public string[] Resolve(Schedule source, ScheduleResource destination, string[] destMember, ResolutionContext context)
+    {
+        if (string.IsNullOrEmpty(source.TeachingDays))
+            return new[] { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday" }; // Default
+
+        return source.TeachingDays.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                  .Select(day => day.Trim())
+                                  .Where(day => !string.IsNullOrEmpty(day))
+                                  .ToArray();
+    }
+}
+
+// Convert string[] (ScheduleCreateResource DTO) to comma-delimited string (Schedule domain)
+public class ScheduleCreateTeachingDaysToStringResolver : IValueResolver<ScheduleCreateResource, Schedule, string>
+{
+    public string Resolve(ScheduleCreateResource source, Schedule destination, string destMember, ResolutionContext context)
+    {
+        if (source.TeachingDays != null && source.TeachingDays.Length > 0)
+        {
+            return string.Join(",", source.TeachingDays.Where(day => !string.IsNullOrEmpty(day)));
+        }
+
+        return "Monday,Tuesday,Wednesday,Thursday,Friday"; // Default
+    }
+}
+
+// Convert string[] (ScheduleConfigUpdateResource DTO) to comma-delimited string (Schedule domain)
+public class ScheduleConfigTeachingDaysToStringResolver : IValueResolver<ScheduleConfigUpdateResource, Schedule, string>
+{
+    public string Resolve(ScheduleConfigUpdateResource source, Schedule destination, string destMember, ResolutionContext context)
+    {
+        if (source.TeachingDays != null && source.TeachingDays.Length > 0)
+        {
+            return string.Join(",", source.TeachingDays.Where(day => !string.IsNullOrEmpty(day)));
+        }
+
+        return "Monday,Tuesday,Wednesday,Thursday,Friday"; // Default
+    }
+}
+
+// Convert comma-delimited string (PeriodAssignment domain) to string[] (PeriodAssignmentResource DTO)
+public class PeriodAssignmentTeachingDaysToArrayResolver : IValueResolver<PeriodAssignment, PeriodAssignmentResource, string[]>
+{
+    public string[] Resolve(PeriodAssignment source, PeriodAssignmentResource destination, string[] destMember, ResolutionContext context)
+    {
+        if (string.IsNullOrEmpty(source.TeachingDays))
+            return new[] { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday" }; // Default
+
+        return source.TeachingDays.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                  .Select(day => day.Trim())
+                                  .Where(day => !string.IsNullOrEmpty(day))
+                                  .ToArray();
+    }
+}
+
+// Convert string[] (PeriodAssignmentResource DTO) to comma-delimited string (PeriodAssignment domain)
+public class PeriodAssignmentTeachingDaysToStringResolver : IValueResolver<PeriodAssignmentResource, PeriodAssignment, string>
+{
+    public string Resolve(PeriodAssignmentResource source, PeriodAssignment destination, string destMember, ResolutionContext context)
+    {
+        if (source.TeachingDays != null && source.TeachingDays.Length > 0)
+        {
+            return string.Join(",", source.TeachingDays.Where(day => !string.IsNullOrEmpty(day)));
+        }
+
+        return "Monday,Tuesday,Wednesday,Thursday,Friday"; // Default
+    }
+}
+
+// =============================================================================
+// RESOLVER FOR SPECIAL PERIOD TYPE CONVERSION (No changes needed)
+// =============================================================================
+public class SpecialPeriodTypeResolver : IValueResolver<PeriodAssignmentResource, PeriodAssignment, SpecialPeriodType?>
+{
+    public SpecialPeriodType? Resolve(PeriodAssignmentResource source, PeriodAssignment destination, SpecialPeriodType? destMember, ResolutionContext context)
+    {
+        if (string.IsNullOrEmpty(source.SpecialPeriodType))
+            return null;
+
+        if (Enum.TryParse<SpecialPeriodType>(source.SpecialPeriodType, true, out var enumValue))
+            return enumValue;
+
+        return null;
     }
 }

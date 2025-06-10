@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Mvc.Formatters;
 using System.Text.Json.Serialization.Metadata;
 using System.Text.Json;
 using Microsoft.OpenApi.Models;
+using LessonTree.API.Services;
 
 namespace LessonTree.API.Configuration
 {
@@ -56,6 +57,7 @@ namespace LessonTree.API.Configuration
             builder.Services.AddTransient<IStandardService, StandardService>();
             builder.Services.AddTransient<IScheduleRepository, ScheduleRepository>();
             builder.Services.AddTransient<IAttachmentService, AttachmentService>();
+            builder.Services.AddTransient<IPeriodAssignmentValidationService, PeriodAssignmentValidationService>();
 
             builder.Services.AddHealthChecks()
                 .AddCheck("self", () => HealthCheckResult.Healthy(builder.Configuration["HealthChecks:Checks:0:Description"]))

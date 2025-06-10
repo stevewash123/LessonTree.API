@@ -1,7 +1,7 @@
-﻿// **COMPLETE FILE** - Transitional User Models for JWT Migration
-// RESPONSIBILITY: Bridge between old ID-based and new JWT-based architecture
-// DOES NOT: Represent final state - includes duplicate data during transition
-// CALLED BY: Controllers during migration period
+﻿// **COMPLETE FILE** - User Identity and Profile Resources (JWT Transitional)
+// RESPONSIBILITY: User identity, profile data, and account management
+// DOES NOT: Handle authentication (see AuthenticationResource.cs) or configuration (see UserConfigurationResource.cs)
+// CALLED BY: Controllers for user profile operations
 
 namespace LessonTree.Models.DTO
 {
@@ -20,36 +20,6 @@ namespace LessonTree.Models.DTO
         // APPLICATION DATA (permanent - business logic)
         public int? District { get; set; }                   // Business data
         public UserConfigurationResource? Configuration { get; set; }  // Business data
-    }
-
-    // Login request (auth only)
-    public class LoginRequest
-    {
-        public string Username { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-    }
-
-    // Clean UserConfiguration without redundant IDs
-    public class UserConfigurationResource
-    {
-        public DateTime LastUpdated { get; set; }
-        public string? SchoolYear { get; set; }
-        public int PeriodsPerDay { get; set; }
-        public List<PeriodAssignmentResource>? PeriodAssignments { get; set; }
-    }
-
-    // Configuration updates - backend gets user from JWT
-    public class UserConfigurationUpdate
-    {
-        public string SchoolYear { get; set; } = string.Empty;
-        public int PeriodsPerDay { get; set; }
-        public List<PeriodAssignmentResource> PeriodAssignments { get; set; } = new();
-    }
-
-    // Application data updates only (for JWT endpoints)
-    public class UserApplicationUpdate
-    {
-        public int? District { get; set; }
     }
 
     // Still needed for initial user creation (before JWT exists)
@@ -77,6 +47,12 @@ namespace LessonTree.Models.DTO
         public string? LastName { get; set; }
         public string? Email { get; set; }
         public string? Phone { get; set; }
+        public int? District { get; set; }
+    }
+
+    // Application data updates only (for JWT endpoints)
+    public class UserApplicationUpdate
+    {
         public int? District { get; set; }
     }
 }

@@ -1,6 +1,6 @@
-﻿// **COMPLETE FILE** - UserService with clean JWT approach and fixed period validation
-// RESPONSIBILITY: User business logic without UserId in DTOs
-// DOES NOT: Reference UserConfigurationResource.UserId (doesn't exist)
+﻿// **COMPLETE FILE** - UserService with SpecialPeriodType support and SectionName removed
+// RESPONSIBILITY: User business logic with period assignment validation
+// DOES NOT: Reference SectionName (removed), uses SpecialPeriodType enum
 // CALLED BY: UserController for all user operations
 
 using LessonTree.DAL.Repositories;
@@ -152,36 +152,11 @@ namespace LessonTree.BLL.Service
                 {
                     foreach (var assignment in configUpdate.PeriodAssignments)
                     {
-                        if (assignment.CourseId.HasValue)
-                        {
-                            var courseId = assignment.CourseId.Value;
-
-                            if (courseId < 0)
-                            {
-                                // Validate it's a known fixed period type
-                                if (!FixedPeriodTypeExtensions.IsValidFixedPeriodId(courseId))
-                                {
-                                    throw new ArgumentException($"Invalid fixed period type: {courseId}. " +
-                                        $"Valid options are: {string.Join(", ", Enum.GetValues<FixedPeriodType>().Cast<int>())}");
-                                }
-                                // Fixed periods are valid - continue without database validation
-                                _logger.LogDebug("Validated fixed period type: {CourseId} for period {Period}", courseId, assignment.Period);
-                            }
-                            else if (courseId > 0)
-                            {
-                                // For now, skip course validation since we don't have course repository injected
-                                // TODO: Add ICourseRepository to constructor when needed for strict validation
-                                _logger.LogDebug("Allowing positive CourseId: {CourseId} for period {Period} (validation skipped)", courseId, assignment.Period);
-                            }
-                            else
-                            {
-                                throw new ArgumentException("CourseId cannot be zero");
-                            }
-                        }
+                        ValidatePeriodAssignment(assignment);
                     }
                 }
 
-                // Create domain object from clean DTO (no UserId needed)
+                // Create domain object from clean DTO
                 var configurationDomain = new UserConfiguration
                 {
                     SchoolYear = configUpdate.SchoolYear,
@@ -191,8 +166,12 @@ namespace LessonTree.BLL.Service
                     {
                         Period = pa.Period,
                         CourseId = pa.CourseId,
-                        SectionName = pa.SectionName ?? string.Empty,
+                        SpecialPeriodType = ParseSpecialPeriodType(pa.SpecialPeriodType), // NEW: Map enum
+                        // REMOVED: SectionName mapping
                         Room = pa.Room ?? string.Empty,
+                        TeachingDays = pa.TeachingDays?.Length > 0
+                            ? string.Join(",", pa.TeachingDays)
+                            : "Monday,Tuesday,Wednesday,Thursday,Friday",
                         Notes = pa.Notes ?? string.Empty,
                         BackgroundColor = pa.BackgroundColor ?? "#2196F3",
                         FontColor = pa.FontColor ?? "#FFFFFF"
@@ -212,7 +191,8 @@ namespace LessonTree.BLL.Service
             }
         }
 
-        // Private helper methods
+        // === PRIVATE HELPER METHODS ===
+
         private UserResource MapUserToResource(User user)
         {
             var userResource = _mapper.Map<UserResource>(user);
@@ -251,8 +231,12 @@ namespace LessonTree.BLL.Service
                     {
                         Period = assignmentResource.Period,
                         CourseId = assignmentResource.CourseId,
-                        SectionName = assignmentResource.SectionName,
+                        SpecialPeriodType = ParseSpecialPeriodType(assignmentResource.SpecialPeriodType), // NEW
+                        // REMOVED: SectionName mapping
                         Room = assignmentResource.Room,
+                        TeachingDays = assignmentResource.TeachingDays?.Length > 0
+                            ? string.Join(",", assignmentResource.TeachingDays)
+                            : "Monday,Tuesday,Wednesday,Thursday,Friday",
                         Notes = assignmentResource.Notes,
                         BackgroundColor = assignmentResource.BackgroundColor,
                         FontColor = assignmentResource.FontColor,
@@ -260,6 +244,57 @@ namespace LessonTree.BLL.Service
                     });
                 }
             }
+        }
+
+        private void ValidatePeriodAssignment(PeriodAssignmentResource assignment)
+        {
+            // Validate that either CourseId OR SpecialPeriodType is provided (but not both)
+            bool hasCourseId = assignment.CourseId.HasValue && assignment.CourseId.Value > 0;
+            bool hasSpecialPeriodType = !string.IsNullOrEmpty(assignment.SpecialPeriodType);
+
+            if (!hasCourseId && !hasSpecialPeriodType)
+            {
+                throw new ArgumentException($"Period {assignment.Period}: Either CourseId or SpecialPeriodType is required");
+            }
+
+            if (hasCourseId && hasSpecialPeriodType)
+            {
+                throw new ArgumentException($"Period {assignment.Period}: Cannot have both CourseId and SpecialPeriodType");
+            }
+
+            // Validate SpecialPeriodType if provided
+            if (hasSpecialPeriodType && !IsValidSpecialPeriodType(assignment.SpecialPeriodType))
+            {
+                var validTypes = string.Join(", ", Enum.GetNames<SpecialPeriodType>());
+                throw new ArgumentException($"Period {assignment.Period}: Invalid SpecialPeriodType '{assignment.SpecialPeriodType}'. Valid options: {validTypes}");
+            }
+
+            // Validate CourseId if provided
+            if (hasCourseId)
+            {
+                // For now, skip course validation since we don't have course repository injected
+                // TODO: Add ICourseRepository to constructor when needed for strict validation
+                _logger.LogDebug("Allowing CourseId: {CourseId} for period {Period} (validation skipped)", assignment.CourseId, assignment.Period);
+            }
+        }
+
+        private bool IsValidSpecialPeriodType(string? specialPeriodTypeString)
+        {
+            if (string.IsNullOrEmpty(specialPeriodTypeString))
+                return false;
+
+            return Enum.TryParse<SpecialPeriodType>(specialPeriodTypeString, true, out _);
+        }
+
+        private SpecialPeriodType? ParseSpecialPeriodType(string? specialPeriodTypeString)
+        {
+            if (string.IsNullOrEmpty(specialPeriodTypeString))
+                return null;
+
+            if (Enum.TryParse<SpecialPeriodType>(specialPeriodTypeString, true, out var enumValue))
+                return enumValue;
+
+            return null;
         }
 
         private UserConfigurationResource CreateDefaultUserConfiguration()

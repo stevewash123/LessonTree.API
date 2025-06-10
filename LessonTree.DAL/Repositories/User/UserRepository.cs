@@ -146,6 +146,9 @@ namespace LessonTree.DAL.Repositories
         }
 
         // Private helper method
+        // **PARTIAL FILE** - Fixed UpdateUserConfigurationInternal method in UserRepository.cs
+        // Replace the existing UpdateUserConfigurationInternal method
+
         private void UpdateUserConfigurationInternal(User existingUser, UserConfiguration newConfiguration)
         {
             if (existingUser.Configuration == null)
@@ -159,6 +162,28 @@ namespace LessonTree.DAL.Repositories
                     LastUpdated = DateTime.UtcNow,
                     PeriodAssignments = new List<PeriodAssignment>()
                 };
+
+                // Add new period assignments AFTER the configuration exists
+                if (newConfiguration.PeriodAssignments != null)
+                {
+                    foreach (var assignment in newConfiguration.PeriodAssignments)
+                    {
+                        var periodAssignment = new PeriodAssignment
+                        {
+                            Period = assignment.Period,
+                            CourseId = assignment.CourseId,
+                            SpecialPeriodType = assignment.SpecialPeriodType, // FIXED: Missing property
+                            TeachingDays = assignment.TeachingDays ?? "Monday,Tuesday,Wednesday,Thursday,Friday", // FIXED: Handle TeachingDays
+                            Room = assignment.Room ?? string.Empty,
+                            Notes = assignment.Notes ?? string.Empty,
+                            BackgroundColor = assignment.BackgroundColor ?? "#2196F3",
+                            FontColor = assignment.FontColor ?? "#FFFFFF",
+                            // Don't set UserConfigurationId - let EF handle the relationship
+                            UserConfiguration = existingUser.Configuration
+                        };
+                        existingUser.Configuration.PeriodAssignments.Add(periodAssignment);
+                    }
+                }
             }
             else
             {
@@ -167,26 +192,28 @@ namespace LessonTree.DAL.Repositories
                 existingUser.Configuration.PeriodsPerDay = newConfiguration.PeriodsPerDay;
                 existingUser.Configuration.LastUpdated = DateTime.UtcNow;
 
-                // Clear and rebuild period assignments
+                // Clear existing period assignments
                 existingUser.Configuration.PeriodAssignments.Clear();
-            }
 
-            // Add new period assignments
-            if (newConfiguration.PeriodAssignments != null)
-            {
-                foreach (var assignment in newConfiguration.PeriodAssignments)
+                // Add new period assignments
+                if (newConfiguration.PeriodAssignments != null)
                 {
-                    existingUser.Configuration.PeriodAssignments.Add(new PeriodAssignment
+                    foreach (var assignment in newConfiguration.PeriodAssignments)
                     {
-                        Period = assignment.Period,
-                        CourseId = assignment.CourseId,
-                        SectionName = assignment.SectionName,
-                        Room = assignment.Room,
-                        Notes = assignment.Notes,
-                        BackgroundColor = assignment.BackgroundColor,
-                        FontColor = assignment.FontColor,
-                        UserConfigurationId = existingUser.Configuration.Id
-                    });
+                        var periodAssignment = new PeriodAssignment
+                        {
+                            Period = assignment.Period,
+                            CourseId = assignment.CourseId,
+                            SpecialPeriodType = assignment.SpecialPeriodType, // FIXED: Missing property
+                            TeachingDays = assignment.TeachingDays ?? "Monday,Tuesday,Wednesday,Thursday,Friday", // FIXED: Handle TeachingDays
+                            Room = assignment.Room ?? string.Empty,
+                            Notes = assignment.Notes ?? string.Empty,
+                            BackgroundColor = assignment.BackgroundColor ?? "#2196F3",
+                            FontColor = assignment.FontColor ?? "#FFFFFF",
+                            UserConfigurationId = existingUser.Configuration.Id // This will work since Configuration already exists
+                        };
+                        existingUser.Configuration.PeriodAssignments.Add(periodAssignment);
+                    }
                 }
             }
 

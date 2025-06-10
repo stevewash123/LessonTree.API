@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace LessonTree.DAL.Domain
 {
     [Index(nameof(ScheduleId), nameof(Date), nameof(Period), IsUnique = true,
-           Name = "IX_ScheduleEvents_Schedule_Date_Period")]
+       Name = "IX_ScheduleEvents_Schedule_Date_Period")]
     public class ScheduleEvent
     {
         public int Id { get; set; }
@@ -12,18 +12,24 @@ namespace LessonTree.DAL.Domain
         public int ScheduleId { get; set; }
         public virtual Schedule Schedule { get; set; }
 
-        public DateTime Date { get; set; } // The specific day (e.g., 2025-09-01)
+        public int? CourseId { get; set; }          // NEW: Track which course/duty
+                                                    // NOTE: No Course navigation - CourseId can be negative for duties
+
+        public DateTime Date { get; set; }
 
         [Range(1, 10, ErrorMessage = "Period must be between 1 and 10")]
-        public int Period { get; set; } // NEW: Period number (1-6, etc.)
+        public int Period { get; set; }
 
-        public int? LessonId { get; set; } // Nullable if it's a non-teaching period
-        public virtual Lesson? Lesson { get; set; } // Nullable for non-teaching periods
+        public int? LessonId { get; set; }
+        public virtual Lesson? Lesson { get; set; }
 
-        [MaxLength(500)]
-        public string? SpecialCode { get; set; } // e.g., "Holiday", "Testing Day", "Lab Day"
+        [MaxLength(50)]
+        public string EventType { get; set; }       // RENAMED from SpecialCode, now required
+
+        [MaxLength(50)]
+        public string? EventCategory { get; set; }  // NEW: "Lesson", "SpecialPeriod", "SpecialDay", null
 
         [MaxLength(1000)]
-        public string? Comment { get; set; } // User-entered comment for special periods
+        public string? Comment { get; set; }
     }
 }

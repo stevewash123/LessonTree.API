@@ -1,0 +1,659 @@
+[2025-06-10 13:13:30 INF] Starting API without seeding...
+[2025-06-10 13:13:31 DBG] Registered model binder providers, in the following order: ["Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BinderTypeModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.ServicesModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.BodyModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.HeaderModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.FloatingPointTypeModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.EnumTypeModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.DateTimeModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.SimpleTypeModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.TryParseModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.CancellationTokenModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.ByteArrayModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.FormFileModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.FormCollectionModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.KeyValuePairModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.DictionaryModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.ArrayModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.CollectionModelBinderProvider","Microsoft.AspNetCore.Mvc.ModelBinding.Binders.ComplexObjectModelBinderProvider"]
+[2025-06-10 13:13:31 DBG] Hosting starting
+[2025-06-10 13:13:31 INF] User profile is available. Using 'C:\Users\SWash\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+[2025-06-10 13:13:31 DBG] Reading data from file 'C:\Users\SWash\AppData\Local\ASP.NET\DataProtection-Keys\key-289f7250-d4bf-48f6-ba65-112fa6af0fd7.xml'.
+[2025-06-10 13:13:31 DBG] Reading data from file 'C:\Users\SWash\AppData\Local\ASP.NET\DataProtection-Keys\key-b3db5724-2b11-4abc-9bf4-9927b45e9c84.xml'.
+[2025-06-10 13:13:31 DBG] Found key {289f7250-d4bf-48f6-ba65-112fa6af0fd7}.
+[2025-06-10 13:13:31 DBG] Found key {b3db5724-2b11-4abc-9bf4-9927b45e9c84}.
+[2025-06-10 13:13:31 DBG] Considering key {b3db5724-2b11-4abc-9bf4-9927b45e9c84} with expiration date 2025-08-04 14:19:25Z as default key.
+[2025-06-10 13:13:31 DBG] Forwarded activator type request from Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor, Microsoft.AspNetCore.DataProtection, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60 to Microsoft.AspNetCore.DataProtection.XmlEncryption.DpapiXmlDecryptor, Microsoft.AspNetCore.DataProtection, Culture=neutral, PublicKeyToken=adb9793829ddae60
+[2025-06-10 13:13:31 DBG] Decrypting secret element using Windows DPAPI.
+[2025-06-10 13:13:31 DBG] Forwarded activator type request from Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel.AuthenticatedEncryptorDescriptorDeserializer, Microsoft.AspNetCore.DataProtection, Version=8.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60 to Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel.AuthenticatedEncryptorDescriptorDeserializer, Microsoft.AspNetCore.DataProtection, Culture=neutral, PublicKeyToken=adb9793829ddae60
+[2025-06-10 13:13:31 DBG] Opening CNG algorithm 'AES' from provider 'null' with chaining mode CBC.
+[2025-06-10 13:13:31 DBG] Opening CNG algorithm 'SHA256' from provider 'null' with HMAC.
+[2025-06-10 13:13:31 DBG] Using key {b3db5724-2b11-4abc-9bf4-9927b45e9c84} as the default key.
+[2025-06-10 13:13:31 DBG] Key ring with default key {b3db5724-2b11-4abc-9bf4-9927b45e9c84} was loaded during application startup.
+[2025-06-10 13:13:31 DBG] Middleware loaded
+[2025-06-10 13:13:31 DBG] Middleware loaded. Script /_framework/aspnetcore-browser-refresh.js (16513 B).
+[2025-06-10 13:13:31 DBG] Middleware loaded. Script /_framework/blazor-hotreload.js (799 B).
+[2025-06-10 13:13:32 DBG] Middleware loaded: DOTNET_MODIFIABLE_ASSEMBLIES=debug, __ASPNETCORE_BROWSER_TOOLS=true
+[2025-06-10 13:13:32 INF] Now listening on: https://localhost:7238
+[2025-06-10 13:13:32 INF] Now listening on: http://localhost:5046
+[2025-06-10 13:13:32 DBG] Loaded hosting startup assembly LessonTree.API
+[2025-06-10 13:13:32 DBG] Loaded hosting startup assembly Microsoft.WebTools.ApiEndpointDiscovery
+[2025-06-10 13:13:32 DBG] Loaded hosting startup assembly Microsoft.AspNetCore.Watch.BrowserRefresh
+[2025-06-10 13:13:32 DBG] Loaded hosting startup assembly Microsoft.WebTools.BrowserLink.Net
+[2025-06-10 13:13:32 INF] Application started. Press Ctrl+C to shut down.
+[2025-06-10 13:13:32 INF] Hosting environment: Development
+[2025-06-10 13:13:32 INF] Content root path: C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api
+[2025-06-10 13:13:32 DBG] Hosting started
+[2025-06-10 13:13:54 DBG] Connection id "0HND888MNSRU1" accepted.
+[2025-06-10 13:13:54 DBG] Connection id "0HND888MNSRU1" started.
+[2025-06-10 13:13:54 DBG] Connection 0HND888MNSRU1 established using the following protocol: "Tls13"
+[2025-06-10 13:13:54 INF] Request starting HTTP/2 OPTIONS https://localhost:7238/account/login - null null
+[2025-06-10 13:13:54 DBG] Wildcard detected, all requests with hosts will be allowed.
+[2025-06-10 13:13:54 DBG] 1 candidate(s) found for the request path '/account/login'
+[2025-06-10 13:13:54 DBG] Request matched endpoint '405 HTTP Method Not Supported'
+[2025-06-10 13:13:54 INF] Middleware: Handling OPTIONS request to /account/login
+[2025-06-10 13:13:54 DBG] The request has an origin header: 'https://localhost:4200'.
+[2025-06-10 13:13:54 INF] CORS policy execution successful.
+[2025-06-10 13:13:54 DBG] The request is a preflight request.
+[2025-06-10 13:13:54 INF] Request finished HTTP/2 OPTIONS https://localhost:7238/account/login - 204 null null 64.2934ms
+[2025-06-10 13:13:54 INF] Request starting HTTP/2 POST https://localhost:7238/account/login - application/json 50
+[2025-06-10 13:13:54 DBG] 1 candidate(s) found for the request path '/account/login'
+[2025-06-10 13:13:54 DBG] Endpoint 'LessonTree.API.Controllers.AccountController.Login (LessonTree.API)' with route pattern 'account/login' is valid for the request path '/account/login'
+[2025-06-10 13:13:54 DBG] Request matched endpoint 'LessonTree.API.Controllers.AccountController.Login (LessonTree.API)'
+[2025-06-10 13:13:54 INF] Middleware: Handling POST request to /account/login
+[2025-06-10 13:13:54 DBG] The request has an origin header: 'https://localhost:4200'.
+[2025-06-10 13:13:54 INF] CORS policy execution successful.
+[2025-06-10 13:13:54 DBG] The host 'localhost' is excluded. Skipping HSTS header.
+[2025-06-10 13:13:54 DBG] AuthenticationScheme: Identity.Application was not authenticated.
+[2025-06-10 13:13:54 DBG] Static files was skipped as the request already matched an endpoint.
+[2025-06-10 13:13:54 INF] Executing endpoint 'LessonTree.API.Controllers.AccountController.Login (LessonTree.API)'
+[2025-06-10 13:13:54 INF] Route matched with {action = "Login", controller = "Account"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(LessonTree.Models.DTO.LoginRequest) on controller LessonTree.API.Controllers.AccountController (LessonTree.API).
+[2025-06-10 13:13:54 DBG] Execution plan of authorization filters (in the following order): ["None"]
+[2025-06-10 13:13:54 DBG] Execution plan of resource filters (in the following order): ["None"]
+[2025-06-10 13:13:54 DBG] Execution plan of action filters (in the following order): ["Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000)","Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)","LessonTree.API.Filters.RequestLoggingFilter"]
+[2025-06-10 13:13:54 DBG] Execution plan of exception filters (in the following order): ["None"]
+[2025-06-10 13:13:54 DBG] Execution plan of result filters (in the following order): ["Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)"]
+[2025-06-10 13:13:54 DBG] Executing controller factory for controller LessonTree.API.Controllers.AccountController (LessonTree.API)
+[2025-06-10 13:13:54 DBG] An 'IServiceProvider' was created for internal use by Entity Framework.
+[2025-06-10 13:13:54 WRN] 'AddEntityFramework*' was called on the service provider, but 'UseInternalServiceProvider' wasn't called in the DbContext options configuration. Consider removing the 'AddEntityFramework*' call, as in most cases it's not needed and may cause conflicts with other products and services registered in the same service provider.
+[2025-06-10 13:13:54 DBG] Executed controller factory for controller LessonTree.API.Controllers.AccountController (LessonTree.API)
+[2025-06-10 13:13:54 DBG] Attempting to bind parameter 'loginRequest' of type 'LessonTree.Models.DTO.LoginRequest' ...
+[2025-06-10 13:13:54 DBG] Attempting to bind parameter 'loginRequest' of type 'LessonTree.Models.DTO.LoginRequest' using the name '' in request data ...
+[2025-06-10 13:13:54 DBG] Selected input formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonInputFormatter' for content type 'application/json'.
+[2025-06-10 13:13:54 DBG] Connection id "0HND888MNSRU1", Request id "0HND888MNSRU1:00000003": started reading request body.
+[2025-06-10 13:13:54 DBG] Connection id "0HND888MNSRU1", Request id "0HND888MNSRU1:00000003": done reading request body.
+[2025-06-10 13:13:54 DBG] JSON input formatter succeeded, deserializing to type 'LessonTree.Models.DTO.LoginRequest'
+[2025-06-10 13:13:54 DBG] Done attempting to bind parameter 'loginRequest' of type 'LessonTree.Models.DTO.LoginRequest'.
+[2025-06-10 13:13:54 DBG] Done attempting to bind parameter 'loginRequest' of type 'LessonTree.Models.DTO.LoginRequest'.
+[2025-06-10 13:13:54 DBG] Attempting to validate the bound parameter 'loginRequest' of type 'LessonTree.Models.DTO.LoginRequest' ...
+[2025-06-10 13:13:54 DBG] Done attempting to validate the bound parameter 'loginRequest' of type 'LessonTree.Models.DTO.LoginRequest'.
+[2025-06-10 13:13:54 INF] Incoming request: POST /account/login, Query: , Body: 
+[2025-06-10 13:13:54 DBG] Attempting login for user: admin
+[2025-06-10 13:13:55 DBG] The index {'DepartmentsId'} was not created on entity type 'DepartmentUser (Dictionary<string, object>)' as the properties are already covered by the index {'DepartmentsId', 'MembersId'}.
+[2025-06-10 13:13:55 DBG] The index {'LessonId'} was not created on entity type 'LessonAttachment' as the properties are already covered by the index {'LessonId', 'AttachmentId'}.
+[2025-06-10 13:13:55 DBG] The index {'LessonId'} was not created on entity type 'LessonStandard' as the properties are already covered by the index {'LessonId', 'StandardId'}.
+[2025-06-10 13:13:55 DBG] The index {'UserConfigurationId'} was not created on entity type 'PeriodAssignment' as the properties are already covered by the index {'UserConfigurationId', 'Period', 'TeachingDays'}.
+[2025-06-10 13:13:55 DBG] The index {'ScheduleId'} was not created on entity type 'ScheduleEvent' as the properties are already covered by the index {'ScheduleId', 'Date', 'Period'}.
+[2025-06-10 13:13:55 DBG] The index {'UserId'} was not created on entity type 'IdentityUserRole<int>' as the properties are already covered by the index {'UserId', 'RoleId'}.
+[2025-06-10 13:13:55 DBG] The index {'UserId'} was not created on entity type 'IdentityUserToken<int>' as the properties are already covered by the index {'UserId', 'LoginProvider', 'Name'}.
+[2025-06-10 13:13:55 WRN] Sensitive data logging is enabled. Log entries and exception messages may include sensitive application data; this mode should only be enabled during development.
+[2025-06-10 13:13:55 DBG] The property 'DepartmentUser (Dictionary<string, object>).DepartmentsId' was created in shadow state because there are no eligible CLR members with a matching name.
+[2025-06-10 13:13:55 DBG] The property 'DepartmentUser (Dictionary<string, object>).MembersId' was created in shadow state because there are no eligible CLR members with a matching name.
+[2025-06-10 13:13:55 DBG] The property 'Schedule.CourseId' was created in shadow state because there are no eligible CLR members with a matching name.
+[2025-06-10 13:13:55 DBG] Entity Framework Core 8.0.2 initialized 'LessonTreeContext' using provider 'Microsoft.EntityFrameworkCore.Sqlite:8.0.0' with options: SensitiveDataLoggingEnabled DetailedErrorsEnabled 
+[2025-06-10 13:13:55 DBG] Compiling query expression: 
+'DbSet<User>()
+    .FirstOrDefault(u => u.NormalizedUserName == __normalizedUserName_0)'
+[2025-06-10 13:13:55 DBG] Generated query execution expression: 
+'queryContext => ShapedQueryCompilingExpressionVisitor.SingleOrDefaultAsync<User>(
+    asyncEnumerable: new SingleQueryingEnumerable<User>(
+        (RelationalQueryContext)queryContext, 
+        RelationalCommandCache.QueryExpression(
+            Projection Mapping:
+                EmptyProjectionMember -> Dictionary<IProperty, int> { [Property: User.Id (int) Required PK AfterSave:Throw ValueGenerated.OnAdd, 0], [Property: User.AccessFailedCount (int) Required, 1], [Property: User.ConcurrencyStamp (string) Concurrency, 2], [Property: User.DistrictId (int?) FK Index, 3], [Property: User.Email (string) MaxLength(256), 4], [Property: User.EmailConfirmed (bool) Required, 5], [Property: User.FirstName (string) Required, 6], [Property: User.LastName (string) Required, 7], [Property: User.LockoutEnabled (bool) Required, 8], [Property: User.LockoutEnd (DateTimeOffset?), 9], [Property: User.NormalizedEmail (string) Index MaxLength(256), 10], [Property: User.NormalizedUserName (string) Index MaxLength(256), 11], [Property: User.PasswordHash (string), 12], [Property: User.PhoneNumber (string), 13], [Property: User.PhoneNumberConfirmed (bool) Required, 14], [Property: User.SchoolId (int?) FK Index, 15], [Property: User.SecurityStamp (string), 16], [Property: User.TwoFactorEnabled (bool) Required, 17], [Property: User.UserName (string) MaxLength(256), 18] }
+            SELECT TOP(1) a.Id, a.AccessFailedCount, a.ConcurrencyStamp, a.DistrictId, a.Email, a.EmailConfirmed, a.FirstName, a.LastName, a.LockoutEnabled, a.LockoutEnd, a.NormalizedEmail, a.NormalizedUserName, a.PasswordHash, a.PhoneNumber, a.PhoneNumberConfirmed, a.SchoolId, a.SecurityStamp, a.TwoFactorEnabled, a.UserName
+            FROM AspNetUsers AS a
+            WHERE a.NormalizedUserName == @__normalizedUserName_0), 
+        null, 
+        Func<QueryContext, DbDataReader, ResultContext, SingleQueryResultCoordinator, User>, 
+        LessonTree.DAL.LessonTreeContext, 
+        False, 
+        True, 
+        True
+    ), 
+    cancellationToken: queryContext.CancellationToken)'
+[2025-06-10 13:13:55 DBG] Creating DbConnection.
+[2025-06-10 13:13:55 DBG] Created DbConnection. (10ms).
+[2025-06-10 13:13:55 DBG] Opening connection to database 'main' on server 'LessonTree.db'.
+[2025-06-10 13:13:55 DBG] Opened connection to database 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:55 DBG] Creating DbCommand for 'ExecuteReader'.
+[2025-06-10 13:13:55 DBG] Created DbCommand for 'ExecuteReader' (4ms).
+[2025-06-10 13:13:55 DBG] Initialized DbCommand for 'ExecuteReader' (13ms).
+[2025-06-10 13:13:55 DBG] Executing DbCommand [Parameters=[@__normalizedUserName_0='ADMIN' (Size = 5)], CommandType='"Text"', CommandTimeout='30']
+SELECT "a"."Id", "a"."AccessFailedCount", "a"."ConcurrencyStamp", "a"."DistrictId", "a"."Email", "a"."EmailConfirmed", "a"."FirstName", "a"."LastName", "a"."LockoutEnabled", "a"."LockoutEnd", "a"."NormalizedEmail", "a"."NormalizedUserName", "a"."PasswordHash", "a"."PhoneNumber", "a"."PhoneNumberConfirmed", "a"."SchoolId", "a"."SecurityStamp", "a"."TwoFactorEnabled", "a"."UserName"
+FROM "AspNetUsers" AS "a"
+WHERE "a"."NormalizedUserName" = @__normalizedUserName_0
+LIMIT 1
+[2025-06-10 13:13:55 INF] Executed DbCommand (27ms) [Parameters=[@__normalizedUserName_0='ADMIN' (Size = 5)], CommandType='"Text"', CommandTimeout='30']
+SELECT "a"."Id", "a"."AccessFailedCount", "a"."ConcurrencyStamp", "a"."DistrictId", "a"."Email", "a"."EmailConfirmed", "a"."FirstName", "a"."LastName", "a"."LockoutEnabled", "a"."LockoutEnd", "a"."NormalizedEmail", "a"."NormalizedUserName", "a"."PasswordHash", "a"."PhoneNumber", "a"."PhoneNumberConfirmed", "a"."SchoolId", "a"."SecurityStamp", "a"."TwoFactorEnabled", "a"."UserName"
+FROM "AspNetUsers" AS "a"
+WHERE "a"."NormalizedUserName" = @__normalizedUserName_0
+LIMIT 1
+[2025-06-10 13:13:56 DBG] Context 'LessonTreeContext' started tracking 'User' entity with key '{Id: 1}'.
+[2025-06-10 13:13:56 DBG] Closing data reader to 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:56 DBG] A data reader for 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db' is being disposed after spending 115ms reading results.
+[2025-06-10 13:13:56 DBG] Closing connection to database 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:56 DBG] Closed connection to database 'main' on server 'LessonTree.db' (4ms).
+[2025-06-10 13:13:56 DBG] User admin found, checking password
+[2025-06-10 13:13:56 DBG] Compiling query expression: 
+'DbSet<IdentityUserRole<int>>()
+    .Join(
+        inner: DbSet<IdentityRole<int>>(), 
+        outerKeySelector: userRole => userRole.RoleId, 
+        innerKeySelector: role => role.Id, 
+        resultSelector: (userRole, role) => new { 
+            userRole = userRole, 
+            role = role
+         })
+    .Where(<>h__TransparentIdentifier0 => <>h__TransparentIdentifier0.userRole.UserId.Equals(__userId_0))
+    .Select(<>h__TransparentIdentifier0 => <>h__TransparentIdentifier0.role.Name)'
+[2025-06-10 13:13:56 DBG] Generated query execution expression: 
+'queryContext => new SingleQueryingEnumerable<string>(
+    (RelationalQueryContext)queryContext, 
+    RelationalCommandCache.QueryExpression(
+        Projection Mapping:
+            EmptyProjectionMember -> 0
+        SELECT a0.Name
+        FROM AspNetUserRoles AS a
+        INNER JOIN AspNetRoles AS a0 ON a.RoleId == a0.Id
+        WHERE a.UserId == @__userId_0), 
+    null, 
+    Func<QueryContext, DbDataReader, ResultContext, SingleQueryResultCoordinator, string>, 
+    LessonTree.DAL.LessonTreeContext, 
+    False, 
+    True, 
+    True
+)'
+[2025-06-10 13:13:56 DBG] Opening connection to database 'main' on server 'LessonTree.db'.
+[2025-06-10 13:13:56 DBG] Opened connection to database 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:56 DBG] Creating DbCommand for 'ExecuteReader'.
+[2025-06-10 13:13:56 DBG] Created DbCommand for 'ExecuteReader' (2ms).
+[2025-06-10 13:13:56 DBG] Initialized DbCommand for 'ExecuteReader' (4ms).
+[2025-06-10 13:13:56 DBG] Executing DbCommand [Parameters=[@__userId_0='1'], CommandType='"Text"', CommandTimeout='30']
+SELECT "a0"."Name"
+FROM "AspNetUserRoles" AS "a"
+INNER JOIN "AspNetRoles" AS "a0" ON "a"."RoleId" = "a0"."Id"
+WHERE "a"."UserId" = @__userId_0
+[2025-06-10 13:13:56 INF] Executed DbCommand (9ms) [Parameters=[@__userId_0='1'], CommandType='"Text"', CommandTimeout='30']
+SELECT "a0"."Name"
+FROM "AspNetUserRoles" AS "a"
+INNER JOIN "AspNetRoles" AS "a0" ON "a"."RoleId" = "a0"."Id"
+WHERE "a"."UserId" = @__userId_0
+[2025-06-10 13:13:56 DBG] Closing data reader to 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:56 DBG] A data reader for 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db' is being disposed after spending 4ms reading results.
+[2025-06-10 13:13:56 DBG] Closing connection to database 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:56 DBG] Closed connection to database 'main' on server 'LessonTree.db' (3ms).
+[2025-06-10 13:13:56 INF] User logged in: admin, Roles: admin
+[2025-06-10 13:13:56 DBG] List of registered output formatters, in the following order: ["Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter"]
+[2025-06-10 13:13:56 DBG] No information found on request to perform content negotiation.
+[2025-06-10 13:13:56 DBG] Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+[2025-06-10 13:13:56 DBG] Attempting to select the first formatter in the output formatters list which can write the result.
+[2025-06-10 13:13:56 DBG] Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+[2025-06-10 13:13:56 INF] Executing OkObjectResult, writing value of type '<>f__AnonymousType2`2[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]'.
+[2025-06-10 13:13:56 INF] Executed action LessonTree.API.Controllers.AccountController.Login (LessonTree.API) in 2000.4319ms
+[2025-06-10 13:13:56 INF] Executed endpoint 'LessonTree.API.Controllers.AccountController.Login (LessonTree.API)'
+[2025-06-10 13:13:56 INF] HTTP POST /account/login responded 200 in 2054.5468 ms
+[2025-06-10 13:13:56 DBG] 'LessonTreeContext' disposed.
+[2025-06-10 13:13:56 INF] Request starting HTTP/2 OPTIONS https://localhost:7238/api/user/1 - null null
+[2025-06-10 13:13:56 INF] Request starting HTTP/2 OPTIONS https://localhost:7238/api/user/1/configuration - null null
+[2025-06-10 13:13:56 DBG] Disposing connection to database 'main' on server 'LessonTree.db'.
+[2025-06-10 13:13:56 INF] Request starting HTTP/2 OPTIONS https://localhost:7238/api/course?filter=Active&visibility=0 - null null
+[2025-06-10 13:13:56 DBG] 1 candidate(s) found for the request path '/api/user/1/configuration'
+[2025-06-10 13:13:56 DBG] 1 candidate(s) found for the request path '/api/user/1'
+[2025-06-10 13:13:56 DBG] Disposed connection to database 'main' on server 'LessonTree.db' (34ms).
+[2025-06-10 13:13:56 DBG] 1 candidate(s) found for the request path '/api/course'
+[2025-06-10 13:13:56 DBG] Request matched endpoint '405 HTTP Method Not Supported'
+[2025-06-10 13:13:56 DBG] Request matched endpoint '405 HTTP Method Not Supported'
+[2025-06-10 13:13:56 INF] Request finished HTTP/2 POST https://localhost:7238/account/login - 200 null application/json; charset=utf-8 2181.9198ms
+[2025-06-10 13:13:56 DBG] Request matched endpoint '405 HTTP Method Not Supported'
+[2025-06-10 13:13:56 INF] Middleware: Handling OPTIONS request to /api/user/1/configuration
+[2025-06-10 13:13:56 INF] Middleware: Handling OPTIONS request to /api/user/1
+[2025-06-10 13:13:56 INF] Middleware: Handling OPTIONS request to /api/course
+[2025-06-10 13:13:56 DBG] The request has an origin header: 'https://localhost:4200'.
+[2025-06-10 13:13:56 DBG] The request has an origin header: 'https://localhost:4200'.
+[2025-06-10 13:13:56 DBG] The request has an origin header: 'https://localhost:4200'.
+[2025-06-10 13:13:56 INF] CORS policy execution successful.
+[2025-06-10 13:13:56 INF] CORS policy execution successful.
+[2025-06-10 13:13:56 INF] CORS policy execution successful.
+[2025-06-10 13:13:56 DBG] The request is a preflight request.
+[2025-06-10 13:13:56 DBG] The request is a preflight request.
+[2025-06-10 13:13:56 DBG] The request is a preflight request.
+[2025-06-10 13:13:56 INF] Request finished HTTP/2 OPTIONS https://localhost:7238/api/user/1/configuration - 204 null null 121.7616ms
+[2025-06-10 13:13:56 INF] Request finished HTTP/2 OPTIONS https://localhost:7238/api/course?filter=Active&visibility=0 - 204 null null 111.4716ms
+[2025-06-10 13:13:56 INF] Request finished HTTP/2 OPTIONS https://localhost:7238/api/user/1 - 204 null null 126.0127ms
+[2025-06-10 13:13:56 INF] Request starting HTTP/2 GET https://localhost:7238/api/user/1/configuration - null null
+[2025-06-10 13:13:56 INF] Request starting HTTP/2 GET https://localhost:7238/api/user/1 - null null
+[2025-06-10 13:13:56 INF] Request starting HTTP/2 GET https://localhost:7238/api/course?filter=Active&visibility=0 - null null
+[2025-06-10 13:13:56 DBG] 1 candidate(s) found for the request path '/api/user/1/configuration'
+[2025-06-10 13:13:56 DBG] 1 candidate(s) found for the request path '/api/user/1'
+[2025-06-10 13:13:56 DBG] 1 candidate(s) found for the request path '/api/course'
+[2025-06-10 13:13:56 DBG] Endpoint 'LessonTree.API.Controllers.UserController.GetUserConfiguration (LessonTree.API)' with route pattern 'api/User/{id}/configuration' is valid for the request path '/api/user/1/configuration'
+[2025-06-10 13:13:56 DBG] Endpoint 'LessonTree.API.Controllers.UserController.GetUser (LessonTree.API)' with route pattern 'api/User/{id}' is valid for the request path '/api/user/1'
+[2025-06-10 13:13:56 DBG] Endpoint 'LessonTree.API.Controllers.CourseController.GetCourses (LessonTree.API)' with route pattern 'api/Course' is valid for the request path '/api/course'
+[2025-06-10 13:13:56 DBG] Request matched endpoint 'LessonTree.API.Controllers.UserController.GetUserConfiguration (LessonTree.API)'
+[2025-06-10 13:13:56 DBG] Request matched endpoint 'LessonTree.API.Controllers.UserController.GetUser (LessonTree.API)'
+[2025-06-10 13:13:56 DBG] Request matched endpoint 'LessonTree.API.Controllers.CourseController.GetCourses (LessonTree.API)'
+[2025-06-10 13:13:56 INF] Middleware: Handling GET request to /api/user/1/configuration
+[2025-06-10 13:13:56 INF] Middleware: Handling GET request to /api/user/1
+[2025-06-10 13:13:56 INF] Middleware: Handling GET request to /api/course
+[2025-06-10 13:13:56 DBG] The request has an origin header: 'https://localhost:4200'.
+[2025-06-10 13:13:56 DBG] The request has an origin header: 'https://localhost:4200'.
+[2025-06-10 13:13:56 DBG] The request has an origin header: 'https://localhost:4200'.
+[2025-06-10 13:13:56 INF] CORS policy execution successful.
+[2025-06-10 13:13:56 INF] CORS policy execution successful.
+[2025-06-10 13:13:56 INF] CORS policy execution successful.
+[2025-06-10 13:13:56 DBG] The host 'localhost' is excluded. Skipping HSTS header.
+[2025-06-10 13:13:56 DBG] The host 'localhost' is excluded. Skipping HSTS header.
+[2025-06-10 13:13:56 DBG] The host 'localhost' is excluded. Skipping HSTS header.
+[2025-06-10 13:13:56 DBG] AuthenticationScheme: Identity.Application was not authenticated.
+[2025-06-10 13:13:56 DBG] AuthenticationScheme: Identity.Application was not authenticated.
+[2025-06-10 13:13:56 DBG] AuthenticationScheme: Identity.Application was not authenticated.
+[2025-06-10 13:13:56 DBG] Successfully validated the token.
+[2025-06-10 13:13:56 DBG] Successfully validated the token.
+[2025-06-10 13:13:56 DBG] Successfully validated the token.
+[2025-06-10 13:13:56 DBG] AuthenticationScheme: Bearer was successfully authenticated.
+[2025-06-10 13:13:56 DBG] AuthenticationScheme: Bearer was successfully authenticated.
+[2025-06-10 13:13:56 DBG] AuthenticationScheme: Bearer was successfully authenticated.
+[2025-06-10 13:13:56 DBG] Authorization was successful.
+[2025-06-10 13:13:56 DBG] Authorization was successful.
+[2025-06-10 13:13:56 DBG] Authorization was successful.
+[2025-06-10 13:13:56 DBG] Static files was skipped as the request already matched an endpoint.
+[2025-06-10 13:13:56 DBG] Static files was skipped as the request already matched an endpoint.
+[2025-06-10 13:13:56 DBG] Static files was skipped as the request already matched an endpoint.
+[2025-06-10 13:13:56 INF] Executing endpoint 'LessonTree.API.Controllers.UserController.GetUserConfiguration (LessonTree.API)'
+[2025-06-10 13:13:56 INF] Executing endpoint 'LessonTree.API.Controllers.UserController.GetUser (LessonTree.API)'
+[2025-06-10 13:13:56 INF] Executing endpoint 'LessonTree.API.Controllers.CourseController.GetCourses (LessonTree.API)'
+[2025-06-10 13:13:56 INF] Route matched with {action = "GetUserConfiguration", controller = "User"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult GetUserConfiguration(Int32) on controller LessonTree.API.Controllers.UserController (LessonTree.API).
+[2025-06-10 13:13:56 INF] Route matched with {action = "GetUser", controller = "User"}. Executing controller action with signature Microsoft.AspNetCore.Mvc.IActionResult GetUser(Int32) on controller LessonTree.API.Controllers.UserController (LessonTree.API).
+[2025-06-10 13:13:56 DBG] Execution plan of authorization filters (in the following order): ["None"]
+[2025-06-10 13:13:56 INF] Route matched with {action = "GetCourses", controller = "Course"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] GetCourses(LessonTree.Models.Enums.ArchiveFilter, System.Nullable`1[System.Int32]) on controller LessonTree.API.Controllers.CourseController (LessonTree.API).
+[2025-06-10 13:13:56 DBG] Execution plan of authorization filters (in the following order): ["None"]
+[2025-06-10 13:13:56 DBG] Execution plan of resource filters (in the following order): ["None"]
+[2025-06-10 13:13:56 DBG] Execution plan of authorization filters (in the following order): ["None"]
+[2025-06-10 13:13:56 DBG] Execution plan of resource filters (in the following order): ["None"]
+[2025-06-10 13:13:56 DBG] Execution plan of action filters (in the following order): ["Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000)","Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)","LessonTree.API.Filters.RequestLoggingFilter"]
+[2025-06-10 13:13:56 DBG] Execution plan of resource filters (in the following order): ["None"]
+[2025-06-10 13:13:56 DBG] Execution plan of action filters (in the following order): ["Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000)","Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)","LessonTree.API.Filters.RequestLoggingFilter"]
+[2025-06-10 13:13:56 DBG] Execution plan of exception filters (in the following order): ["None"]
+[2025-06-10 13:13:56 DBG] Execution plan of action filters (in the following order): ["Microsoft.AspNetCore.Mvc.ModelBinding.UnsupportedContentTypeFilter (Order: -3000)","Microsoft.AspNetCore.Mvc.Infrastructure.ModelStateInvalidFilter (Order: -2000)","LessonTree.API.Filters.RequestLoggingFilter"]
+[2025-06-10 13:13:56 DBG] Execution plan of exception filters (in the following order): ["None"]
+[2025-06-10 13:13:56 DBG] Execution plan of result filters (in the following order): ["Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)"]
+[2025-06-10 13:13:56 DBG] Execution plan of exception filters (in the following order): ["None"]
+[2025-06-10 13:13:56 DBG] Execution plan of result filters (in the following order): ["Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)"]
+[2025-06-10 13:13:56 DBG] Executing controller factory for controller LessonTree.API.Controllers.UserController (LessonTree.API)
+[2025-06-10 13:13:56 DBG] Execution plan of result filters (in the following order): ["Microsoft.AspNetCore.Mvc.Infrastructure.ClientErrorResultFilter (Order: -2000)"]
+[2025-06-10 13:13:56 DBG] Executing controller factory for controller LessonTree.API.Controllers.UserController (LessonTree.API)
+[2025-06-10 13:13:56 DBG] Executing controller factory for controller LessonTree.API.Controllers.CourseController (LessonTree.API)
+[2025-06-10 13:13:57 DBG] Executed controller factory for controller LessonTree.API.Controllers.UserController (LessonTree.API)
+[2025-06-10 13:13:57 DBG] Executed controller factory for controller LessonTree.API.Controllers.CourseController (LessonTree.API)
+[2025-06-10 13:13:57 DBG] Executed controller factory for controller LessonTree.API.Controllers.UserController (LessonTree.API)
+[2025-06-10 13:13:57 DBG] Attempting to bind parameter 'id' of type 'System.Int32' ...
+[2025-06-10 13:13:57 DBG] Attempting to bind parameter 'id' of type 'System.Int32' ...
+[2025-06-10 13:13:57 DBG] Attempting to bind parameter 'filter' of type 'LessonTree.Models.Enums.ArchiveFilter' ...
+[2025-06-10 13:13:57 DBG] Attempting to bind parameter 'id' of type 'System.Int32' using the name 'id' in request data ...
+[2025-06-10 13:13:57 DBG] Attempting to bind parameter 'id' of type 'System.Int32' using the name 'id' in request data ...
+[2025-06-10 13:13:57 DBG] Attempting to bind parameter 'filter' of type 'LessonTree.Models.Enums.ArchiveFilter' using the name 'filter' in request data ...
+[2025-06-10 13:13:57 DBG] Done attempting to bind parameter 'id' of type 'System.Int32'.
+[2025-06-10 13:13:57 DBG] Done attempting to bind parameter 'id' of type 'System.Int32'.
+[2025-06-10 13:13:57 DBG] Done attempting to bind parameter 'filter' of type 'LessonTree.Models.Enums.ArchiveFilter'.
+[2025-06-10 13:13:57 DBG] Done attempting to bind parameter 'id' of type 'System.Int32'.
+[2025-06-10 13:13:57 DBG] Done attempting to bind parameter 'id' of type 'System.Int32'.
+[2025-06-10 13:13:57 DBG] Done attempting to bind parameter 'filter' of type 'LessonTree.Models.Enums.ArchiveFilter'.
+[2025-06-10 13:13:57 DBG] Attempting to validate the bound parameter 'id' of type 'System.Int32' ...
+[2025-06-10 13:13:57 DBG] Attempting to validate the bound parameter 'id' of type 'System.Int32' ...
+[2025-06-10 13:13:57 DBG] Attempting to validate the bound parameter 'filter' of type 'LessonTree.Models.Enums.ArchiveFilter' ...
+[2025-06-10 13:13:57 DBG] Done attempting to validate the bound parameter 'id' of type 'System.Int32'.
+[2025-06-10 13:13:57 DBG] Done attempting to validate the bound parameter 'id' of type 'System.Int32'.
+[2025-06-10 13:13:57 DBG] Done attempting to validate the bound parameter 'filter' of type 'LessonTree.Models.Enums.ArchiveFilter'.
+[2025-06-10 13:13:57 INF] Incoming request: GET /api/user/1/configuration, Query: , Body: 
+[2025-06-10 13:13:57 INF] Incoming request: GET /api/user/1, Query: , Body: 
+[2025-06-10 13:13:57 DBG] Attempting to bind parameter 'visibility' of type 'System.Nullable`1[System.Int32]' ...
+[2025-06-10 13:13:57 DBG] Entering GetUserConfiguration for user ID: 1
+[2025-06-10 13:13:57 DBG] Entering GetUser with ID: 1
+[2025-06-10 13:13:57 DBG] Attempting to bind parameter 'visibility' of type 'System.Nullable`1[System.Int32]' using the name 'visibility' in request data ...
+[2025-06-10 13:13:57 DBG] Fetching user configuration for user ID: 1
+[2025-06-10 13:13:57 DBG] Fetching user resource by ID: 1
+[2025-06-10 13:13:57 DBG] Done attempting to bind parameter 'visibility' of type 'System.Nullable`1[System.Int32]'.
+[2025-06-10 13:13:57 DBG] Retrieving user by ID: 1
+[2025-06-10 13:13:57 DBG] Retrieving user by ID: 1
+[2025-06-10 13:13:57 DBG] Done attempting to bind parameter 'visibility' of type 'System.Nullable`1[System.Int32]'.
+[2025-06-10 13:13:57 DBG] Attempting to validate the bound parameter 'visibility' of type 'System.Nullable`1[System.Int32]' ...
+[2025-06-10 13:13:57 DBG] Done attempting to validate the bound parameter 'visibility' of type 'System.Nullable`1[System.Int32]'.
+[2025-06-10 13:13:57 INF] Incoming request: GET /api/course, Query: ?filter=Active&visibility=0, Body: 
+[2025-06-10 13:13:57 DBG] Fetching courses for User ID: 1, Filter: "Active", Visibility: 0
+[2025-06-10 13:13:57 DBG] Fetching courses for User ID: 1, Filter: "Active", Visibility: 0
+[2025-06-10 13:13:57 DBG] Entity Framework Core 8.0.2 initialized 'LessonTreeContext' using provider 'Microsoft.EntityFrameworkCore.Sqlite:8.0.0' with options: SensitiveDataLoggingEnabled DetailedErrorsEnabled 
+[2025-06-10 13:13:57 DBG] Entity Framework Core 8.0.2 initialized 'LessonTreeContext' using provider 'Microsoft.EntityFrameworkCore.Sqlite:8.0.0' with options: SensitiveDataLoggingEnabled DetailedErrorsEnabled 
+[2025-06-10 13:13:57 DBG] Entity Framework Core 8.0.2 initialized 'LessonTreeContext' using provider 'Microsoft.EntityFrameworkCore.Sqlite:8.0.0' with options: SensitiveDataLoggingEnabled DetailedErrorsEnabled 
+[2025-06-10 13:13:57 DBG] Compiling query expression: 
+'DbSet<Course>()
+    .Include(c => c.Topics)
+    .ThenInclude(t => t.Lessons)
+    .Include(c => c.Topics)
+    .ThenInclude(t => t.SubTopics)
+    .ThenInclude(st => st.Lessons)
+    .Include(c => c.User)
+    .Where(c => !(c.Archived))
+    .Where(c => c.UserId == __userId_0 || (int)c.Visibility == 1)'
+[2025-06-10 13:13:57 DBG] Compiling query expression: 
+'DbSet<User>()
+    .Include(u => u.Configuration)
+    .ThenInclude(c => c.PeriodAssignments)
+    .FirstOrDefault(u => u.Id == __id_0)'
+[2025-06-10 13:13:57 DBG] Including navigation: 'Course.Topics'.
+[2025-06-10 13:13:57 DBG] Including navigation: 'User.Configuration'.
+[2025-06-10 13:13:57 DBG] Including navigation: 'Course.User'.
+[2025-06-10 13:13:57 DBG] Including navigation: 'UserConfiguration.PeriodAssignments'.
+[2025-06-10 13:13:57 DBG] Including navigation: 'Topic.Lessons'.
+[2025-06-10 13:13:57 DBG] Including navigation: 'Topic.SubTopics'.
+[2025-06-10 13:13:57 DBG] Including navigation: 'SubTopic.Lessons'.
+[2025-06-10 13:13:57 DBG] Generated query execution expression: 
+'queryContext => new SingleQueryingEnumerable<User>(
+    (RelationalQueryContext)queryContext, 
+    RelationalCommandCache.QueryExpression(
+        Client Projections:
+            0 -> Dictionary<IProperty, int> { [Property: User.Id (int) Required PK AfterSave:Throw ValueGenerated.OnAdd, 0], [Property: User.AccessFailedCount (int) Required, 1], [Property: User.ConcurrencyStamp (string) Concurrency, 2], [Property: User.DistrictId (int?) FK Index, 3], [Property: User.Email (string) MaxLength(256), 4], [Property: User.EmailConfirmed (bool) Required, 5], [Property: User.FirstName (string) Required, 6], [Property: User.LastName (string) Required, 7], [Property: User.LockoutEnabled (bool) Required, 8], [Property: User.LockoutEnd (DateTimeOffset?), 9], [Property: User.NormalizedEmail (string) Index MaxLength(256), 10], [Property: User.NormalizedUserName (string) Index MaxLength(256), 11], [Property: User.PasswordHash (string), 12], [Property: User.PhoneNumber (string), 13], [Property: User.PhoneNumberConfirmed (bool) Required, 14], [Property: User.SchoolId (int?) FK Index, 15], [Property: User.SecurityStamp (string), 16], [Property: User.TwoFactorEnabled (bool) Required, 17], [Property: User.UserName (string) MaxLength(256), 18] }
+            1 -> Dictionary<IProperty, int> { [Property: UserConfiguration.Id (int) Required PK AfterSave:Throw ValueGenerated.OnAdd, 19], [Property: UserConfiguration.EndDate (DateTime?), 20], [Property: UserConfiguration.LastUpdated (DateTime) Required, 21], [Property: UserConfiguration.PeriodsPerDay (int) Required, 22], [Property: UserConfiguration.SchoolYear (string) Required MaxLength(20), 23], [Property: UserConfiguration.SettingsJson (string), 24], [Property: UserConfiguration.StartDate (DateTime?), 25], [Property: UserConfiguration.UserId (int) Required FK Index, 26] }
+            2 -> 0
+            3 -> 19
+            4 -> Dictionary<IProperty, int> { [Property: PeriodAssignment.Id (int) Required PK AfterSave:Throw ValueGenerated.OnAdd, 27], [Property: PeriodAssignment.BackgroundColor (string) Required MaxLength(7), 28], [Property: PeriodAssignment.CourseId (int?), 29], [Property: PeriodAssignment.FontColor (string) Required MaxLength(7), 30], [Property: PeriodAssignment.Notes (string) MaxLength(500), 31], [Property: PeriodAssignment.Period (int) Required Index, 32], [Property: PeriodAssignment.Room (string) MaxLength(50), 33], [Property: PeriodAssignment.SpecialPeriodType (SpecialPeriodType?), 34], [Property: PeriodAssignment.TeachingDays (string) Required Index MaxLength(100), 35], [Property: PeriodAssignment.UserConfigurationId (int) Required FK Index, 36] }
+            5 -> 27
+        SELECT t.Id, t.AccessFailedCount, t.ConcurrencyStamp, t.DistrictId, t.Email, t.EmailConfirmed, t.FirstName, t.LastName, t.LockoutEnabled, t.LockoutEnd, t.NormalizedEmail, t.NormalizedUserName, t.PasswordHash, t.PhoneNumber, t.PhoneNumberConfirmed, t.SchoolId, t.SecurityStamp, t.TwoFactorEnabled, t.UserName, t.Id0, t.EndDate, t.LastUpdated, t.PeriodsPerDay, t.SchoolYear, t.SettingsJson, t.StartDate, t.UserId, p.Id, p.BackgroundColor, p.CourseId, p.FontColor, p.Notes, p.Period, p.Room, p.SpecialPeriodType, p.TeachingDays, p.UserConfigurationId
+        FROM 
+        (
+            SELECT TOP(1) a.Id, a.AccessFailedCount, a.ConcurrencyStamp, a.DistrictId, a.Email, a.EmailConfirmed, a.FirstName, a.LastName, a.LockoutEnabled, a.LockoutEnd, a.NormalizedEmail, a.NormalizedUserName, a.PasswordHash, a.PhoneNumber, a.PhoneNumberConfirmed, a.SchoolId, a.SecurityStamp, a.TwoFactorEnabled, a.UserName, u.Id AS Id0, u.EndDate, u.LastUpdated, u.PeriodsPerDay, u.SchoolYear, u.SettingsJson, u.StartDate, u.UserId
+            FROM AspNetUsers AS a
+            LEFT JOIN UserConfigurations AS u ON a.Id == u.UserId
+            WHERE a.Id == @__id_0
+        ) AS t
+        LEFT JOIN PeriodAssignments AS p ON t.Id0 == p.UserConfigurationId
+        ORDER BY t.Id ASC, t.Id0 ASC), 
+    null, 
+    Func<QueryContext, DbDataReader, ResultContext, SingleQueryResultCoordinator, User>, 
+    LessonTree.DAL.LessonTreeContext, 
+    False, 
+    True, 
+    True
+)
+    .SingleOrDefault()'
+[2025-06-10 13:13:57 WRN] Compiling a query which loads related collections for more than one collection navigation, either via 'Include' or through projection, but no 'QuerySplittingBehavior' has been configured. By default, Entity Framework will use 'QuerySplittingBehavior.SingleQuery', which can potentially result in slow query performance. See https://go.microsoft.com/fwlink/?linkid=2134277 for more information. To identify the query that's triggering this warning call 'ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))'.
+[2025-06-10 13:13:57 DBG] Creating DbConnection.
+[2025-06-10 13:13:57 DBG] Creating DbConnection.
+[2025-06-10 13:13:57 DBG] Created DbConnection. (4ms).
+[2025-06-10 13:13:57 DBG] Created DbConnection. (6ms).
+[2025-06-10 13:13:57 DBG] Opening connection to database 'main' on server 'LessonTree.db'.
+[2025-06-10 13:13:57 DBG] Opening connection to database 'main' on server 'LessonTree.db'.
+[2025-06-10 13:13:57 DBG] Generated query execution expression: 
+'queryContext => new SingleQueryingEnumerable<Course>(
+    (RelationalQueryContext)queryContext, 
+    RelationalCommandCache.QueryExpression(
+        Client Projections:
+            0 -> Dictionary<IProperty, int> { [Property: Course.Id (int) Required PK AfterSave:Throw ValueGenerated.OnAdd, 0], [Property: Course.Archived (bool) Required, 1], [Property: Course.Description (string), 2], [Property: Course.Title (string) Required, 3], [Property: Course.UserId (int) Required FK Index, 4], [Property: Course.Visibility (VisibilityType) Required, 5] }
+            1 -> 0
+            2 -> 6
+            3 -> Dictionary<IProperty, int> { [Property: Topic.Id (int) Required PK AfterSave:Throw ValueGenerated.OnAdd, 7], [Property: Topic.Archived (bool) Required, 8], [Property: Topic.CourseId (int) Required FK Index, 9], [Property: Topic.Description (string), 10], [Property: Topic.SortOrder (int) Required, 11], [Property: Topic.Title (string) Required, 12], [Property: Topic.UserId (int) Required FK Index, 13], [Property: Topic.Visibility (VisibilityType) Required, 14] }
+            4 -> 7
+            5 -> Dictionary<IProperty, int> { [Property: Lesson.Id (int) Required PK AfterSave:Throw ValueGenerated.OnAdd, 15], [Property: Lesson.Archived (bool) Required, 16], [Property: Lesson.Assessment (string) MaxLength(250), 17], [Property: Lesson.ClassTime (string) MaxLength(100), 18], [Property: Lesson.Level (string) MaxLength(100), 19], [Property: Lesson.Materials (string) MaxLength(200), 20], [Property: Lesson.Methods (string) MaxLength(500), 21], [Property: Lesson.Objective (string) Required MaxLength(500), 22], [Property: Lesson.SortOrder (int) Required, 23], [Property: Lesson.SpecialNeeds (string) MaxLength(500), 24], [Property: Lesson.SubTopicId (int?) FK Index, 25], [Property: Lesson.Title (string) Required MaxLength(200), 26], [Property: Lesson.TopicId (int?) FK Index, 27], [Property: Lesson.UserId (int) Required FK Index, 28], [Property: Lesson.Visibility (VisibilityType) Required, 29] }
+            6 -> 15
+            7 -> Dictionary<IProperty, int> { [Property: SubTopic.Id (int) Required PK AfterSave:Throw ValueGenerated.OnAdd, 30], [Property: SubTopic.Archived (bool) Required, 31], [Property: SubTopic.Description (string), 32], [Property: SubTopic.IsDefault (bool) Required, 33], [Property: SubTopic.SortOrder (int) Required, 34], [Property: SubTopic.Title (string) Required, 35], [Property: SubTopic.TopicId (int) Required FK Index, 36], [Property: SubTopic.UserId (int) Required FK Index, 37], [Property: SubTopic.Visibility (VisibilityType) Required, 38] }
+            8 -> 30
+            9 -> Dictionary<IProperty, int> { [Property: Lesson.Id (int) Required PK AfterSave:Throw ValueGenerated.OnAdd, 39], [Property: Lesson.Archived (bool) Required, 40], [Property: Lesson.Assessment (string) MaxLength(250), 41], [Property: Lesson.ClassTime (string) MaxLength(100), 42], [Property: Lesson.Level (string) MaxLength(100), 43], [Property: Lesson.Materials (string) MaxLength(200), 44], [Property: Lesson.Methods (string) MaxLength(500), 45], [Property: Lesson.Objective (string) Required MaxLength(500), 46], [Property: Lesson.SortOrder (int) Required, 47], [Property: Lesson.SpecialNeeds (string) MaxLength(500), 48], [Property: Lesson.SubTopicId (int?) FK Index, 49], [Property: Lesson.Title (string) Required MaxLength(200), 50], [Property: Lesson.TopicId (int?) FK Index, 51], [Property: Lesson.UserId (int) Required FK Index, 52], [Property: Lesson.Visibility (VisibilityType) Required, 53] }
+            10 -> 39
+            11 -> Dictionary<IProperty, int> { [Property: User.Id (int) Required PK AfterSave:Throw ValueGenerated.OnAdd, 6], [Property: User.AccessFailedCount (int) Required, 54], [Property: User.ConcurrencyStamp (string) Concurrency, 55], [Property: User.DistrictId (int?) FK Index, 56], [Property: User.Email (string) MaxLength(256), 57], [Property: User.EmailConfirmed (bool) Required, 58], [Property: User.FirstName (string) Required, 59], [Property: User.LastName (string) Required, 60], [Property: User.LockoutEnabled (bool) Required, 61], [Property: User.LockoutEnd (DateTimeOffset?), 62], [Property: User.NormalizedEmail (string) Index MaxLength(256), 63], [Property: User.NormalizedUserName (string) Index MaxLength(256), 64], [Property: User.PasswordHash (string), 65], [Property: User.PhoneNumber (string), 66], [Property: User.PhoneNumberConfirmed (bool) Required, 67], [Property: User.SchoolId (int?) FK Index, 68], [Property: User.SecurityStamp (string), 69], [Property: User.TwoFactorEnabled (bool) Required, 70], [Property: User.UserName (string) MaxLength(256), 71] }
+        SELECT c.Id, c.Archived, c.Description, c.Title, c.UserId, c.Visibility, a.Id, t1.Id, t1.Archived, t1.CourseId, t1.Description, t1.SortOrder, t1.Title, t1.UserId, t1.Visibility, t1.Id0, t1.Archived0, t1.Assessment, t1.ClassTime, t1.Level, t1.Materials, t1.Methods, t1.Objective, t1.SortOrder0, t1.SpecialNeeds, t1.SubTopicId, t1.Title0, t1.TopicId, t1.UserId0, t1.Visibility0, t1.Id1, t1.Archived1, t1.Description0, t1.IsDefault, t1.SortOrder1, t1.Title1, t1.TopicId0, t1.UserId1, t1.Visibility1, t1.Id00, t1.Archived00, t1.Assessment0, t1.ClassTime0, t1.Level0, t1.Materials0, t1.Methods0, t1.Objective0, t1.SortOrder00, t1.SpecialNeeds0, t1.SubTopicId0, t1.Title00, t1.TopicId00, t1.UserId00, t1.Visibility00, a.AccessFailedCount, a.ConcurrencyStamp, a.DistrictId, a.Email, a.EmailConfirmed, a.FirstName, a.LastName, a.LockoutEnabled, a.LockoutEnd, a.NormalizedEmail, a.NormalizedUserName, a.PasswordHash, a.PhoneNumber, a.PhoneNumberConfirmed, a.SchoolId, a.SecurityStamp, a.TwoFactorEnabled, a.UserName
+        FROM Courses AS c
+        INNER JOIN AspNetUsers AS a ON c.UserId == a.Id
+        LEFT JOIN 
+        (
+            SELECT t.Id, t.Archived, t.CourseId, t.Description, t.SortOrder, t.Title, t.UserId, t.Visibility, l.Id AS Id0, l.Archived AS Archived0, l.Assessment, l.ClassTime, l.Level, l.Materials, l.Methods, l.Objective, l.SortOrder AS SortOrder0, l.SpecialNeeds, l.SubTopicId, l.Title AS Title0, l.TopicId, l.UserId AS UserId0, l.Visibility AS Visibility0, t0.Id AS Id1, t0.Archived AS Archived1, t0.Description AS Description0, t0.IsDefault, t0.SortOrder AS SortOrder1, t0.Title AS Title1, t0.TopicId AS TopicId0, t0.UserId AS UserId1, t0.Visibility AS Visibility1, t0.Id0 AS Id00, t0.Archived0 AS Archived00, t0.Assessment AS Assessment0, t0.ClassTime AS ClassTime0, t0.Level AS Level0, t0.Materials AS Materials0, t0.Methods AS Methods0, t0.Objective AS Objective0, t0.SortOrder0 AS SortOrder00, t0.SpecialNeeds AS SpecialNeeds0, t0.SubTopicId AS SubTopicId0, t0.Title0 AS Title00, t0.TopicId0 AS TopicId00, t0.UserId0 AS UserId00, t0.Visibility0 AS Visibility00
+            FROM Topics AS t
+            LEFT JOIN Lessons AS l ON t.Id == l.TopicId
+            LEFT JOIN 
+            (
+                SELECT s.Id, s.Archived, s.Description, s.IsDefault, s.SortOrder, s.Title, s.TopicId, s.UserId, s.Visibility, l0.Id AS Id0, l0.Archived AS Archived0, l0.Assessment, l0.ClassTime, l0.Level, l0.Materials, l0.Methods, l0.Objective, l0.SortOrder AS SortOrder0, l0.SpecialNeeds, l0.SubTopicId, l0.Title AS Title0, l0.TopicId AS TopicId0, l0.UserId AS UserId0, l0.Visibility AS Visibility0
+                FROM SubTopics AS s
+                LEFT JOIN Lessons AS l0 ON s.Id == l0.SubTopicId
+            ) AS t0 ON t.Id == t0.TopicId
+        ) AS t1 ON c.Id == t1.CourseId
+        WHERE Not(c.Archived) && ((c.UserId == @__userId_0) || (c.Visibility == 1))
+        ORDER BY c.Id ASC, a.Id ASC, t1.Id ASC, t1.Id0 ASC, t1.Id1 ASC), 
+    null, 
+    Func<QueryContext, DbDataReader, ResultContext, SingleQueryResultCoordinator, Course>, 
+    LessonTree.DAL.LessonTreeContext, 
+    False, 
+    True, 
+    True
+)'
+[2025-06-10 13:13:57 DBG] Opened connection to database 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:57 DBG] Opened connection to database 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:57 DBG] Creating DbConnection.
+[2025-06-10 13:13:57 DBG] Creating DbCommand for 'ExecuteReader'.
+[2025-06-10 13:13:57 DBG] Creating DbCommand for 'ExecuteReader'.
+[2025-06-10 13:13:57 DBG] Created DbConnection. (8ms).
+[2025-06-10 13:13:57 DBG] Created DbCommand for 'ExecuteReader' (8ms).
+[2025-06-10 13:13:57 DBG] Created DbCommand for 'ExecuteReader' (6ms).
+[2025-06-10 13:13:57 DBG] Opening connection to database 'main' on server 'LessonTree.db'.
+[2025-06-10 13:13:57 DBG] Initialized DbCommand for 'ExecuteReader' (17ms).
+[2025-06-10 13:13:57 DBG] Initialized DbCommand for 'ExecuteReader' (15ms).
+[2025-06-10 13:13:57 DBG] Opened connection to database 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:57 DBG] Executing DbCommand [Parameters=[@__id_0='1'], CommandType='"Text"', CommandTimeout='30']
+SELECT "t"."Id", "t"."AccessFailedCount", "t"."ConcurrencyStamp", "t"."DistrictId", "t"."Email", "t"."EmailConfirmed", "t"."FirstName", "t"."LastName", "t"."LockoutEnabled", "t"."LockoutEnd", "t"."NormalizedEmail", "t"."NormalizedUserName", "t"."PasswordHash", "t"."PhoneNumber", "t"."PhoneNumberConfirmed", "t"."SchoolId", "t"."SecurityStamp", "t"."TwoFactorEnabled", "t"."UserName", "t"."Id0", "t"."EndDate", "t"."LastUpdated", "t"."PeriodsPerDay", "t"."SchoolYear", "t"."SettingsJson", "t"."StartDate", "t"."UserId", "p"."Id", "p"."BackgroundColor", "p"."CourseId", "p"."FontColor", "p"."Notes", "p"."Period", "p"."Room", "p"."SpecialPeriodType", "p"."TeachingDays", "p"."UserConfigurationId"
+FROM (
+    SELECT "a"."Id", "a"."AccessFailedCount", "a"."ConcurrencyStamp", "a"."DistrictId", "a"."Email", "a"."EmailConfirmed", "a"."FirstName", "a"."LastName", "a"."LockoutEnabled", "a"."LockoutEnd", "a"."NormalizedEmail", "a"."NormalizedUserName", "a"."PasswordHash", "a"."PhoneNumber", "a"."PhoneNumberConfirmed", "a"."SchoolId", "a"."SecurityStamp", "a"."TwoFactorEnabled", "a"."UserName", "u"."Id" AS "Id0", "u"."EndDate", "u"."LastUpdated", "u"."PeriodsPerDay", "u"."SchoolYear", "u"."SettingsJson", "u"."StartDate", "u"."UserId"
+    FROM "AspNetUsers" AS "a"
+    LEFT JOIN "UserConfigurations" AS "u" ON "a"."Id" = "u"."UserId"
+    WHERE "a"."Id" = @__id_0
+    LIMIT 1
+) AS "t"
+LEFT JOIN "PeriodAssignments" AS "p" ON "t"."Id0" = "p"."UserConfigurationId"
+ORDER BY "t"."Id", "t"."Id0"
+[2025-06-10 13:13:57 DBG] Executing DbCommand [Parameters=[@__id_0='1'], CommandType='"Text"', CommandTimeout='30']
+SELECT "t"."Id", "t"."AccessFailedCount", "t"."ConcurrencyStamp", "t"."DistrictId", "t"."Email", "t"."EmailConfirmed", "t"."FirstName", "t"."LastName", "t"."LockoutEnabled", "t"."LockoutEnd", "t"."NormalizedEmail", "t"."NormalizedUserName", "t"."PasswordHash", "t"."PhoneNumber", "t"."PhoneNumberConfirmed", "t"."SchoolId", "t"."SecurityStamp", "t"."TwoFactorEnabled", "t"."UserName", "t"."Id0", "t"."EndDate", "t"."LastUpdated", "t"."PeriodsPerDay", "t"."SchoolYear", "t"."SettingsJson", "t"."StartDate", "t"."UserId", "p"."Id", "p"."BackgroundColor", "p"."CourseId", "p"."FontColor", "p"."Notes", "p"."Period", "p"."Room", "p"."SpecialPeriodType", "p"."TeachingDays", "p"."UserConfigurationId"
+FROM (
+    SELECT "a"."Id", "a"."AccessFailedCount", "a"."ConcurrencyStamp", "a"."DistrictId", "a"."Email", "a"."EmailConfirmed", "a"."FirstName", "a"."LastName", "a"."LockoutEnabled", "a"."LockoutEnd", "a"."NormalizedEmail", "a"."NormalizedUserName", "a"."PasswordHash", "a"."PhoneNumber", "a"."PhoneNumberConfirmed", "a"."SchoolId", "a"."SecurityStamp", "a"."TwoFactorEnabled", "a"."UserName", "u"."Id" AS "Id0", "u"."EndDate", "u"."LastUpdated", "u"."PeriodsPerDay", "u"."SchoolYear", "u"."SettingsJson", "u"."StartDate", "u"."UserId"
+    FROM "AspNetUsers" AS "a"
+    LEFT JOIN "UserConfigurations" AS "u" ON "a"."Id" = "u"."UserId"
+    WHERE "a"."Id" = @__id_0
+    LIMIT 1
+) AS "t"
+LEFT JOIN "PeriodAssignments" AS "p" ON "t"."Id0" = "p"."UserConfigurationId"
+ORDER BY "t"."Id", "t"."Id0"
+[2025-06-10 13:13:57 DBG] Creating DbCommand for 'ExecuteReader'.
+[2025-06-10 13:13:57 INF] Executed DbCommand (16ms) [Parameters=[@__id_0='1'], CommandType='"Text"', CommandTimeout='30']
+SELECT "t"."Id", "t"."AccessFailedCount", "t"."ConcurrencyStamp", "t"."DistrictId", "t"."Email", "t"."EmailConfirmed", "t"."FirstName", "t"."LastName", "t"."LockoutEnabled", "t"."LockoutEnd", "t"."NormalizedEmail", "t"."NormalizedUserName", "t"."PasswordHash", "t"."PhoneNumber", "t"."PhoneNumberConfirmed", "t"."SchoolId", "t"."SecurityStamp", "t"."TwoFactorEnabled", "t"."UserName", "t"."Id0", "t"."EndDate", "t"."LastUpdated", "t"."PeriodsPerDay", "t"."SchoolYear", "t"."SettingsJson", "t"."StartDate", "t"."UserId", "p"."Id", "p"."BackgroundColor", "p"."CourseId", "p"."FontColor", "p"."Notes", "p"."Period", "p"."Room", "p"."SpecialPeriodType", "p"."TeachingDays", "p"."UserConfigurationId"
+FROM (
+    SELECT "a"."Id", "a"."AccessFailedCount", "a"."ConcurrencyStamp", "a"."DistrictId", "a"."Email", "a"."EmailConfirmed", "a"."FirstName", "a"."LastName", "a"."LockoutEnabled", "a"."LockoutEnd", "a"."NormalizedEmail", "a"."NormalizedUserName", "a"."PasswordHash", "a"."PhoneNumber", "a"."PhoneNumberConfirmed", "a"."SchoolId", "a"."SecurityStamp", "a"."TwoFactorEnabled", "a"."UserName", "u"."Id" AS "Id0", "u"."EndDate", "u"."LastUpdated", "u"."PeriodsPerDay", "u"."SchoolYear", "u"."SettingsJson", "u"."StartDate", "u"."UserId"
+    FROM "AspNetUsers" AS "a"
+    LEFT JOIN "UserConfigurations" AS "u" ON "a"."Id" = "u"."UserId"
+    WHERE "a"."Id" = @__id_0
+    LIMIT 1
+) AS "t"
+LEFT JOIN "PeriodAssignments" AS "p" ON "t"."Id0" = "p"."UserConfigurationId"
+ORDER BY "t"."Id", "t"."Id0"
+[2025-06-10 13:13:57 INF] Executed DbCommand (29ms) [Parameters=[@__id_0='1'], CommandType='"Text"', CommandTimeout='30']
+SELECT "t"."Id", "t"."AccessFailedCount", "t"."ConcurrencyStamp", "t"."DistrictId", "t"."Email", "t"."EmailConfirmed", "t"."FirstName", "t"."LastName", "t"."LockoutEnabled", "t"."LockoutEnd", "t"."NormalizedEmail", "t"."NormalizedUserName", "t"."PasswordHash", "t"."PhoneNumber", "t"."PhoneNumberConfirmed", "t"."SchoolId", "t"."SecurityStamp", "t"."TwoFactorEnabled", "t"."UserName", "t"."Id0", "t"."EndDate", "t"."LastUpdated", "t"."PeriodsPerDay", "t"."SchoolYear", "t"."SettingsJson", "t"."StartDate", "t"."UserId", "p"."Id", "p"."BackgroundColor", "p"."CourseId", "p"."FontColor", "p"."Notes", "p"."Period", "p"."Room", "p"."SpecialPeriodType", "p"."TeachingDays", "p"."UserConfigurationId"
+FROM (
+    SELECT "a"."Id", "a"."AccessFailedCount", "a"."ConcurrencyStamp", "a"."DistrictId", "a"."Email", "a"."EmailConfirmed", "a"."FirstName", "a"."LastName", "a"."LockoutEnabled", "a"."LockoutEnd", "a"."NormalizedEmail", "a"."NormalizedUserName", "a"."PasswordHash", "a"."PhoneNumber", "a"."PhoneNumberConfirmed", "a"."SchoolId", "a"."SecurityStamp", "a"."TwoFactorEnabled", "a"."UserName", "u"."Id" AS "Id0", "u"."EndDate", "u"."LastUpdated", "u"."PeriodsPerDay", "u"."SchoolYear", "u"."SettingsJson", "u"."StartDate", "u"."UserId"
+    FROM "AspNetUsers" AS "a"
+    LEFT JOIN "UserConfigurations" AS "u" ON "a"."Id" = "u"."UserId"
+    WHERE "a"."Id" = @__id_0
+    LIMIT 1
+) AS "t"
+LEFT JOIN "PeriodAssignments" AS "p" ON "t"."Id0" = "p"."UserConfigurationId"
+ORDER BY "t"."Id", "t"."Id0"
+[2025-06-10 13:13:57 DBG] Created DbCommand for 'ExecuteReader' (24ms).
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'User' entity with key '{Id: 1}'.
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'User' entity with key '{Id: 1}'.
+[2025-06-10 13:13:57 DBG] Initialized DbCommand for 'ExecuteReader' (51ms).
+[2025-06-10 13:13:57 DBG] Executing DbCommand [Parameters=[@__userId_0='1'], CommandType='"Text"', CommandTimeout='30']
+SELECT "c"."Id", "c"."Archived", "c"."Description", "c"."Title", "c"."UserId", "c"."Visibility", "a"."Id", "t1"."Id", "t1"."Archived", "t1"."CourseId", "t1"."Description", "t1"."SortOrder", "t1"."Title", "t1"."UserId", "t1"."Visibility", "t1"."Id0", "t1"."Archived0", "t1"."Assessment", "t1"."ClassTime", "t1"."Level", "t1"."Materials", "t1"."Methods", "t1"."Objective", "t1"."SortOrder0", "t1"."SpecialNeeds", "t1"."SubTopicId", "t1"."Title0", "t1"."TopicId", "t1"."UserId0", "t1"."Visibility0", "t1"."Id1", "t1"."Archived1", "t1"."Description0", "t1"."IsDefault", "t1"."SortOrder1", "t1"."Title1", "t1"."TopicId0", "t1"."UserId1", "t1"."Visibility1", "t1"."Id00", "t1"."Archived00", "t1"."Assessment0", "t1"."ClassTime0", "t1"."Level0", "t1"."Materials0", "t1"."Methods0", "t1"."Objective0", "t1"."SortOrder00", "t1"."SpecialNeeds0", "t1"."SubTopicId0", "t1"."Title00", "t1"."TopicId00", "t1"."UserId00", "t1"."Visibility00", "a"."AccessFailedCount", "a"."ConcurrencyStamp", "a"."DistrictId", "a"."Email", "a"."EmailConfirmed", "a"."FirstName", "a"."LastName", "a"."LockoutEnabled", "a"."LockoutEnd", "a"."NormalizedEmail", "a"."NormalizedUserName", "a"."PasswordHash", "a"."PhoneNumber", "a"."PhoneNumberConfirmed", "a"."SchoolId", "a"."SecurityStamp", "a"."TwoFactorEnabled", "a"."UserName"
+FROM "Courses" AS "c"
+INNER JOIN "AspNetUsers" AS "a" ON "c"."UserId" = "a"."Id"
+LEFT JOIN (
+    SELECT "t"."Id", "t"."Archived", "t"."CourseId", "t"."Description", "t"."SortOrder", "t"."Title", "t"."UserId", "t"."Visibility", "l"."Id" AS "Id0", "l"."Archived" AS "Archived0", "l"."Assessment", "l"."ClassTime", "l"."Level", "l"."Materials", "l"."Methods", "l"."Objective", "l"."SortOrder" AS "SortOrder0", "l"."SpecialNeeds", "l"."SubTopicId", "l"."Title" AS "Title0", "l"."TopicId", "l"."UserId" AS "UserId0", "l"."Visibility" AS "Visibility0", "t0"."Id" AS "Id1", "t0"."Archived" AS "Archived1", "t0"."Description" AS "Description0", "t0"."IsDefault", "t0"."SortOrder" AS "SortOrder1", "t0"."Title" AS "Title1", "t0"."TopicId" AS "TopicId0", "t0"."UserId" AS "UserId1", "t0"."Visibility" AS "Visibility1", "t0"."Id0" AS "Id00", "t0"."Archived0" AS "Archived00", "t0"."Assessment" AS "Assessment0", "t0"."ClassTime" AS "ClassTime0", "t0"."Level" AS "Level0", "t0"."Materials" AS "Materials0", "t0"."Methods" AS "Methods0", "t0"."Objective" AS "Objective0", "t0"."SortOrder0" AS "SortOrder00", "t0"."SpecialNeeds" AS "SpecialNeeds0", "t0"."SubTopicId" AS "SubTopicId0", "t0"."Title0" AS "Title00", "t0"."TopicId0" AS "TopicId00", "t0"."UserId0" AS "UserId00", "t0"."Visibility0" AS "Visibility00"
+    FROM "Topics" AS "t"
+    LEFT JOIN "Lessons" AS "l" ON "t"."Id" = "l"."TopicId"
+    LEFT JOIN (
+        SELECT "s"."Id", "s"."Archived", "s"."Description", "s"."IsDefault", "s"."SortOrder", "s"."Title", "s"."TopicId", "s"."UserId", "s"."Visibility", "l0"."Id" AS "Id0", "l0"."Archived" AS "Archived0", "l0"."Assessment", "l0"."ClassTime", "l0"."Level", "l0"."Materials", "l0"."Methods", "l0"."Objective", "l0"."SortOrder" AS "SortOrder0", "l0"."SpecialNeeds", "l0"."SubTopicId", "l0"."Title" AS "Title0", "l0"."TopicId" AS "TopicId0", "l0"."UserId" AS "UserId0", "l0"."Visibility" AS "Visibility0"
+        FROM "SubTopics" AS "s"
+        LEFT JOIN "Lessons" AS "l0" ON "s"."Id" = "l0"."SubTopicId"
+    ) AS "t0" ON "t"."Id" = "t0"."TopicId"
+) AS "t1" ON "c"."Id" = "t1"."CourseId"
+WHERE NOT ("c"."Archived") AND ("c"."UserId" = @__userId_0 OR "c"."Visibility" = 1)
+ORDER BY "c"."Id", "a"."Id", "t1"."Id", "t1"."Id0", "t1"."Id1"
+[2025-06-10 13:13:57 DBG] The navigation 'User.Configuration' for entity with key '{Id: 1}' was detected as changed.
+[2025-06-10 13:13:57 DBG] The navigation 'User.Configuration' for entity with key '{Id: 1}' was detected as changed.
+[2025-06-10 13:13:57 INF] Executed DbCommand (27ms) [Parameters=[@__userId_0='1'], CommandType='"Text"', CommandTimeout='30']
+SELECT "c"."Id", "c"."Archived", "c"."Description", "c"."Title", "c"."UserId", "c"."Visibility", "a"."Id", "t1"."Id", "t1"."Archived", "t1"."CourseId", "t1"."Description", "t1"."SortOrder", "t1"."Title", "t1"."UserId", "t1"."Visibility", "t1"."Id0", "t1"."Archived0", "t1"."Assessment", "t1"."ClassTime", "t1"."Level", "t1"."Materials", "t1"."Methods", "t1"."Objective", "t1"."SortOrder0", "t1"."SpecialNeeds", "t1"."SubTopicId", "t1"."Title0", "t1"."TopicId", "t1"."UserId0", "t1"."Visibility0", "t1"."Id1", "t1"."Archived1", "t1"."Description0", "t1"."IsDefault", "t1"."SortOrder1", "t1"."Title1", "t1"."TopicId0", "t1"."UserId1", "t1"."Visibility1", "t1"."Id00", "t1"."Archived00", "t1"."Assessment0", "t1"."ClassTime0", "t1"."Level0", "t1"."Materials0", "t1"."Methods0", "t1"."Objective0", "t1"."SortOrder00", "t1"."SpecialNeeds0", "t1"."SubTopicId0", "t1"."Title00", "t1"."TopicId00", "t1"."UserId00", "t1"."Visibility00", "a"."AccessFailedCount", "a"."ConcurrencyStamp", "a"."DistrictId", "a"."Email", "a"."EmailConfirmed", "a"."FirstName", "a"."LastName", "a"."LockoutEnabled", "a"."LockoutEnd", "a"."NormalizedEmail", "a"."NormalizedUserName", "a"."PasswordHash", "a"."PhoneNumber", "a"."PhoneNumberConfirmed", "a"."SchoolId", "a"."SecurityStamp", "a"."TwoFactorEnabled", "a"."UserName"
+FROM "Courses" AS "c"
+INNER JOIN "AspNetUsers" AS "a" ON "c"."UserId" = "a"."Id"
+LEFT JOIN (
+    SELECT "t"."Id", "t"."Archived", "t"."CourseId", "t"."Description", "t"."SortOrder", "t"."Title", "t"."UserId", "t"."Visibility", "l"."Id" AS "Id0", "l"."Archived" AS "Archived0", "l"."Assessment", "l"."ClassTime", "l"."Level", "l"."Materials", "l"."Methods", "l"."Objective", "l"."SortOrder" AS "SortOrder0", "l"."SpecialNeeds", "l"."SubTopicId", "l"."Title" AS "Title0", "l"."TopicId", "l"."UserId" AS "UserId0", "l"."Visibility" AS "Visibility0", "t0"."Id" AS "Id1", "t0"."Archived" AS "Archived1", "t0"."Description" AS "Description0", "t0"."IsDefault", "t0"."SortOrder" AS "SortOrder1", "t0"."Title" AS "Title1", "t0"."TopicId" AS "TopicId0", "t0"."UserId" AS "UserId1", "t0"."Visibility" AS "Visibility1", "t0"."Id0" AS "Id00", "t0"."Archived0" AS "Archived00", "t0"."Assessment" AS "Assessment0", "t0"."ClassTime" AS "ClassTime0", "t0"."Level" AS "Level0", "t0"."Materials" AS "Materials0", "t0"."Methods" AS "Methods0", "t0"."Objective" AS "Objective0", "t0"."SortOrder0" AS "SortOrder00", "t0"."SpecialNeeds" AS "SpecialNeeds0", "t0"."SubTopicId" AS "SubTopicId0", "t0"."Title0" AS "Title00", "t0"."TopicId0" AS "TopicId00", "t0"."UserId0" AS "UserId00", "t0"."Visibility0" AS "Visibility00"
+    FROM "Topics" AS "t"
+    LEFT JOIN "Lessons" AS "l" ON "t"."Id" = "l"."TopicId"
+    LEFT JOIN (
+        SELECT "s"."Id", "s"."Archived", "s"."Description", "s"."IsDefault", "s"."SortOrder", "s"."Title", "s"."TopicId", "s"."UserId", "s"."Visibility", "l0"."Id" AS "Id0", "l0"."Archived" AS "Archived0", "l0"."Assessment", "l0"."ClassTime", "l0"."Level", "l0"."Materials", "l0"."Methods", "l0"."Objective", "l0"."SortOrder" AS "SortOrder0", "l0"."SpecialNeeds", "l0"."SubTopicId", "l0"."Title" AS "Title0", "l0"."TopicId" AS "TopicId0", "l0"."UserId" AS "UserId0", "l0"."Visibility" AS "Visibility0"
+        FROM "SubTopics" AS "s"
+        LEFT JOIN "Lessons" AS "l0" ON "s"."Id" = "l0"."SubTopicId"
+    ) AS "t0" ON "t"."Id" = "t0"."TopicId"
+) AS "t1" ON "c"."Id" = "t1"."CourseId"
+WHERE NOT ("c"."Archived") AND ("c"."UserId" = @__userId_0 OR "c"."Visibility" = 1)
+ORDER BY "c"."Id", "a"."Id", "t1"."Id", "t1"."Id0", "t1"."Id1"
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'UserConfiguration' entity with key '{Id: 1}'.
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'UserConfiguration' entity with key '{Id: 1}'.
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'Course' entity with key '{Id: 1}'.
+[2025-06-10 13:13:57 DBG] The navigation 'Course.User' for entity with key '{Id: 1}' was detected as changed.
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'User' entity with key '{Id: 1}'.
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'PeriodAssignment' entity with key '{Id: 7}'.
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'PeriodAssignment' entity with key '{Id: 7}'.
+[2025-06-10 13:13:57 DBG] The navigation 'Topic.User' for entity with key '{Id: 1}' was detected as changed.
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'Topic' entity with key '{Id: 1}'.
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'PeriodAssignment' entity with key '{Id: 8}'.
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'PeriodAssignment' entity with key '{Id: 8}'.
+[2025-06-10 13:13:57 DBG] Closing data reader to 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:57 DBG] Closing data reader to 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:57 DBG] A data reader for 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db' is being disposed after spending 156ms reading results.
+[2025-06-10 13:13:57 DBG] A data reader for 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db' is being disposed after spending 171ms reading results.
+[2025-06-10 13:13:57 DBG] Closing connection to database 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:57 DBG] Closing connection to database 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:57 DBG] Closed connection to database 'main' on server 'LessonTree.db' (7ms).
+[2025-06-10 13:13:57 DBG] The navigation 'Lesson.User' for entity with key '{Id: 1}' was detected as changed.
+[2025-06-10 13:13:57 DBG] Closed connection to database 'main' on server 'LessonTree.db' (6ms).
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 1}'.
+[2025-06-10 13:13:57 DBG] Returning user configuration for user ID: 1
+[2025-06-10 13:13:57 DBG] Returning user: admin
+[2025-06-10 13:13:57 DBG] List of registered output formatters, in the following order: ["Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter"]
+[2025-06-10 13:13:57 DBG] List of registered output formatters, in the following order: ["Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter"]
+[2025-06-10 13:13:57 DBG] No information found on request to perform content negotiation.
+[2025-06-10 13:13:57 DBG] The navigation 'SubTopic.User' for entity with key '{Id: 1}' was detected as changed.
+[2025-06-10 13:13:57 DBG] No information found on request to perform content negotiation.
+[2025-06-10 13:13:57 DBG] Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+[2025-06-10 13:13:57 DBG] Context 'LessonTreeContext' started tracking 'SubTopic' entity with key '{Id: 1}'.
+[2025-06-10 13:13:57 DBG] Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+[2025-06-10 13:13:57 DBG] Attempting to select the first formatter in the output formatters list which can write the result.
+[2025-06-10 13:13:58 DBG] Attempting to select the first formatter in the output formatters list which can write the result.
+[2025-06-10 13:13:58 DBG] Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+[2025-06-10 13:13:58 DBG] Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+[2025-06-10 13:13:58 INF] Executing OkObjectResult, writing value of type 'LessonTree.Models.DTO.UserConfigurationResource'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 17}' was detected as changed.
+[2025-06-10 13:13:58 INF] Executing OkObjectResult, writing value of type 'LessonTree.Models.DTO.UserResource'.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 17}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 18}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 18}'.
+[2025-06-10 13:13:58 INF] Executed action LessonTree.API.Controllers.UserController.GetUser (LessonTree.API) in 1091.8927ms
+[2025-06-10 13:13:58 INF] Executed action LessonTree.API.Controllers.UserController.GetUserConfiguration (LessonTree.API) in 1102.1284ms
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 19}' was detected as changed.
+[2025-06-10 13:13:58 INF] Executed endpoint 'LessonTree.API.Controllers.UserController.GetUser (LessonTree.API)'
+[2025-06-10 13:13:58 INF] Executed endpoint 'LessonTree.API.Controllers.UserController.GetUserConfiguration (LessonTree.API)'
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 19}'.
+[2025-06-10 13:13:58 INF] HTTP GET /api/user/1 responded 200 in 1218.5668 ms
+[2025-06-10 13:13:58 INF] HTTP GET /api/user/1/configuration responded 200 in 1224.0952 ms
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 20}' was detected as changed.
+[2025-06-10 13:13:58 DBG] 'LessonTreeContext' disposed.
+[2025-06-10 13:13:58 DBG] 'LessonTreeContext' disposed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 20}'.
+[2025-06-10 13:13:58 DBG] Disposing connection to database 'main' on server 'LessonTree.db'.
+[2025-06-10 13:13:58 DBG] Disposing connection to database 'main' on server 'LessonTree.db'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 2}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Disposed connection to database 'main' on server 'LessonTree.db' (9ms).
+[2025-06-10 13:13:58 DBG] Disposed connection to database 'main' on server 'LessonTree.db' (11ms).
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 2}'.
+[2025-06-10 13:13:58 INF] Request finished HTTP/2 GET https://localhost:7238/api/user/1 - 200 null application/json; charset=utf-8 1591.6655ms
+[2025-06-10 13:13:58 INF] Request finished HTTP/2 GET https://localhost:7238/api/user/1/configuration - 200 null application/json; charset=utf-8 1598.851ms
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 3}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 3}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 4}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 4}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Topic.User' for entity with key '{Id: 2}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Topic' entity with key '{Id: 2}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 5}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 5}'.
+[2025-06-10 13:13:58 DBG] The navigation 'SubTopic.User' for entity with key '{Id: 2}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'SubTopic' entity with key '{Id: 2}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 21}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 21}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 22}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 22}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 23}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 23}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 24}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 24}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 6}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 6}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 7}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 7}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 8}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 8}'.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Course' entity with key '{Id: 2}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Topic.User' for entity with key '{Id: 3}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Topic' entity with key '{Id: 3}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 9}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 9}'.
+[2025-06-10 13:13:58 DBG] The navigation 'SubTopic.User' for entity with key '{Id: 3}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'SubTopic' entity with key '{Id: 3}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 25}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 25}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 26}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 26}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 27}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 27}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 28}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 28}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 10}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 10}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 11}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 11}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 12}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 12}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Topic.User' for entity with key '{Id: 4}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Topic' entity with key '{Id: 4}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 13}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 13}'.
+[2025-06-10 13:13:58 DBG] The navigation 'SubTopic.User' for entity with key '{Id: 4}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'SubTopic' entity with key '{Id: 4}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 29}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 29}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 30}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 30}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 31}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 31}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 32}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 32}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 14}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 14}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 15}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 15}'.
+[2025-06-10 13:13:58 DBG] The navigation 'Lesson.User' for entity with key '{Id: 16}' was detected as changed.
+[2025-06-10 13:13:58 DBG] Context 'LessonTreeContext' started tracking 'Lesson' entity with key '{Id: 16}'.
+[2025-06-10 13:13:58 DBG] Closing data reader to 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:58 DBG] A data reader for 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db' is being disposed after spending 568ms reading results.
+[2025-06-10 13:13:58 DBG] Closing connection to database 'main' on server 'C:\Users\SWash\LessonTree\LessonTree\LessonTree.Api\LessonTree.db'.
+[2025-06-10 13:13:58 DBG] Closed connection to database 'main' on server 'LessonTree.db' (5ms).
+[2025-06-10 13:13:58 DBG] Found 2 courses for User ID: 1
+[2025-06-10 13:13:58 DBG] List of registered output formatters, in the following order: ["Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.HttpNoContentOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.StringOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.StreamOutputFormatter","Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter"]
+[2025-06-10 13:13:58 DBG] No information found on request to perform content negotiation.
+[2025-06-10 13:13:58 DBG] Attempting to select an output formatter without using a content type as no explicit content types were specified for the response.
+[2025-06-10 13:13:58 DBG] Attempting to select the first formatter in the output formatters list which can write the result.
+[2025-06-10 13:13:58 DBG] Selected output formatter 'Microsoft.AspNetCore.Mvc.Formatters.SystemTextJsonOutputFormatter' and content type 'application/json' to write the response.
+[2025-06-10 13:13:58 INF] Executing OkObjectResult, writing value of type 'System.Collections.Generic.List`1[[LessonTree.Models.DTO.CourseResource, LessonTree.Models, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]'.
+[2025-06-10 13:13:58 INF] Executed action LessonTree.API.Controllers.CourseController.GetCourses (LessonTree.API) in 1544.9886ms
+[2025-06-10 13:13:58 INF] Executed endpoint 'LessonTree.API.Controllers.CourseController.GetCourses (LessonTree.API)'
+[2025-06-10 13:13:58 INF] HTTP GET /api/course responded 200 in 1656.8252 ms
+[2025-06-10 13:13:58 DBG] 'LessonTreeContext' disposed.
+[2025-06-10 13:13:58 DBG] Disposing connection to database 'main' on server 'LessonTree.db'.
+[2025-06-10 13:13:58 DBG] Disposed connection to database 'main' on server 'LessonTree.db' (3ms).
+[2025-06-10 13:13:58 INF] Request finished HTTP/2 GET https://localhost:7238/api/course?filter=Active&visibility=0 - 200 null application/json; charset=utf-8 1977.1093ms

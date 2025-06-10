@@ -3,6 +3,7 @@ using System;
 using LessonTree.DAL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LessonTree.DAL.Migrations
 {
     [DbContext(typeof(LessonTreeContext))]
-    partial class LessonTreeContextModelSnapshot : ModelSnapshot
+    [Migration("20250609095417_Add_TeachingDaysToPeriodAssignment")]
+    partial class Add_TeachingDaysToPeriodAssignment
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.2");
@@ -681,9 +684,15 @@ namespace LessonTree.DAL.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("UserId1")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId1")
                         .IsUnique();
 
                     b.ToTable("UserConfigurations");
@@ -1087,10 +1096,14 @@ namespace LessonTree.DAL.Migrations
             modelBuilder.Entity("LessonTree.DAL.Domain.UserConfiguration", b =>
                 {
                     b.HasOne("LessonTree.DAL.Domain.User", "User")
-                        .WithOne("Configuration")
+                        .WithOne()
                         .HasForeignKey("LessonTree.DAL.Domain.UserConfiguration", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("LessonTree.DAL.Domain.User", null)
+                        .WithOne("Configuration")
+                        .HasForeignKey("LessonTree.DAL.Domain.UserConfiguration", "UserId1");
 
                     b.Navigation("User");
                 });

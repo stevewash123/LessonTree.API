@@ -17,7 +17,7 @@ namespace LessonTree.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Admin")]
+    //[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Admin")]
     public class AdminController : ControllerBase
     {
         private readonly LessonTreeContext _context;
@@ -43,7 +43,6 @@ namespace LessonTree.API.Controllers
         }
 
         [HttpPost("reset-and-reseed")]
-        [Authorize(Roles = "SuperAdmin")] // Extra protection for destructive operation
         public async Task<IActionResult> ResetAndReseed()
         {
             if (!_env.IsDevelopment())

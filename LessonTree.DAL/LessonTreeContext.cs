@@ -119,8 +119,52 @@ namespace LessonTree.DAL
                 .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<PeriodAssignment>()
-                .ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_CourseId_PositiveOrNull",
-                    "CourseId IS NULL OR CourseId > 0 OR CourseId < 0"));
+                .HasOne(pa => pa.UserConfiguration)
+                .WithMany(uc => uc.PeriodAssignments)
+                .HasForeignKey(pa => pa.UserConfigurationId)
+                .OnDelete(DeleteBehavior.Cascade); // Delete assignments when user config is deleted
+
+            // Ensure exactly one of CourseId or SpecialPeriodType is specified (exclusive assignment)
+            modelBuilder.Entity<PeriodAssignment>()
+                .ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_ExclusiveAssignment",
+                    "(CourseId IS NOT NULL AND SpecialPeriodType IS NULL) OR (CourseId IS NULL AND SpecialPeriodType IS NOT NULL)"));
+
+            // Ensure CourseId is positive when specified
+            modelBuilder.Entity<PeriodAssignment>()
+                .ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_CourseId_Positive",
+                    "CourseId IS NULL OR CourseId > 0"));
+
+            // Add constraint to ensure TeachingDays is not empty for PeriodAssignments
+            modelBuilder.Entity<PeriodAssignment>()
+                .ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_NotEmpty",
+                    "TeachingDays IS NOT NULL AND LENGTH(TRIM(TeachingDays)) > 0"));
+
+            // Add constraint to ensure valid day names in TeachingDays
+            modelBuilder.Entity<PeriodAssignment>()
+                .ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_ValidDays",
+                    @"TeachingDays NOT LIKE '%[^MondayTueswdhFrig,]%' AND 
+                        (TeachingDays LIKE '%Monday%' OR 
+                        TeachingDays LIKE '%Tuesday%' OR 
+                        TeachingDays LIKE '%Wednesday%' OR 
+                        TeachingDays LIKE '%Thursday%' OR 
+                        TeachingDays LIKE '%Friday%' OR
+                        TeachingDays LIKE '%Saturday%' OR
+                        TeachingDays LIKE '%Sunday%')"));
+
+            modelBuilder.Entity<UserConfiguration>()
+                .HasOne(uc => uc.User)
+                .WithOne(u => u.Configuration) // FIXED: Specify the navigation property
+                .HasForeignKey<UserConfiguration>(uc => uc.UserId)
+                .OnDelete(DeleteBehavior.Cascade); // Delete config when user is deleted
+
+            // Add indexes for performance
+            modelBuilder.Entity<UserConfiguration>()
+                .HasIndex(uc => uc.UserId)
+                .IsUnique(); // One configuration per user
+
+            modelBuilder.Entity<PeriodAssignment>()
+                .HasIndex(pa => new { pa.UserConfigurationId, pa.Period, pa.TeachingDays })
+                .HasDatabaseName("IX_PeriodAssignments_UserConfig_Period_TeachingDays");
         }
 
         public DbSet<Course> Courses { get; set; }
@@ -138,5 +182,6 @@ namespace LessonTree.DAL
         public DbSet<Schedule> Schedules { get; set; }
         public DbSet<ScheduleEvent> ScheduleEvents { get; set; }
         public DbSet<UserConfiguration> UserConfigurations { get; set; }
+        public DbSet<PeriodAssignment> PeriodAssignments { get; set; }
     }
 }
