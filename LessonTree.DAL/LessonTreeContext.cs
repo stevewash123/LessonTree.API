@@ -1,4 +1,8 @@
-﻿// Full File: LessonTree.DAL/LessonTreeContext.cs
+﻿// **CORRECTED** - LessonTreeContext.cs with clean ScheduleConfiguration separation
+// RESPONSIBILITY: Database context with proper ScheduleConfiguration domain
+// DOES NOT: Reference old UserConfiguration period assignments (removed)
+// CALLED BY: Entity Framework for all database operations
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using LessonTree.DAL.Domain;
@@ -23,12 +27,12 @@ namespace LessonTree.DAL
             modelBuilder.Entity<LessonStandard>()
                 .HasOne(ls => ls.Lesson)
                 .WithMany(l => l.LessonStandards)
-                .OnDelete(DeleteBehavior.Cascade); // Cascade delete when Lesson is deleted
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<LessonStandard>()
                 .HasOne(ls => ls.Standard)
                 .WithMany(s => s.LessonStandards)
-                .OnDelete(DeleteBehavior.Cascade); // Cascade delete when Standard is deleted
+                .OnDelete(DeleteBehavior.Cascade);
 
             // LessonAttachment many-to-many
             modelBuilder.Entity<LessonAttachment>()
@@ -37,62 +41,62 @@ namespace LessonTree.DAL
             modelBuilder.Entity<LessonAttachment>()
                 .HasOne(ld => ld.Lesson)
                 .WithMany(l => l.LessonAttachments)
-                .OnDelete(DeleteBehavior.Cascade); // Cascade delete when Lesson is deleted
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<LessonAttachment>()
                 .HasOne(ld => ld.Attachment)
                 .WithMany(d => d.LessonAttachments)
-                .OnDelete(DeleteBehavior.Cascade); // Cascade delete when Attachment is deleted
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Hierarchy relationships with cascade delete
             modelBuilder.Entity<Topic>()
                 .HasOne(t => t.Course)
                 .WithMany(c => c.Topics)
                 .HasForeignKey(t => t.CourseId)
-                .OnDelete(DeleteBehavior.Cascade); // Course -> Topic
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<SubTopic>()
                 .HasOne(st => st.Topic)
                 .WithMany(t => t.SubTopics)
                 .HasForeignKey(st => st.TopicId)
-                .OnDelete(DeleteBehavior.Cascade); // Topic -> SubTopic
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Lesson>()
                 .HasOne(l => l.Topic)
                 .WithMany(t => t.Lessons)
                 .HasForeignKey(l => l.TopicId)
-                .OnDelete(DeleteBehavior.Cascade); // Topic -> Lesson
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Lesson>()
                 .HasOne(l => l.SubTopic)
                 .WithMany(st => st.Lessons)
                 .HasForeignKey(l => l.SubTopicId)
-                .OnDelete(DeleteBehavior.Cascade); // SubTopic -> Lesson
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // New hierarchy relationships
+            // Organizational hierarchy relationships
             modelBuilder.Entity<User>()
                 .HasOne(u => u.District)
                 .WithMany(d => d.Staff)
                 .HasForeignKey(u => u.DistrictId)
-                .OnDelete(DeleteBehavior.SetNull); // Optional: Set null if District is deleted
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<User>()
                 .HasOne(u => u.School)
                 .WithMany(s => s.Teachers)
                 .HasForeignKey(u => u.SchoolId)
-                .OnDelete(DeleteBehavior.SetNull); // Optional: Set null if School is deleted
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<School>()
                 .HasOne(s => s.District)
                 .WithMany(d => d.Schools)
                 .HasForeignKey(s => s.DistrictId)
-                .OnDelete(DeleteBehavior.Cascade); // District -> School
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Department>()
                 .HasOne(d => d.School)
                 .WithMany(s => s.Departments)
                 .HasForeignKey(d => d.SchoolId)
-                .OnDelete(DeleteBehavior.Cascade); // School -> Department
+                .OnDelete(DeleteBehavior.Cascade);
 
             // User-Department many-to-many
             modelBuilder.Entity<User>()
@@ -102,46 +106,81 @@ namespace LessonTree.DAL
 
             modelBuilder.Entity<Standard>()
                 .HasOne(s => s.Course)
-                .WithMany(c => c.Standards) // Assuming Course will have a Standards collection
+                .WithMany(c => c.Standards)
                 .HasForeignKey(s => s.CourseId)
-                .OnDelete(DeleteBehavior.Cascade); // Cascade delete when Course is deleted
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Standard>()
                 .HasOne(s => s.Topic)
-                .WithMany(c => c.Standards) // Assuming Course will have a Standards collection
+                .WithMany(c => c.Standards)
                 .HasForeignKey(s => s.TopicId)
-                .OnDelete(DeleteBehavior.SetNull); // Cascade delete when Course is deleted
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Standard>()
                 .HasOne(s => s.District)
-                .WithMany(d => d.Standards) // Assuming District will have a Standards collection
+                .WithMany(d => d.Standards)
                 .HasForeignKey(s => s.DistrictId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            modelBuilder.Entity<PeriodAssignment>()
-                .HasOne(pa => pa.UserConfiguration)
-                .WithMany(uc => uc.PeriodAssignments)
-                .HasForeignKey(pa => pa.UserConfigurationId)
-                .OnDelete(DeleteBehavior.Cascade); // Delete assignments when user config is deleted
+            // UserConfiguration - simplified, no period assignments
+            modelBuilder.Entity<UserConfiguration>()
+                .HasOne(uc => uc.User)
+                .WithOne(u => u.Configuration)
+                .HasForeignKey<UserConfiguration>(uc => uc.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // Ensure exactly one of CourseId or SpecialPeriodType is specified (exclusive assignment)
-            modelBuilder.Entity<PeriodAssignment>()
-                .ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_ExclusiveAssignment",
+            modelBuilder.Entity<UserConfiguration>()
+                .HasIndex(uc => uc.UserId)
+                .IsUnique();
+
+            // ScheduleConfiguration
+            modelBuilder.Entity<ScheduleConfiguration>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Title).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.SchoolYear).HasMaxLength(20).IsRequired();
+                entity.Property(e => e.TeachingDays).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.PeriodsPerDay).IsRequired();
+
+                entity.HasOne(e => e.User)
+                      .WithMany()
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.UserId, e.IsActive });
+                entity.HasIndex(e => new { e.UserId, e.SchoolYear });
+            });
+
+            // PeriodAssignment (belongs to ScheduleConfiguration)
+            modelBuilder.Entity<PeriodAssignment>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Period).IsRequired();
+                entity.Property(e => e.SpecialPeriodType).HasMaxLength(50);
+                entity.Property(e => e.TeachingDays).HasMaxLength(200).IsRequired();
+                entity.Property(e => e.Room).HasMaxLength(50);
+                entity.Property(e => e.Notes).HasMaxLength(500);
+                entity.Property(e => e.BackgroundColor).HasMaxLength(7).IsRequired();
+                entity.Property(e => e.FontColor).HasMaxLength(7).IsRequired();
+
+                entity.HasOne(e => e.ScheduleConfiguration)
+                      .WithMany(sc => sc.PeriodAssignments)
+                      .HasForeignKey(e => e.ScheduleConfigurationId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(e => new { e.ScheduleConfigurationId, e.Period })
+                      .IsUnique();
+
+                entity.ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_ExclusiveAssignment",
                     "(CourseId IS NOT NULL AND SpecialPeriodType IS NULL) OR (CourseId IS NULL AND SpecialPeriodType IS NOT NULL)"));
 
-            // Ensure CourseId is positive when specified
-            modelBuilder.Entity<PeriodAssignment>()
-                .ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_CourseId_Positive",
+                entity.ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_CourseId_Positive",
                     "CourseId IS NULL OR CourseId > 0"));
 
-            // Add constraint to ensure TeachingDays is not empty for PeriodAssignments
-            modelBuilder.Entity<PeriodAssignment>()
-                .ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_NotEmpty",
+                entity.ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_NotEmpty",
                     "TeachingDays IS NOT NULL AND LENGTH(TRIM(TeachingDays)) > 0"));
 
-            // Add constraint to ensure valid day names in TeachingDays
-            modelBuilder.Entity<PeriodAssignment>()
-                .ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_ValidDays",
+                entity.ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_ValidDays",
                     @"TeachingDays NOT LIKE '%[^MondayTueswdhFrig,]%' AND 
                         (TeachingDays LIKE '%Monday%' OR 
                         TeachingDays LIKE '%Tuesday%' OR 
@@ -150,21 +189,62 @@ namespace LessonTree.DAL
                         TeachingDays LIKE '%Friday%' OR
                         TeachingDays LIKE '%Saturday%' OR
                         TeachingDays LIKE '%Sunday%')"));
+            });
 
-            modelBuilder.Entity<UserConfiguration>()
-                .HasOne(uc => uc.User)
-                .WithOne(u => u.Configuration) // FIXED: Specify the navigation property
-                .HasForeignKey<UserConfiguration>(uc => uc.UserId)
-                .OnDelete(DeleteBehavior.Cascade); // Delete config when user is deleted
+            // Schedule with ScheduleConfiguration relationship
+            modelBuilder.Entity<Schedule>()
+                .HasOne(s => s.ScheduleConfiguration)
+                .WithMany(sc => sc.Schedules)
+                .HasForeignKey(s => s.ScheduleConfigurationId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            // Add indexes for performance
-            modelBuilder.Entity<UserConfiguration>()
-                .HasIndex(uc => uc.UserId)
-                .IsUnique(); // One configuration per user
+            // SpecialDay relationship with Schedule
+            modelBuilder.Entity<SpecialDay>()
+                .HasOne(sd => sd.Schedule)
+                .WithMany(s => s.SpecialDays)
+                .HasForeignKey(sd => sd.ScheduleId)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<PeriodAssignment>()
-                .HasIndex(pa => new { pa.UserConfigurationId, pa.Period, pa.TeachingDays })
-                .HasDatabaseName("IX_PeriodAssignments_UserConfig_Period_TeachingDays");
+            modelBuilder.Entity<SpecialDay>()
+                .HasIndex(sd => new { sd.ScheduleId, sd.Date })
+                .HasDatabaseName("IX_SpecialDays_Schedule_Date");
+
+            modelBuilder.Entity<ScheduleEvent>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                // CRITICAL: Explicitly configure the Lesson relationship
+                entity.HasOne(e => e.Lesson)
+                      .WithMany()
+                      .HasForeignKey(e => e.LessonId)
+                      .OnDelete(DeleteBehavior.SetNull);
+
+                // Schedule relationship
+                entity.HasOne(e => e.Schedule)
+                      .WithMany(s => s.ScheduleEvents)
+                      .HasForeignKey(e => e.ScheduleId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // CRITICAL: Tell EF that CourseId is NOT a foreign key to Course
+                entity.Property(e => e.CourseId)
+                      .IsRequired(false);
+                // Do NOT configure a Course navigation - CourseId is just a data field
+
+                // Properties
+                entity.Property(e => e.LessonId).IsRequired(false);
+                entity.Property(e => e.ScheduleId).IsRequired(true);
+                entity.Property(e => e.EventType).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.EventCategory).HasMaxLength(50);
+                entity.Property(e => e.Comment).HasMaxLength(1000);
+
+                // Indexes
+                entity.HasIndex(e => new { e.ScheduleId, e.Date, e.Period })
+                      .IsUnique()
+                      .HasDatabaseName("IX_ScheduleEvents_Schedule_Date_Period");
+
+                entity.HasIndex(e => e.LessonId)
+                      .HasDatabaseName("IX_ScheduleEvents_LessonId");
+            });
         }
 
         public DbSet<Course> Courses { get; set; }
@@ -182,6 +262,8 @@ namespace LessonTree.DAL
         public DbSet<Schedule> Schedules { get; set; }
         public DbSet<ScheduleEvent> ScheduleEvents { get; set; }
         public DbSet<UserConfiguration> UserConfigurations { get; set; }
+        public DbSet<SpecialDay> SpecialDays { get; set; }
+        public DbSet<ScheduleConfiguration> ScheduleConfigurations { get; set; }
         public DbSet<PeriodAssignment> PeriodAssignments { get; set; }
     }
 }

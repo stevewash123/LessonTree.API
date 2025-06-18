@@ -11,6 +11,7 @@ namespace LessonTree.Models.DTO
 {
     public class ScheduleEventResource
     {
+        // Existing properties...
         public int Id { get; set; }
         public int ScheduleId { get; set; }
         public int? CourseId { get; set; }
@@ -20,6 +21,13 @@ namespace LessonTree.Models.DTO
         public string EventType { get; set; } = string.Empty;
         public string? EventCategory { get; set; }
         public string? Comment { get; set; }
+
+        // **NEW** - Rich lesson display properties
+        public string? LessonTitle { get; set; }
+        public string? LessonObjective { get; set; }
+        public string? LessonMethods { get; set; }
+        public string? LessonMaterials { get; set; }
+        public string? LessonAssessment { get; set; }
     }
 
     public class ScheduleEventCreateResource

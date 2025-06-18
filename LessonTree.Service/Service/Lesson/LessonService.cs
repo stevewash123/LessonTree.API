@@ -33,9 +33,9 @@ public class LessonService : ILessonService
         _mapper = mapper;
     }
 
-    public async Task<LessonDetailResource?> GetByIdAsync(int id)
+    public async Task<LessonDetailResource?> GetByIdAsync(int id, int userId)
     {
-        _logger.LogDebug("Fetching lesson by ID: {LessonId} in service", id);
+        _logger.LogDebug("Fetching lesson by ID: {LessonId} for User ID: {UserId}", id, userId);
         var lesson = await _lessonRepository.GetByIdAsync(id, q => q
             .Include(l => l.SubTopic).ThenInclude(s => s.Topic)
             .Include(l => l.Topic)
@@ -44,28 +44,21 @@ public class LessonService : ILessonService
             .Include(l => l.LessonAttachments).ThenInclude(ld => ld.Attachment)
             .Include(l => l.LessonStandards).ThenInclude(ls => ls.Standard));
 
-        if (lesson == null)
+        if (lesson == null || lesson.UserId != userId)
         {
-            _logger.LogWarning("Lesson with ID {LessonId} not found in service", id);
+            _logger.LogWarning("Lesson with ID {LessonId} not found or not owned by User ID {UserId}", id, userId);
             return null;
         }
 
-        _logger.LogDebug("Lesson with ID {LessonId} found. Title: {Title}, SubTopicId: {SubTopicId}, TopicId: {TopicId}, UserId: {UserId}, Archived: {Archived}",
-            lesson.Id, lesson.Title, lesson.SubTopicId, lesson.TopicId, lesson.UserId, lesson.Archived);
-        var lessonResource = _mapper.Map<LessonDetailResource>(lesson);
-        _logger.LogDebug("Mapped lesson with ID {LessonId} to LessonDetailResource", lessonResource.Id);
-        return lessonResource;
+        _logger.LogDebug("Lesson with ID {LessonId} found. Title: {Title}, SubTopicId: {SubTopicId}, TopicId: {TopicId}",
+            lesson.Id, lesson.Title, lesson.SubTopicId, lesson.TopicId);
+        return _mapper.Map<LessonDetailResource>(lesson);
     }
 
-    public async Task<List<LessonResource>> GetAllAsync(int? userId = null, ArchiveFilter filter = ArchiveFilter.Active)
+    public async Task<List<LessonResource>> GetAllAsync(int userId, ArchiveFilter filter = ArchiveFilter.Active)
     {
-        _logger.LogDebug("Fetching all lessons in service. UserId: {UserId}, Filter: {Filter}", userId, filter);
-        var query = _lessonRepository.GetAll();
-
-        if (userId.HasValue)
-        {
-            query = query.Where(l => l.UserId == userId.Value);
-        }
+        _logger.LogDebug("Fetching all lessons for User ID: {UserId}, Filter: {Filter}", userId, filter);
+        var query = _lessonRepository.GetAll().Where(l => l.UserId == userId);
 
         query = filter switch
         {
@@ -79,31 +72,15 @@ public class LessonService : ILessonService
             .ProjectTo<LessonResource>(_mapper.ConfigurationProvider)
             .ToListAsync();
 
-        _logger.LogDebug("Fetched {Count} lessons", lessons.Count);
+        _logger.LogDebug("Fetched {Count} lessons for User ID: {UserId}", lessons.Count, userId);
         return lessons;
     }
 
-    public async Task UpdateSortOrderAsync(int lessonId, int sortOrder)
+    public async Task<List<LessonResource>> GetLessonsBySubtopic(int subTopicId, int userId, ArchiveFilter filter = ArchiveFilter.Active)
     {
-        _logger.LogDebug("Updating sort order for Lesson ID: {LessonId} to {SortOrder}", lessonId, sortOrder);
-        var lesson = await _lessonRepository.GetByIdAsync(lessonId);
-        if (lesson == null)
-        {
-            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
-            throw new ArgumentException("Lesson not found");
-        }
-
-        lesson.SortOrder = sortOrder;
-        await _lessonRepository.UpdateAsync(lesson);
-        _logger.LogInformation("Sort order updated for Lesson ID: {LessonId} to {SortOrder}", lessonId, sortOrder);
-    }
-
-    // Update Get methods to sort by SortOrder
-    public async Task<List<LessonResource>> GetLessonsBySubtopic(int subTopicId, int? userId = null, ArchiveFilter filter = ArchiveFilter.Active)
-    {
-        _logger.LogDebug("Fetching lessons by SubTopic ID: {SubTopicId} in service. UserId: {UserId}, Filter: {Filter}", subTopicId, userId, filter);
+        _logger.LogDebug("Fetching lessons by SubTopic ID: {SubTopicId} for User ID: {UserId}, Filter: {Filter}", subTopicId, userId, filter);
         var query = _lessonRepository.GetBySubTopicId(subTopicId, true)
-            .Where(l => !userId.HasValue || l.UserId == userId.Value);
+            .Where(l => l.UserId == userId);
 
         query = filter switch
         {
@@ -114,19 +91,19 @@ public class LessonService : ILessonService
         };
 
         var lessons = await query
-            .OrderBy(l => l.SortOrder) // Sort by SortOrder
+            .OrderBy(l => l.SortOrder)
             .ProjectTo<LessonResource>(_mapper.ConfigurationProvider)
             .ToListAsync();
 
-        _logger.LogDebug("Fetched {Count} lessons for SubTopic ID: {SubTopicId}", lessons.Count, subTopicId);
+        _logger.LogDebug("Fetched {Count} lessons for SubTopic ID: {SubTopicId}, User ID: {UserId}", lessons.Count, subTopicId, userId);
         return lessons;
     }
 
-    public async Task<List<LessonResource>> GetLessonsByTopic(int topicId, int? userId = null, ArchiveFilter filter = ArchiveFilter.Active)
+    public async Task<List<LessonResource>> GetLessonsByTopic(int topicId, int userId, ArchiveFilter filter = ArchiveFilter.Active)
     {
-        _logger.LogDebug("Fetching lessons by Topic ID: {TopicId} in service. UserId: {UserId}, Filter: {Filter}", topicId, userId, filter);
+        _logger.LogDebug("Fetching lessons by Topic ID: {TopicId} for User ID: {UserId}, Filter: {Filter}", topicId, userId, filter);
         var query = _lessonRepository.GetByTopicId(topicId, true)
-            .Where(l => !userId.HasValue || l.UserId == userId.Value);
+            .Where(l => l.UserId == userId);
 
         query = filter switch
         {
@@ -137,13 +114,14 @@ public class LessonService : ILessonService
         };
 
         var lessons = await query
-            .OrderBy(l => l.SortOrder) // Sort by SortOrder
+            .OrderBy(l => l.SortOrder)
             .ProjectTo<LessonResource>(_mapper.ConfigurationProvider)
             .ToListAsync();
 
-        _logger.LogDebug("Fetched {Count} lessons for Topic ID: {TopicId}", lessons.Count, topicId);
+        _logger.LogDebug("Fetched {Count} lessons for Topic ID: {TopicId}, User ID: {UserId}", lessons.Count, topicId, userId);
         return lessons;
     }
+
     public async Task<int> AddAsync(LessonCreateResource lessonCreateResource, int userId)
     {
         _logger.LogDebug("Adding lesson: {Title} for User ID: {UserId}", lessonCreateResource.Title, userId);
@@ -161,7 +139,7 @@ public class LessonService : ILessonService
         }
 
         var lesson = _mapper.Map<Lesson>(lessonCreateResource);
-        lesson.UserId = userId; // Set UserId here
+        lesson.UserId = userId;
         var createdLessonId = await _lessonRepository.AddAsync(lesson);
         _logger.LogInformation("Lesson added with ID: {LessonId}, Title: {Title}", createdLessonId, lesson.Title);
         return createdLessonId;
@@ -191,12 +169,13 @@ public class LessonService : ILessonService
         _logger.LogInformation("Lesson updated with ID: {LessonId}, Title: {Title}", existingLesson.Id, existingLesson.Title);
 
         // Return the updated entity
-        return await GetByIdAsync(existingLesson.Id) ?? throw new InvalidOperationException("Updated lesson could not be retrieved");
+        return await GetByIdAsync(existingLesson.Id, userId) ?? throw new InvalidOperationException("Updated lesson could not be retrieved");
     }
 
-    public async Task DeleteAsync(int id)
+    public async Task DeleteAsync(int id, int userId)
     {
-        _logger.LogDebug("Deleting lesson with ID: {LessonId} in service", id);
+        _logger.LogDebug("Deleting lesson with ID: {LessonId} for User ID: {UserId}", id, userId);
+
         var lesson = await _lessonRepository.GetByIdAsync(id);
         if (lesson == null)
         {
@@ -204,17 +183,62 @@ public class LessonService : ILessonService
             throw new ArgumentException($"Lesson with ID {id} not found");
         }
 
+        // Ownership validation - moved from controller to service
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to delete lesson ID {LessonId} owned by another user", userId, id);
+            throw new UnauthorizedAccessException("Lesson not owned by user");
+        }
+
         await _lessonRepository.DeleteAsync(id);
-        _logger.LogInformation("Lesson deleted with ID: {LessonId}", id);
+        _logger.LogInformation("Lesson deleted with ID: {LessonId} by User ID: {UserId}", id, userId);
     }
 
-    public async Task AddAttachmentAsync(int lessonId, int attachmentId)
+    public async Task UpdateSortOrderAsync(int lessonId, int sortOrder, int userId)
     {
-        _logger.LogDebug("Adding attachment ID: {AttachmentId} to Lesson ID: {LessonId} in service", attachmentId, lessonId);
+        _logger.LogDebug("Updating sort order for Lesson ID: {LessonId} to {SortOrder} for User ID: {UserId}", lessonId, sortOrder, userId);
+
+        var lesson = await _lessonRepository.GetByIdAsync(lessonId);
+        if (lesson == null)
+        {
+            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
+            throw new ArgumentException("Lesson not found");
+        }
+
+        // Ownership validation - moved from controller to service
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to update sort order for lesson ID {LessonId} owned by another user", userId, lessonId);
+            throw new UnauthorizedAccessException("Lesson not owned by user");
+        }
+
+        lesson.SortOrder = sortOrder;
+        await _lessonRepository.UpdateAsync(lesson);
+        _logger.LogInformation("Sort order updated for Lesson ID: {LessonId} to {SortOrder} by User ID: {UserId}", lessonId, sortOrder, userId);
+    }
+
+    public async Task AddAttachmentAsync(int lessonId, int attachmentId, int userId)
+    {
+        _logger.LogDebug("Adding attachment ID: {AttachmentId} to Lesson ID: {LessonId} for User ID: {UserId}", attachmentId, lessonId, userId);
+
+        // Verify lesson exists and is owned by user
+        var lesson = await _lessonRepository.GetByIdAsync(lessonId);
+        if (lesson == null)
+        {
+            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
+            throw new ArgumentException("Lesson not found");
+        }
+
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to add attachment to lesson ID {LessonId} owned by another user", userId, lessonId);
+            throw new UnauthorizedAccessException("Lesson not owned by user");
+        }
+
         try
         {
             await _lessonRepository.AddAttachmentAsync(lessonId, attachmentId);
-            _logger.LogInformation("Attachment ID: {AttachmentId} added to lesson with ID: {LessonId}", attachmentId, lessonId);
+            _logger.LogInformation("Attachment ID: {AttachmentId} added to lesson with ID: {LessonId} by User ID: {UserId}", attachmentId, lessonId, userId);
         }
         catch (ArgumentException ex)
         {
@@ -223,13 +247,28 @@ public class LessonService : ILessonService
         }
     }
 
-    public async Task RemoveAttachmentAsync(int lessonId, int attachmentId)
+    public async Task RemoveAttachmentAsync(int lessonId, int attachmentId, int userId)
     {
-        _logger.LogDebug("Removing attachment ID: {AttachmentId} from Lesson ID: {LessonId} in service", attachmentId, lessonId);
+        _logger.LogDebug("Removing attachment ID: {AttachmentId} from Lesson ID: {LessonId} for User ID: {UserId}", attachmentId, lessonId, userId);
+
+        // Verify lesson exists and is owned by user
+        var lesson = await _lessonRepository.GetByIdAsync(lessonId);
+        if (lesson == null)
+        {
+            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
+            throw new ArgumentException("Lesson not found");
+        }
+
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to remove attachment from lesson ID {LessonId} owned by another user", userId, lessonId);
+            throw new UnauthorizedAccessException("Lesson not owned by user");
+        }
+
         try
         {
             await _lessonRepository.RemoveAttachmentAsync(lessonId, attachmentId);
-            _logger.LogInformation("Attachment ID: {AttachmentId} removed from lesson with ID: {LessonId}", attachmentId, lessonId);
+            _logger.LogInformation("Attachment ID: {AttachmentId} removed from lesson with ID: {LessonId} by User ID: {UserId}", attachmentId, lessonId, userId);
         }
         catch (ArgumentException ex)
         {
@@ -238,34 +277,23 @@ public class LessonService : ILessonService
         }
     }
 
-    public async Task<List<LessonResource>> GetByTitleAsync(string title, int? userId = null, bool includeArchived = false)
+    public async Task MoveLessonAsync(int lessonId, int? newSubTopicId, int? newTopicId, int userId)
     {
-        _logger.LogDebug("Fetching lessons by title: {Title} in service. UserId: {UserId}, IncludeArchived: {IncludeArchived}",
-            title, userId, includeArchived);
+        _logger.LogDebug("Moving Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId} or Topic ID: {NewTopicId} for User ID: {UserId}",
+            lessonId, newSubTopicId, newTopicId, userId);
 
-        var query = _lessonRepository.GetByTitle(title);
-        if (userId.HasValue)
-        {
-            query = query.Where(l => l.UserId == userId.Value);
-        }
-        if (!includeArchived)
-        {
-            query = query.Where(l => !l.Archived);
-        }
-
-        var lessons = await query.ToListAsync();
-        _logger.LogDebug("Found {Count} lessons with title containing: {Title}", lessons.Count, title);
-        return _mapper.Map<List<LessonResource>>(lessons);
-    }
-
-    public async Task MoveLessonAsync(int lessonId, int? newSubTopicId, int? newTopicId)
-    {
-        _logger.LogDebug("Moving Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId} or Topic ID: {NewTopicId} in service", lessonId, newSubTopicId, newTopicId);
         var lesson = await _lessonRepository.GetByIdAsync(lessonId, q => q.Include(l => l.SubTopic).Include(l => l.Topic));
         if (lesson == null)
         {
             _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
             throw new ArgumentException("Lesson not found");
+        }
+
+        // Ownership validation - moved from controller to service
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to move lesson ID {LessonId} owned by another user", userId, lessonId);
+            throw new UnauthorizedAccessException("Lesson not owned by user");
         }
 
         if (newSubTopicId.HasValue && newTopicId.HasValue)
@@ -312,18 +340,26 @@ public class LessonService : ILessonService
 
         lesson.SortOrder = sortOrder;
         await _lessonRepository.UpdateAsync(lesson);
-        _logger.LogInformation("Lesson ID: {LessonId} moved to SubTopic ID: {NewSubTopicId} or Topic ID: {NewTopicId} with SortOrder: {SortOrder}",
-            lessonId, newSubTopicId, newTopicId, sortOrder);
+        _logger.LogInformation("Lesson ID: {LessonId} moved to SubTopic ID: {NewSubTopicId} or Topic ID: {NewTopicId} with SortOrder: {SortOrder} by User ID: {UserId}",
+            lessonId, newSubTopicId, newTopicId, sortOrder, userId);
     }
 
-    public async Task AddStandardToLessonAsync(int lessonId, int standardId)
+    public async Task AddStandardToLessonAsync(int lessonId, int standardId, int userId)
     {
-        _logger.LogDebug("Adding standard ID: {StandardId} to Lesson ID: {LessonId} in service", standardId, lessonId);
+        _logger.LogDebug("Adding standard ID: {StandardId} to Lesson ID: {LessonId} for User ID: {UserId}", standardId, lessonId, userId);
+
         var lesson = await _lessonRepository.GetByIdAsync(lessonId);
         if (lesson == null)
         {
             _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
             throw new ArgumentException("Lesson not found");
+        }
+
+        // Ownership validation
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to add standard to lesson ID {LessonId} owned by another user", userId, lessonId);
+            throw new UnauthorizedAccessException("Lesson not owned by user");
         }
 
         var standard = await _standardRepository.GetByIdAsync(standardId);
@@ -337,7 +373,7 @@ public class LessonService : ILessonService
         {
             lesson.LessonStandards.Add(new LessonStandard { LessonId = lessonId, StandardId = standardId });
             await _lessonRepository.UpdateAsync(lesson);
-            _logger.LogInformation("Standard ID: {StandardId} added to lesson with ID: {LessonId}", standardId, lessonId);
+            _logger.LogInformation("Standard ID: {StandardId} added to lesson with ID: {LessonId} by User ID: {UserId}", standardId, lessonId, userId);
         }
         else
         {
@@ -345,9 +381,10 @@ public class LessonService : ILessonService
         }
     }
 
-    public async Task RemoveStandardFromLessonAsync(int lessonId, int standardId)
+    public async Task RemoveStandardFromLessonAsync(int lessonId, int standardId, int userId)
     {
-        _logger.LogDebug("Removing standard ID: {StandardId} from Lesson ID: {LessonId} in service", standardId, lessonId);
+        _logger.LogDebug("Removing standard ID: {StandardId} from Lesson ID: {LessonId} for User ID: {UserId}", standardId, lessonId, userId);
+
         var lesson = await _lessonRepository.GetByIdAsync(lessonId);
         if (lesson == null)
         {
@@ -355,12 +392,19 @@ public class LessonService : ILessonService
             throw new ArgumentException("Lesson not found");
         }
 
+        // Ownership validation
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to remove standard from lesson ID {LessonId} owned by another user", userId, lessonId);
+            throw new UnauthorizedAccessException("Lesson not owned by user");
+        }
+
         var lessonStandard = lesson.LessonStandards.FirstOrDefault(ls => ls.StandardId == standardId);
         if (lessonStandard != null)
         {
             lesson.LessonStandards.Remove(lessonStandard);
             await _lessonRepository.UpdateAsync(lesson);
-            _logger.LogInformation("Standard ID: {StandardId} removed from lesson with ID: {LessonId}", standardId, lessonId);
+            _logger.LogInformation("Standard ID: {StandardId} removed from lesson with ID: {LessonId} by User ID: {UserId}", standardId, lessonId, userId);
         }
         else
         {
@@ -405,7 +449,7 @@ public class LessonService : ILessonService
             Methods = originalLesson.Methods,
             SpecialNeeds = originalLesson.SpecialNeeds,
             Assessment = originalLesson.Assessment,
-            UserId = userId, // Set to the copier’s UserId
+            UserId = userId,
             Visibility = originalLesson.Visibility,
             SubTopicId = newSubTopicId,
             TopicId = newTopicId,
@@ -424,16 +468,5 @@ public class LessonService : ILessonService
             lessonId, newLesson.Id, newSubTopicId, newTopicId, userId);
 
         return _mapper.Map<LessonResource>(newLesson);
-    }
-
-    public async Task<Lesson?> GetDomainLessonByIdAsync(int id)
-    {
-        _logger.LogDebug("Fetching domain lesson by ID: {LessonId}", id);
-        var lesson = await _lessonRepository.GetByIdAsync(id);
-        if (lesson == null)
-        {
-            _logger.LogWarning("Domain lesson with ID {LessonId} not found", id);
-        }
-        return lesson;
     }
 }

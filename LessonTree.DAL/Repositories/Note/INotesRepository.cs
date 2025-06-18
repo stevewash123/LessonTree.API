@@ -9,8 +9,8 @@ namespace LessonTree.DAL.Repositories
 {
     public interface INotesRepository
     {
-        Task<Note> GetByIdAsync(int id);
-        Task AddAsync(Note note);
+        Task<Note?> GetByIdAsync(int id);
+        Task<int> AddAsync(Note note);
         Task UpdateAsync(Note note);
         Task DeleteAsync(int id);
     }

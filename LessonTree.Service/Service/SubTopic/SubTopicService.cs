@@ -50,17 +50,6 @@ public class SubTopicService : ISubTopicService
         return _mapper.Map<SubTopicResource>(subTopic);
     }
 
-    public async Task<SubTopic?> GetDomainSubTopicByIdAsync(int id)
-    {
-        _logger.LogDebug("Fetching domain subtopic by ID: {SubTopicId}", id);
-        var subTopic = await _subTopicRepository.GetByIdAsync(id);
-        if (subTopic == null)
-        {
-            _logger.LogWarning("Domain subtopic with ID {SubTopicId} not found", id);
-        }
-        return subTopic;
-    }
-
     public async Task<List<SubTopicResource>> GetAllAsync(int userId, ArchiveFilter filter = ArchiveFilter.Active)
     {
         _logger.LogDebug("Fetching all subtopics for User ID: {UserId}, Filter: {Filter}", userId, filter);
@@ -89,9 +78,10 @@ public class SubTopicService : ISubTopicService
     }
 
     // Add SortOrder method
-    public async Task UpdateSortOrderAsync(int subTopicId, int sortOrder)
+    public async Task UpdateSortOrderAsync(int subTopicId, int sortOrder, int userId)
     {
-        _logger.LogDebug("Updating sort order for SubTopic ID: {SubTopicId} to {SortOrder}", subTopicId, sortOrder);
+        _logger.LogDebug("Updating sort order for SubTopic ID: {SubTopicId} to {SortOrder} for User ID: {UserId}", subTopicId, sortOrder, userId);
+
         var subTopic = await _subTopicRepository.GetByIdAsync(subTopicId);
         if (subTopic == null)
         {
@@ -99,9 +89,16 @@ public class SubTopicService : ISubTopicService
             throw new ArgumentException("SubTopic not found");
         }
 
+        // Ownership validation - moved from controller to service
+        if (subTopic.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to update sort order for subtopic ID {SubTopicId} owned by another user", userId, subTopicId);
+            throw new UnauthorizedAccessException("SubTopic not owned by user");
+        }
+
         subTopic.SortOrder = sortOrder;
         await _subTopicRepository.UpdateAsync(subTopic);
-        _logger.LogInformation("Sort order updated for SubTopic ID: {SubTopicId} to {SortOrder}", subTopicId, sortOrder);
+        _logger.LogInformation("Sort order updated for SubTopic ID: {SubTopicId} to {SortOrder} by User ID: {UserId}", subTopicId, sortOrder, userId);
     }
 
     // Update Get methods to sort by SortOrder
@@ -193,43 +190,61 @@ public class SubTopicService : ISubTopicService
         return await GetByIdAsync(existingSubTopic.Id, userId);
     }
 
-    public async Task DeleteAsync(int id)
+    public async Task DeleteAsync(int id, int userId)
     {
-        _logger.LogDebug("Attempting to delete subtopic with ID: {SubTopicId}", id);
+        _logger.LogDebug("Attempting to delete subtopic with ID: {SubTopicId} for User ID: {UserId}", id, userId);
 
         // Fetch the SubTopic to check its properties
         var subTopic = await _subTopicRepository.GetByIdAsync(id);
         if (subTopic == null)
         {
             _logger.LogWarning("SubTopic with ID {SubTopicId} not found for deletion", id);
-            throw new KeyNotFoundException($"SubTopic with ID {id} not found.");
+            throw new ArgumentException($"SubTopic with ID {id} not found.");
+        }
+
+        // Ownership validation - moved from controller to service
+        if (subTopic.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to delete subtopic ID {SubTopicId} owned by another user", userId, id);
+            throw new UnauthorizedAccessException("SubTopic not owned by user");
         }
 
         // Check if the SubTopic is default
         if (subTopic.IsDefault)
         {
-            _logger.LogWarning("Attempt to delete default SubTopic with ID {SubTopicId}", id);
+            _logger.LogWarning("Attempt to delete default SubTopic with ID {SubTopicId} by User ID {UserId}", id, userId);
             throw new InvalidOperationException("Cannot delete a default SubTopic.");
         }
-        _logger.LogDebug("Deleting subtopic with ID: {SubTopicId}", id);
+
+        _logger.LogDebug("Deleting subtopic with ID: {SubTopicId} for User ID: {UserId}", id, userId);
         await _subTopicRepository.DeleteAsync(id);
-        _logger.LogInformation("SubTopic deleted with ID: {SubTopicId}", id);
+        _logger.LogInformation("SubTopic deleted with ID: {SubTopicId} by User ID: {UserId}", id, userId);
     }
 
-    public async Task MoveSubTopic(int subTopicId, int newTopicId)
+    public async Task MoveSubTopic(int subTopicId, int newTopicId, int userId)
     {
-        _logger.LogDebug("Moving SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId}", subTopicId, newTopicId);
+        _logger.LogDebug("Moving SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId} for User ID: {UserId}", subTopicId, newTopicId, userId);
+
         var subTopic = await _subTopicRepository.GetByIdAsync(subTopicId, q => q.Include(s => s.Lessons));
         if (subTopic == null)
         {
             _logger.LogError("SubTopic with ID {SubTopicId} not found", subTopicId);
             throw new ArgumentException("SubTopic not found");
         }
+
+        // Ownership validation - moved from controller to service
+        if (subTopic.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to move subtopic ID {SubTopicId} owned by another user", userId, subTopicId);
+            throw new UnauthorizedAccessException("SubTopic not owned by user");
+        }
+
         if (subTopic.TopicId == newTopicId)
         {
             _logger.LogWarning("SubTopic ID {SubTopicId} is already in Topic ID {TopicId}", subTopicId, newTopicId);
             throw new InvalidOperationException("SubTopic is already in the specified Topic.");
         }
+
         var newTopic = await _topicRepository.GetByIdAsync(newTopicId, q => q.Include(t => t.SubTopics));
         if (newTopic == null)
         {
@@ -237,10 +252,16 @@ public class SubTopicService : ISubTopicService
             throw new ArgumentException("Topic not found");
         }
 
-        // Simplified logic: always move the SubTopic directly to the new Topic
+        // Verify user owns the target topic as well
+        if (newTopic.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to move subtopic to topic ID {TopicId} owned by another user", userId, newTopicId);
+            throw new UnauthorizedAccessException("Target topic not owned by user");
+        }
+
         subTopic.TopicId = newTopicId;
         await _subTopicRepository.UpdateAsync(subTopic);
-        _logger.LogInformation("Moved SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId}", subTopic.Id, newTopicId);
+        _logger.LogInformation("Moved SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId} by User ID: {UserId}", subTopic.Id, newTopicId, userId);
     }
 
     public async Task<SubTopicResource> CopySubTopicAsync(int subTopicId, int newTopicId, int userId)

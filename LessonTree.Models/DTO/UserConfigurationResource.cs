@@ -1,24 +1,29 @@
-﻿// **COMPLETE FILE** - User Configuration and Teaching Settings Resources
-// RESPONSIBILITY: User teaching configuration, school settings, and period management
-// DOES NOT: Handle user identity (see UserResource.cs) or authentication (see AuthenticationResource.cs)
-// CALLED BY: Controllers for user configuration operations
+﻿// **UPDATED** - Simplified UserConfiguration DTOs
+// RESPONSIBILITY: Basic user account settings only (no schedule configuration)
+// DOES NOT: Handle period assignments or schedule settings (moved to ScheduleConfiguration)
+// CALLED BY: UserController for account management
 
 namespace LessonTree.Models.DTO
 {
-    // Clean UserConfiguration without redundant IDs
+    // Simplified user configuration resource
     public class UserConfigurationResource
     {
         public DateTime LastUpdated { get; set; }
-        public string? SchoolYear { get; set; }
-        public int PeriodsPerDay { get; set; }
-        public List<PeriodAssignmentResource>? PeriodAssignments { get; set; }
+
+        // Future: Can add user preference settings here
+        // public bool EmailNotifications { get; set; }
+        // public string Theme { get; set; }
+        // public string TimeZone { get; set; }
+
+        // REMOVED: All schedule-related properties moved to ScheduleConfigurationResource
     }
 
-    // Configuration updates - backend gets user from JWT
+    // Update user configuration
     public class UserConfigurationUpdate
     {
-        public string SchoolYear { get; set; } = string.Empty;
-        public int PeriodsPerDay { get; set; }
-        public List<PeriodAssignmentResource> PeriodAssignments { get; set; } = new();
+        // Basic user preferences only
+        // Future expansion for user settings
+
     }
+
 }

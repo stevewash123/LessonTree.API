@@ -320,21 +320,22 @@ namespace LessonTree.DAL.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("SpecialPeriodType")
+                    b.Property<int>("ScheduleConfigurationId")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("SpecialPeriodType")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("TeachingDays")
                         .IsRequired()
-                        .HasMaxLength(100)
+                        .HasMaxLength(200)
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("UserConfigurationId")
-                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserConfigurationId", "Period", "TeachingDays")
-                        .HasDatabaseName("IX_PeriodAssignments_UserConfig_Period_TeachingDays");
+                    b.HasIndex("ScheduleConfigurationId", "Period")
+                        .IsUnique();
 
                     b.ToTable("PeriodAssignments", t =>
                         {
@@ -357,22 +358,18 @@ namespace LessonTree.DAL.Migrations
                     b.Property<int?>("CourseId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("EndDate")
+                    b.Property<DateTime>("CreatedDate")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsLocked")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TeachingDays")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                    b.Property<int>("ScheduleConfigurationId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(200)
+                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("UserId")
@@ -382,9 +379,65 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasIndex("CourseId");
 
+                    b.HasIndex("ScheduleConfigurationId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Schedules");
+                });
+
+            modelBuilder.Entity("LessonTree.DAL.Domain.ScheduleConfiguration", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsTemplate")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PeriodsPerDay")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SchoolYear")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TeachingDays")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "IsActive");
+
+                    b.HasIndex("UserId", "SchoolYear");
+
+                    b.ToTable("ScheduleConfigurations");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.ScheduleEvent", b =>
@@ -415,6 +468,9 @@ namespace LessonTree.DAL.Migrations
                     b.Property<int?>("LessonId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("LessonId1")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Period")
                         .HasColumnType("INTEGER");
 
@@ -423,7 +479,14 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("LessonId");
+                    b.HasIndex("LessonId")
+                        .HasDatabaseName("IX_ScheduleEvents_LessonId");
+
+                    b.HasIndex("LessonId1");
+
+                    b.HasIndex("ScheduleId", "Date", "Period")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ScheduleEvents_Schedule_Date_Period");
 
                     b.HasIndex(new[] { "ScheduleId", "Date", "Period" }, "IX_ScheduleEvents_Schedule_Date_Period")
                         .IsUnique();
@@ -452,6 +515,41 @@ namespace LessonTree.DAL.Migrations
                     b.HasIndex("DistrictId");
 
                     b.ToTable("Schools");
+                });
+
+            modelBuilder.Entity("LessonTree.DAL.Domain.SpecialDay", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Periods")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ScheduleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScheduleId", "Date")
+                        .HasDatabaseName("IX_SpecialDays_Schedule_Date");
+
+                    b.ToTable("SpecialDays");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Standard", b =>
@@ -658,24 +756,10 @@ namespace LessonTree.DAL.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("PeriodsPerDay")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("SchoolYear")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("SettingsJson")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("StartDate")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("UserId")
@@ -952,13 +1036,13 @@ namespace LessonTree.DAL.Migrations
 
             modelBuilder.Entity("LessonTree.DAL.Domain.PeriodAssignment", b =>
                 {
-                    b.HasOne("LessonTree.DAL.Domain.UserConfiguration", "UserConfiguration")
+                    b.HasOne("LessonTree.DAL.Domain.ScheduleConfiguration", "ScheduleConfiguration")
                         .WithMany("PeriodAssignments")
-                        .HasForeignKey("UserConfigurationId")
+                        .HasForeignKey("ScheduleConfigurationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("UserConfiguration");
+                    b.Navigation("ScheduleConfiguration");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Schedule", b =>
@@ -967,6 +1051,25 @@ namespace LessonTree.DAL.Migrations
                         .WithMany("Schedules")
                         .HasForeignKey("CourseId");
 
+                    b.HasOne("LessonTree.DAL.Domain.ScheduleConfiguration", "ScheduleConfiguration")
+                        .WithMany("Schedules")
+                        .HasForeignKey("ScheduleConfigurationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("LessonTree.DAL.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ScheduleConfiguration");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("LessonTree.DAL.Domain.ScheduleConfiguration", b =>
+                {
                     b.HasOne("LessonTree.DAL.Domain.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -979,8 +1082,13 @@ namespace LessonTree.DAL.Migrations
             modelBuilder.Entity("LessonTree.DAL.Domain.ScheduleEvent", b =>
                 {
                     b.HasOne("LessonTree.DAL.Domain.Lesson", "Lesson")
+                        .WithMany()
+                        .HasForeignKey("LessonId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("LessonTree.DAL.Domain.Lesson", null)
                         .WithMany("ScheduleEvents")
-                        .HasForeignKey("LessonId");
+                        .HasForeignKey("LessonId1");
 
                     b.HasOne("LessonTree.DAL.Domain.Schedule", "Schedule")
                         .WithMany("ScheduleEvents")
@@ -1002,6 +1110,17 @@ namespace LessonTree.DAL.Migrations
                         .IsRequired();
 
                     b.Navigation("District");
+                });
+
+            modelBuilder.Entity("LessonTree.DAL.Domain.SpecialDay", b =>
+                {
+                    b.HasOne("LessonTree.DAL.Domain.Schedule", "Schedule")
+                        .WithMany("SpecialDays")
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Schedule");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Standard", b =>
@@ -1185,6 +1304,15 @@ namespace LessonTree.DAL.Migrations
             modelBuilder.Entity("LessonTree.DAL.Domain.Schedule", b =>
                 {
                     b.Navigation("ScheduleEvents");
+
+                    b.Navigation("SpecialDays");
+                });
+
+            modelBuilder.Entity("LessonTree.DAL.Domain.ScheduleConfiguration", b =>
+                {
+                    b.Navigation("PeriodAssignments");
+
+                    b.Navigation("Schedules");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.School", b =>
@@ -1228,11 +1356,6 @@ namespace LessonTree.DAL.Migrations
                     b.Navigation("SubTopics");
 
                     b.Navigation("Topics");
-                });
-
-            modelBuilder.Entity("LessonTree.DAL.Domain.UserConfiguration", b =>
-                {
-                    b.Navigation("PeriodAssignments");
                 });
 #pragma warning restore 612, 618
         }

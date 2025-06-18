@@ -1,6 +1,6 @@
-﻿// **COMPLETE FILE** - Updated DatabaseSeeder for Master Schedule Testing
-// RESPONSIBILITY: Seeds test data for development environment with period assignments and master schedule structure
-// DOES NOT: Seed production data or complex hierarchies
+﻿// **COMPLETE FILE** - Conservative DatabaseSeeder for basic testing
+// RESPONSIBILITY: Seeds minimal test data that should compile
+// DOES NOT: Seed complex schedule configurations yet
 // CALLED BY: Application startup configuration in development mode
 
 using LessonTree.DAL;
@@ -30,9 +30,9 @@ namespace LessonTree.API.Configuration
                     return;
                 }
 
-                logger.LogInformation("Seeding master schedule test data in Development mode...");
+                logger.LogInformation("Seeding basic test data in Development mode...");
 
-                // Clear existing data in dependency order
+                // Clear existing data in dependency order - keep it simple
                 context.ScheduleEvents.RemoveRange(context.ScheduleEvents);
                 context.Schedules.RemoveRange(context.Schedules);
                 context.LessonAttachments.RemoveRange(context.LessonAttachments);
@@ -68,7 +68,7 @@ namespace LessonTree.API.Configuration
                 }
 
                 // Seed District
-                var district = new District { Name = "Test District", Description = "Test district for master schedule testing" };
+                var district = new District { Name = "Test District", Description = "Test district" };
                 context.Districts.Add(district);
                 await context.SaveChangesAsync();
 
@@ -113,10 +113,7 @@ namespace LessonTree.API.Configuration
                     await context.SaveChangesAsync();
                 }
 
-                // Seed 2 Courses - Math and Science
-                var courses = new List<Course>();
-
-                // MATH COURSE: 2 topics, 1 subtopic each, 8 lessons total (4 on topic, 4 on subtopic per topic)
+                // Seed 1 Simple Course for testing
                 var mathCourse = new Course
                 {
                     Title = "Algebra I",
@@ -129,7 +126,7 @@ namespace LessonTree.API.Configuration
                         new Topic
                         {
                             Title = "Linear Equations",
-                            Description = "Solving linear equations and inequalities",
+                            Description = "Solving linear equations",
                             UserId = adminUser.Id,
                             Archived = false,
                             Visibility = VisibilityType.Private,
@@ -153,491 +150,34 @@ namespace LessonTree.API.Configuration
                                     Archived = false,
                                     Visibility = VisibilityType.Private,
                                     SortOrder = 1
-                                },
-                                new Lesson
-                                {
-                                    Title = "Solving Two-Step Equations",
-                                    Objective = "Solve equations requiring multiple operations",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 2
-                                },
-                                new Lesson
-                                {
-                                    Title = "Linear Equations Review",
-                                    Objective = "Review and practice linear equation concepts",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 3
-                                }
-                            },
-                            SubTopics = new List<SubTopic>
-                            {
-                                new SubTopic
-                                {
-                                    Title = "Linear Inequalities",
-                                    Description = "Solving and graphing linear inequalities",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 0,
-                                    Lessons = new List<Lesson>
-                                    {
-                                        new Lesson
-                                        {
-                                            Title = "Introduction to Inequalities",
-                                            Objective = "Understand inequality symbols and concepts",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 0
-                                        },
-                                        new Lesson
-                                        {
-                                            Title = "Solving Linear Inequalities",
-                                            Objective = "Solve one-variable linear inequalities",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 1
-                                        },
-                                        new Lesson
-                                        {
-                                            Title = "Graphing Inequalities",
-                                            Objective = "Graph solutions on number lines",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 2
-                                        },
-                                        new Lesson
-                                        {
-                                            Title = "Compound Inequalities",
-                                            Objective = "Solve and graph compound inequalities",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 3
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        new Topic
-                        {
-                            Title = "Systems of Equations",
-                            Description = "Solving systems using multiple methods",
-                            UserId = adminUser.Id,
-                            Archived = false,
-                            Visibility = VisibilityType.Private,
-                            SortOrder = 1,
-                            Lessons = new List<Lesson>
-                            {
-                                new Lesson
-                                {
-                                    Title = "Introduction to Systems",
-                                    Objective = "Understand what systems of equations represent",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 0
-                                },
-                                new Lesson
-                                {
-                                    Title = "Graphing Method",
-                                    Objective = "Solve systems by graphing both lines",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 1
-                                },
-                                new Lesson
-                                {
-                                    Title = "Substitution Method",
-                                    Objective = "Solve systems using substitution",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 2
-                                },
-                                new Lesson
-                                {
-                                    Title = "Elimination Method",
-                                    Objective = "Solve systems using elimination",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 3
-                                }
-                            },
-                            SubTopics = new List<SubTopic>
-                            {
-                                new SubTopic
-                                {
-                                    Title = "Applications of Systems",
-                                    Description = "Real-world problems using systems",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 0,
-                                    Lessons = new List<Lesson>
-                                    {
-                                        new Lesson
-                                        {
-                                            Title = "Mixture Problems",
-                                            Objective = "Solve mixture problems using systems",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 0
-                                        },
-                                        new Lesson
-                                        {
-                                            Title = "Distance Problems",
-                                            Objective = "Solve distance-rate-time problems",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 1
-                                        },
-                                        new Lesson
-                                        {
-                                            Title = "Age Problems",
-                                            Objective = "Solve age-related word problems",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 2
-                                        },
-                                        new Lesson
-                                        {
-                                            Title = "Systems Applications Test",
-                                            Objective = "Assessment of systems applications",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 3
-                                        }
-                                    }
                                 }
                             }
                         }
                     }
                 };
 
-                // SCIENCE COURSE: 2 topics, 1 subtopic each, 8 lessons total
-                var scienceCourse = new Course
-                {
-                    Title = "Biology I",
-                    Description = "Introduction to biological sciences",
-                    UserId = adminUser.Id,
-                    Archived = false,
-                    Visibility = VisibilityType.Private,
-                    Topics = new List<Topic>
-                    {
-                        new Topic
-                        {
-                            Title = "Cell Structure",
-                            Description = "Structure and function of cells",
-                            UserId = adminUser.Id,
-                            Archived = false,
-                            Visibility = VisibilityType.Private,
-                            SortOrder = 0,
-                            Lessons = new List<Lesson>
-                            {
-                                new Lesson
-                                {
-                                    Title = "Introduction to Cells",
-                                    Objective = "Understand basic cell theory",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 0
-                                },
-                                new Lesson
-                                {
-                                    Title = "Prokaryotic vs Eukaryotic",
-                                    Objective = "Compare and contrast cell types",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 1
-                                },
-                                new Lesson
-                                {
-                                    Title = "Cell Membrane",
-                                    Objective = "Study membrane structure and function",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 2
-                                },
-                                new Lesson
-                                {
-                                    Title = "Cell Nucleus",
-                                    Objective = "Understand nuclear function and DNA storage",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 3
-                                }
-                            },
-                            SubTopics = new List<SubTopic>
-                            {
-                                new SubTopic
-                                {
-                                    Title = "Cell Organelles",
-                                    Description = "Specialized structures within cells",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 0,
-                                    Lessons = new List<Lesson>
-                                    {
-                                        new Lesson
-                                        {
-                                            Title = "Mitochondria and Energy",
-                                            Objective = "Study cellular energy production",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 0
-                                        },
-                                        new Lesson
-                                        {
-                                            Title = "Endoplasmic Reticulum",
-                                            Objective = "Understand protein and lipid synthesis",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 1
-                                        },
-                                        new Lesson
-                                        {
-                                            Title = "Golgi Apparatus",
-                                            Objective = "Study protein processing and shipping",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 2
-                                        },
-                                        new Lesson
-                                        {
-                                            Title = "Cell Structure Review",
-                                            Objective = "Review all organelles and functions",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 3
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        new Topic
-                        {
-                            Title = "Genetics",
-                            Description = "Heredity and genetic variation",
-                            UserId = adminUser.Id,
-                            Archived = false,
-                            Visibility = VisibilityType.Private,
-                            SortOrder = 1,
-                            Lessons = new List<Lesson>
-                            {
-                                new Lesson
-                                {
-                                    Title = "DNA Structure",
-                                    Objective = "Understand DNA double helix structure",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 0
-                                },
-                                new Lesson
-                                {
-                                    Title = "DNA Replication",
-                                    Objective = "Study how DNA copies itself",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 1
-                                },
-                                new Lesson
-                                {
-                                    Title = "Transcription",
-                                    Objective = "Understand DNA to RNA conversion",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 2
-                                },
-                                new Lesson
-                                {
-                                    Title = "Translation",
-                                    Objective = "Study RNA to protein synthesis",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 3
-                                }
-                            },
-                            SubTopics = new List<SubTopic>
-                            {
-                                new SubTopic
-                                {
-                                    Title = "Heredity Patterns",
-                                    Description = "How traits pass from parents to offspring",
-                                    UserId = adminUser.Id,
-                                    Archived = false,
-                                    Visibility = VisibilityType.Private,
-                                    SortOrder = 0,
-                                    Lessons = new List<Lesson>
-                                    {
-                                        new Lesson
-                                        {
-                                            Title = "Mendel's Laws",
-                                            Objective = "Understand basic inheritance patterns",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 0
-                                        },
-                                        new Lesson
-                                        {
-                                            Title = "Punnett Squares",
-                                            Objective = "Predict offspring genotypes and phenotypes",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 1
-                                        },
-                                        new Lesson
-                                        {
-                                            Title = "Incomplete Dominance",
-                                            Objective = "Study non-dominant inheritance patterns",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 2
-                                        },
-                                        new Lesson
-                                        {
-                                            Title = "Genetics Test",
-                                            Objective = "Assessment of genetics concepts",
-                                            UserId = adminUser.Id,
-                                            Archived = false,
-                                            Visibility = VisibilityType.Private,
-                                            SortOrder = 3
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                };
-
-                courses.Add(mathCourse);
-                courses.Add(scienceCourse);
-                context.Courses.AddRange(courses);
+                context.Courses.Add(mathCourse);
                 await context.SaveChangesAsync();
 
-                // SEED USER CONFIGURATION with Period Assignments
-                // UPDATED: DatabaseSeeder.cs - Add TeachingDays and schedule dates
-                // Replace the UserConfiguration seeding section (around line 355) with this:
-
-                // SEED USER CONFIGURATION with Period Assignments
+                // SEED MINIMAL USER CONFIGURATION (Profile data only)
                 var userConfig = new UserConfiguration
                 {
                     UserId = adminUser.Id,
-                    SchoolYear = "2024-2025",
-                    PeriodsPerDay = 6,
-                    StartDate = new DateTime(2024, 8, 15),    // NEW: Required for master schedule
-                    EndDate = new DateTime(2025, 6, 10),      // NEW: Required for master schedule
-                    LastUpdated = DateTime.UtcNow,
-                    PeriodAssignments = new List<PeriodAssignment>
-                    {
-                        // Math course periods
-                        new PeriodAssignment
-                        {
-                            Period = 1,
-                            CourseId = mathCourse.Id,
-                            TeachingDays = "Monday,Wednesday,Friday",  // NEW: Required field
-                            Room = "Math 101",
-                            Notes = "Advanced section",
-                            BackgroundColor = "#E3F2FD",
-                            FontColor = "#1976D2"
-                        },
-                        new PeriodAssignment
-                        {
-                            Period = 3,
-                            CourseId = mathCourse.Id,
-                            TeachingDays = "Monday,Wednesday,Friday",  // NEW: Required field
-                            Room = "Math 101",
-                            Notes = "Regular section",
-                            BackgroundColor = "#E3F2FD",
-                            FontColor = "#1976D2"
-                        },
-                        // Science course periods
-                        new PeriodAssignment
-                        {
-                            Period = 2,
-                            CourseId = scienceCourse.Id,
-                            TeachingDays = "Monday,Wednesday,Friday",  // NEW: Required field
-                            Room = "Science 201",
-                            Notes = "Lab available",
-                            BackgroundColor = "#E8F5E8",
-                            FontColor = "#388E3C"
-                        },
-                        new PeriodAssignment
-                        {
-                            Period = 5,
-                            CourseId = scienceCourse.Id,
-                            TeachingDays = "Monday,Wednesday,Friday",  // NEW: Required field
-                            Room = "Science 201",
-                            Notes = "Lab available",
-                            BackgroundColor = "#E8F5E8",
-                            FontColor = "#388E3C"
-                        },
-                        // Duty periods
-                        new PeriodAssignment
-                        {
-                            Period = 4,
-                            CourseId = null,
-                            SpecialPeriodType = SpecialPeriodType.Lunch,
-                            TeachingDays = "Monday,Wednesday,Friday",  // NEW: Required field
-                            Room = "Cafeteria",
-                            Notes = "Supervise lunch period",
-                            BackgroundColor = "#FFF3E0",
-                            FontColor = "#F57C00"
-                        },
-                        new PeriodAssignment
-                        {
-                            Period = 6,
-                            CourseId = null,
-                            SpecialPeriodType = SpecialPeriodType.Prep,
-                            TeachingDays = "Monday,Wednesday,Friday",  // NEW: Required field
-                            Room = "Math 101",
-                            Notes = "Lesson planning and grading",
-                            BackgroundColor = "#F3E5F5",
-                            FontColor = "#7B1FA2"
-                        }
-                    }
+                    SettingsJson = "{\"theme\":\"light\"}",
+                    LastUpdated = DateTime.UtcNow
                 };
 
                 context.UserConfigurations.Add(userConfig);
                 await context.SaveChangesAsync();
 
-                logger.LogInformation("Master schedule test data seeded successfully:");
-                logger.LogInformation("- 2 courses: Algebra I (16 lessons), Biology I (16 lessons)");
-                logger.LogInformation("- Each course: 2 topics with 1 subtopic each");
-                logger.LogInformation("- Period assignments: Math (P1,P3), Science (P2,P5), Lunch (P4), Prep (P6)");
-                logger.LogInformation("- Total lessons available: 32 lessons across 4 teaching periods");
+                logger.LogInformation("Basic test data seeded successfully:");
+                logger.LogInformation("- 1 course: Algebra I with 2 lessons");
+                logger.LogInformation("- Admin user created");
+                logger.LogInformation("- Basic user configuration");
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to seed master schedule test data: {Message}", ex.Message);
+                logger.LogError(ex, "Failed to seed basic test data: {Message}", ex.Message);
                 throw;
             }
         }

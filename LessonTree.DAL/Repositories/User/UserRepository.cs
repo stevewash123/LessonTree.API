@@ -1,7 +1,7 @@
-﻿// **COMPLETE FILE** - JWT-aligned UserRepository
-// RESPONSIBILITY: User data access focused on application data (district, configuration)
-// DOES NOT: Handle identity data updates (firstName, lastName, email) - JWT owns that
-// CALLED BY: UserService for application data operations
+﻿// **COMPLETE FILE** - UserRepository.cs - Fixed for UserConfiguration refactor
+// RESPONSIBILITY: User data access focused on basic user profile and simple configuration
+// DOES NOT: Handle schedule configuration (that's ScheduleConfiguration domain)
+// CALLED BY: UserService for user profile operations
 
 using System.Collections.Generic;
 using System.Linq;
@@ -11,8 +11,6 @@ using Microsoft.Extensions.Logging;
 
 namespace LessonTree.DAL.Repositories
 {
-    
-
     public class UserRepository : IUserRepository
     {
         private readonly LessonTreeContext _context;
@@ -28,8 +26,7 @@ namespace LessonTree.DAL.Repositories
         {
             _logger.LogDebug("Retrieving user by ID: {UserId}", id);
             var user = _context.Users
-                .Include(u => u.Configuration)
-                    .ThenInclude(c => c!.PeriodAssignments) // Load period assignments
+                .Include(u => u.Configuration) // Only basic UserConfiguration, no period assignments
                 .FirstOrDefault(u => u.Id == id);
 
             if (user == null)
@@ -42,8 +39,7 @@ namespace LessonTree.DAL.Repositories
         {
             _logger.LogDebug("Retrieving user by UserName: {UserName}", userName);
             var user = _context.Users
-                .Include(u => u.Configuration)
-                    .ThenInclude(c => c!.PeriodAssignments)
+                .Include(u => u.Configuration) // Only basic UserConfiguration
                 .SingleOrDefault(u => u.UserName == userName);
 
             if (user == null)
@@ -56,8 +52,7 @@ namespace LessonTree.DAL.Repositories
         {
             _logger.LogDebug("Retrieving all users");
             return _context.Users
-                .Include(u => u.Configuration)
-                    .ThenInclude(c => c!.PeriodAssignments)
+                .Include(u => u.Configuration) // Only basic UserConfiguration
                 .ToList();
         }
 
@@ -75,7 +70,6 @@ namespace LessonTree.DAL.Repositories
 
             var existingUser = _context.Users
                 .Include(u => u.Configuration)
-                    .ThenInclude(c => c!.PeriodAssignments)
                 .FirstOrDefault(u => u.Id == user.Id);
 
             if (existingUser == null)
@@ -84,8 +78,13 @@ namespace LessonTree.DAL.Repositories
                 return;
             }
 
-            // Update ONLY application data - NOT identity data (JWT owns that)
-            existingUser.District = user.District;
+            // Update ONLY basic user profile data
+            existingUser.FirstName = user.FirstName;
+            existingUser.LastName = user.LastName;
+            existingUser.Email = user.Email;
+            existingUser.PhoneNumber = user.PhoneNumber;
+            existingUser.DistrictId = user.DistrictId;
+            existingUser.SchoolId = user.SchoolId;
 
             // Handle UserConfiguration updates if provided
             if (user.Configuration != null)
@@ -102,7 +101,6 @@ namespace LessonTree.DAL.Repositories
             _logger.LogDebug("Deleting user with ID: {UserId}", id);
             var user = _context.Users
                 .Include(u => u.Configuration)
-                    .ThenInclude(c => c!.PeriodAssignments)
                 .FirstOrDefault(u => u.Id == id);
 
             if (user != null)
@@ -121,7 +119,6 @@ namespace LessonTree.DAL.Repositories
         {
             _logger.LogDebug("Retrieving configuration for user ID: {UserId}", userId);
             return _context.UserConfigurations
-                .Include(uc => uc.PeriodAssignments)
                 .FirstOrDefault(uc => uc.UserId == userId);
         }
 
@@ -131,7 +128,6 @@ namespace LessonTree.DAL.Repositories
 
             var existingUser = _context.Users
                 .Include(u => u.Configuration)
-                    .ThenInclude(c => c!.PeriodAssignments)
                 .FirstOrDefault(u => u.Id == userId);
 
             if (existingUser == null)
@@ -145,76 +141,24 @@ namespace LessonTree.DAL.Repositories
             _logger.LogInformation("Updated configuration for user ID: {UserId}", userId);
         }
 
-        // Private helper method
-        // **PARTIAL FILE** - Fixed UpdateUserConfigurationInternal method in UserRepository.cs
-        // Replace the existing UpdateUserConfigurationInternal method
-
+        // Private helper method - simplified for basic user configuration only
         private void UpdateUserConfigurationInternal(User existingUser, UserConfiguration newConfiguration)
         {
             if (existingUser.Configuration == null)
             {
-                // Create new configuration
+                // Create new basic configuration
                 existingUser.Configuration = new UserConfiguration
                 {
                     UserId = existingUser.Id,
-                    SchoolYear = newConfiguration.SchoolYear,
-                    PeriodsPerDay = newConfiguration.PeriodsPerDay,
                     LastUpdated = DateTime.UtcNow,
-                    PeriodAssignments = new List<PeriodAssignment>()
+                    SettingsJson = newConfiguration.SettingsJson
                 };
-
-                // Add new period assignments AFTER the configuration exists
-                if (newConfiguration.PeriodAssignments != null)
-                {
-                    foreach (var assignment in newConfiguration.PeriodAssignments)
-                    {
-                        var periodAssignment = new PeriodAssignment
-                        {
-                            Period = assignment.Period,
-                            CourseId = assignment.CourseId,
-                            SpecialPeriodType = assignment.SpecialPeriodType, // FIXED: Missing property
-                            TeachingDays = assignment.TeachingDays ?? "Monday,Tuesday,Wednesday,Thursday,Friday", // FIXED: Handle TeachingDays
-                            Room = assignment.Room ?? string.Empty,
-                            Notes = assignment.Notes ?? string.Empty,
-                            BackgroundColor = assignment.BackgroundColor ?? "#2196F3",
-                            FontColor = assignment.FontColor ?? "#FFFFFF",
-                            // Don't set UserConfigurationId - let EF handle the relationship
-                            UserConfiguration = existingUser.Configuration
-                        };
-                        existingUser.Configuration.PeriodAssignments.Add(periodAssignment);
-                    }
-                }
             }
             else
             {
-                // Update existing configuration properties
-                existingUser.Configuration.SchoolYear = newConfiguration.SchoolYear;
-                existingUser.Configuration.PeriodsPerDay = newConfiguration.PeriodsPerDay;
+                // Update existing basic configuration properties
                 existingUser.Configuration.LastUpdated = DateTime.UtcNow;
-
-                // Clear existing period assignments
-                existingUser.Configuration.PeriodAssignments.Clear();
-
-                // Add new period assignments
-                if (newConfiguration.PeriodAssignments != null)
-                {
-                    foreach (var assignment in newConfiguration.PeriodAssignments)
-                    {
-                        var periodAssignment = new PeriodAssignment
-                        {
-                            Period = assignment.Period,
-                            CourseId = assignment.CourseId,
-                            SpecialPeriodType = assignment.SpecialPeriodType, // FIXED: Missing property
-                            TeachingDays = assignment.TeachingDays ?? "Monday,Tuesday,Wednesday,Thursday,Friday", // FIXED: Handle TeachingDays
-                            Room = assignment.Room ?? string.Empty,
-                            Notes = assignment.Notes ?? string.Empty,
-                            BackgroundColor = assignment.BackgroundColor ?? "#2196F3",
-                            FontColor = assignment.FontColor ?? "#FFFFFF",
-                            UserConfigurationId = existingUser.Configuration.Id // This will work since Configuration already exists
-                        };
-                        existingUser.Configuration.PeriodAssignments.Add(periodAssignment);
-                    }
-                }
+                existingUser.Configuration.SettingsJson = newConfiguration.SettingsJson;
             }
 
             _logger.LogDebug("Updated UserConfiguration for user {UserId}", existingUser.Id);

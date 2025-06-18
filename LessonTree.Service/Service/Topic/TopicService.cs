@@ -56,17 +56,6 @@ public class TopicService : ITopicService
         return _mapper.Map<TopicResource>(topic);
     }
 
-    public async Task<Topic?> GetDomainTopicByIdAsync(int id)
-    {
-        _logger.LogDebug("Fetching domain topic by ID: {TopicId}", id);
-        var topic = await _topicRepository.GetByIdAsync(id);
-        if (topic == null)
-        {
-            _logger.LogWarning("Domain topic with ID {TopicId} not found", id);
-        }
-        return topic;
-    }
-
     public async Task<List<TopicResource>> GetAllAsync(int userId, ArchiveFilter filter = ArchiveFilter.Active)
     {
         _logger.LogDebug("Fetching all topics for User ID: {UserId}, Filter: {Filter}", userId, filter);
@@ -88,9 +77,10 @@ public class TopicService : ITopicService
     }
 
     // Add SortOrder method
-    public async Task UpdateSortOrderAsync(int topicId, int sortOrder)
+    public async Task UpdateSortOrderAsync(int topicId, int sortOrder, int userId)
     {
-        _logger.LogDebug("Updating sort order for Topic ID: {TopicId} to {SortOrder}", topicId, sortOrder);
+        _logger.LogDebug("Updating sort order for Topic ID: {TopicId} to {SortOrder} for User ID: {UserId}", topicId, sortOrder, userId);
+
         var topic = await _topicRepository.GetByIdAsync(topicId);
         if (topic == null)
         {
@@ -98,9 +88,16 @@ public class TopicService : ITopicService
             throw new ArgumentException("Topic not found");
         }
 
+        // Ownership validation - moved from controller to service
+        if (topic.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to update sort order for topic ID {TopicId} owned by another user", userId, topicId);
+            throw new UnauthorizedAccessException("Topic not owned by user");
+        }
+
         topic.SortOrder = sortOrder;
         await _topicRepository.UpdateAsync(topic);
-        _logger.LogInformation("Sort order updated for Topic ID: {TopicId} to {SortOrder}", topicId, sortOrder);
+        _logger.LogInformation("Sort order updated for Topic ID: {TopicId} to {SortOrder} by User ID: {UserId}", topicId, sortOrder, userId);
     }
 
     // Update Get methods to sort by SortOrder
@@ -161,9 +158,10 @@ public class TopicService : ITopicService
         return await GetByIdAsync(existingTopic.Id, userId);
     }
 
-    public async Task DeleteAsync(int id)
+    public async Task DeleteAsync(int id, int userId)
     {
-        _logger.LogDebug("Deleting topic with ID: {TopicId}", id);
+        _logger.LogDebug("Deleting topic with ID: {TopicId} for User ID: {UserId}", id, userId);
+
         var topic = await _topicRepository.GetByIdAsync(id, q => q
             .Include(t => t.SubTopics)
             .ThenInclude(s => s.Lessons)
@@ -173,6 +171,13 @@ public class TopicService : ITopicService
         {
             _logger.LogWarning("Cannot delete topic with ID {TopicId} because it was not found", id);
             throw new ArgumentException($"Topic with ID {id} not found");
+        }
+
+        // Ownership validation - moved from controller to service
+        if (topic.UserId != userId)
+        {
+            _logger.LogWarning("User ID {UserId} attempted to delete topic ID {TopicId} owned by another user", userId, id);
+            throw new UnauthorizedAccessException("Topic not owned by user");
         }
 
         // Log the scope of the deletion for transparency
@@ -186,7 +191,7 @@ public class TopicService : ITopicService
         }
 
         await _topicRepository.DeleteAsync(id);
-        _logger.LogInformation("Topic deleted with ID: {TopicId}, including all associated SubTopics and Lessons", id);
+        _logger.LogInformation("Topic deleted with ID: {TopicId} by User ID: {UserId}, including all associated SubTopics and Lessons", id, userId);
     }
 
     public async Task MoveTopicAsync(int topicId, int newCourseId, int userId)

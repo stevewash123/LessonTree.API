@@ -1,11 +1,10 @@
-﻿// **COMPLETE FILE** - UserController with period assignment validation
-// RESPONSIBILITY: User endpoints with enhanced configuration validation
-// DOES NOT: Access UserConfigurationResource.UserId (doesn't exist)
-// CALLED BY: Angular frontend with JWT tokens
+﻿// **COMPLETE FILE** - UserController for user profile management only
+// RESPONSIBILITY: Current user profile endpoints with proper security
+// DOES NOT: Allow access to other users' data (removed admin functions)
+// CALLED BY: Angular frontend with JWT tokens for current user operations
 
 using LessonTree.BLL.Service;
 using LessonTree.Models.DTO;
-using LessonTree.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,183 +15,140 @@ namespace LessonTree.API.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-    public class UserController : ControllerBase
+    public class UserController : BaseController
     {
         private readonly IUserService _service;
-        private readonly IPeriodAssignmentValidationService _validationService;
         private readonly ILogger<UserController> _logger;
 
         public UserController(
             IUserService service,
-            IPeriodAssignmentValidationService validationService,
             ILogger<UserController> logger)
         {
             _service = service;
-            _validationService = validationService;
             _logger = logger;
         }
 
-        [HttpGet]
-        public IActionResult GetUsers()
+        // GET /api/User/profile - Get current user's profile
+        [HttpGet("profile")]
+        public IActionResult GetCurrentUserProfile()
         {
-            _logger.LogDebug("Entering GetUsers");
-            var userResources = _service.GetAllUserResources();
-            _logger.LogDebug("Returning {Count} users", userResources.Count);
-            return Ok(userResources);
-        }
+            int userId = GetCurrentUserId();
+            _logger.LogDebug("Fetching profile for current user ID: {UserId}", userId);
 
-        [HttpGet("{id}")]
-        public IActionResult GetUser(int id)
-        {
-            _logger.LogDebug("Entering GetUser with ID: {UserId}", id);
-            var userResource = _service.GetUserResourceById(id);
+            var userResource = _service.GetUserResourceById(userId);
             if (userResource == null)
             {
-                _logger.LogError("User with ID {UserId} not found", id);
-                return NotFound();
+                _logger.LogError("Current user with ID {UserId} not found", userId);
+                return NotFound("User profile not found");
             }
 
-            _logger.LogDebug("Returning user: {UserName}", userResource.Username);
+            _logger.LogDebug("Returning profile for user: {UserName}", userResource.Username);
             return Ok(userResource);
         }
 
-        [HttpPut("{id}")]
-        public IActionResult UpdateUser(int id, [FromBody] UserResource userResource)
+        // PUT /api/User/profile - Update current user's profile
+        [HttpPut("profile")]
+        public IActionResult UpdateCurrentUserProfile([FromBody] UserResource userResource)
         {
-            _logger.LogDebug("Entering UpdateUser with ID: {UserId}", id);
-            if (id != userResource.Id)
-            {
-                _logger.LogWarning("ID mismatch: URL ID {UrlId} does not match body ID {BodyId}", id, userResource.Id);
-                return BadRequest("ID mismatch");
-            }
+            int userId = GetCurrentUserId();
+            _logger.LogDebug("Updating profile for current user ID: {UserId}", userId);
 
-            var updatedUserResource = _service.UpdateFromResource(id, userResource);
+            // Ensure user can only update their own profile
+            userResource.Id = userId;
+
+            var updatedUserResource = _service.UpdateFromResource(userId, userResource);
             if (updatedUserResource == null)
             {
-                _logger.LogError("User with ID {UserId} not found for update", id);
-                return NotFound();
+                _logger.LogError("Current user with ID {UserId} not found for update", userId);
+                return NotFound("User profile not found");
             }
 
-            _logger.LogInformation("Updated user with ID: {UserId}", id);
+            _logger.LogInformation("Updated profile for user ID: {UserId}", userId);
             return Ok(updatedUserResource);
         }
 
-        [HttpDelete("{id}")]
-        public IActionResult DeleteUser(int id)
+        // DELETE /api/User/profile - Delete current user's account
+        [HttpDelete("profile")]
+        public IActionResult DeleteCurrentUserAccount()
         {
-            _logger.LogDebug("Entering DeleteUser with ID: {UserId}", id);
-            _service.Delete(id);
-            _logger.LogInformation("Deleted user with ID: {UserId}", id);
+            int userId = GetCurrentUserId();
+            _logger.LogDebug("Deleting account for current user ID: {UserId}", userId);
+
+            bool deleted = _service.Delete(userId);
+            if (!deleted)
+            {
+                _logger.LogError("Current user with ID {UserId} not found for deletion", userId);
+                return NotFound("User account not found");
+            }
+
+            _logger.LogInformation("Deleted account for user ID: {UserId}", userId);
             return NoContent();
         }
 
-        [HttpGet("{id}/configuration")]
-        public IActionResult GetUserConfiguration(int id)
+        // GET /api/User/configuration - Get current user's configuration
+        [HttpGet("configuration")]
+        public IActionResult GetCurrentUserConfiguration()
         {
-            _logger.LogDebug("Entering GetUserConfiguration for user ID: {UserId}", id);
+            int userId = GetCurrentUserId();
+            _logger.LogDebug("Fetching configuration for current user ID: {UserId}", userId);
 
             try
             {
-                var userConfig = _service.GetUserConfiguration(id);
+                var userConfig = _service.GetUserConfiguration(userId);
                 if (userConfig == null)
                 {
-                    _logger.LogWarning("User with ID {UserId} not found", id);
-                    return NotFound("User not found");
+                    _logger.LogWarning("Configuration not found for current user ID {UserId}", userId);
+                    return NotFound("User configuration not found");
                 }
 
-                _logger.LogDebug("Returning user configuration for user ID: {UserId}", id);
+                _logger.LogDebug("Returning configuration for current user ID: {UserId}", userId);
                 return Ok(userConfig);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error retrieving user configuration for user ID: {UserId}", id);
+                _logger.LogError(ex, "Error retrieving configuration for current user ID: {UserId}", userId);
                 return StatusCode(500, "Error retrieving user configuration");
             }
         }
 
-        [HttpPut("{id}/configuration")]
-        public IActionResult UpdateUserConfiguration(int id, [FromBody] UserConfigurationUpdate configUpdate)
+        // PUT /api/User/configuration - Update current user's configuration
+        [HttpPut("configuration")]
+        public IActionResult UpdateCurrentUserConfiguration([FromBody] UserConfigurationUpdate configUpdate)
         {
-            _logger.LogDebug("Entering UpdateUserConfiguration for user ID: {UserId}", id);
+            int userId = GetCurrentUserId();
+            _logger.LogDebug("Updating configuration for current user ID: {UserId}", userId);
 
             if (configUpdate == null)
             {
-                _logger.LogWarning("User configuration update request is null for user ID: {UserId}", id);
+                _logger.LogWarning("Configuration update request is null for current user ID: {UserId}", userId);
                 return BadRequest("User configuration data is required");
-            }
-
-            // NEW: Validate period assignments before saving
-            if (configUpdate.PeriodAssignments?.Any() == true)
-            {
-                var validationResult = _validationService.ValidatePeriodAssignments(
-                    configUpdate.PeriodAssignments,
-                    configUpdate.PeriodsPerDay);
-
-                if (!validationResult.IsValid)
-                {
-                    _logger.LogWarning($"Period assignment validation failed for user {id}: {string.Join(", ", validationResult.Errors)}");
-
-                    return BadRequest(new
-                    {
-                        message = "Period assignment validation failed",
-                        errors = validationResult.Errors,
-                        canGenerate = false
-                    });
-                }
-
-                _logger.LogInformation($"Period assignment validation passed for user {id}");
             }
 
             try
             {
-                var updatedConfig = _service.UpdateUserConfiguration(id, configUpdate);
+                var updatedConfig = _service.UpdateUserConfiguration(userId, configUpdate);
                 if (updatedConfig == null)
                 {
-                    _logger.LogError("User with ID {UserId} not found for configuration update", id);
+                    _logger.LogError("Current user with ID {UserId} not found for configuration update", userId);
                     return NotFound("User not found");
                 }
 
-                _logger.LogInformation("Updated user configuration for user ID: {UserId}", id);
-
-                // Return success with validation status
-                return Ok(new
-                {
-                    configuration = updatedConfig,
-                    canGenerate = true,
-                    validationMessage = "Configuration is valid and ready for schedule generation"
-                });
+                _logger.LogInformation("Updated configuration for current user ID: {UserId}", userId);
+                return Ok(updatedConfig);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating user configuration for user ID: {UserId}", id);
+                _logger.LogError(ex, "Error updating configuration for current user ID: {UserId}", userId);
                 return StatusCode(500, "Error updating user configuration");
             }
         }
 
-        // NEW: Validation-only endpoint for real-time validation
-        [HttpPost("{id}/configuration/validate")]
-        public IActionResult ValidatePeriodAssignments(int id, [FromBody] UserConfigurationUpdate configUpdate)
-        {
-            _logger.LogDebug("Entering ValidatePeriodAssignments for user ID: {UserId}", id);
-
-            if (configUpdate?.PeriodAssignments?.Any() != true)
-            {
-                return Ok(new { isValid = true, canGenerate = false, message = "No period assignments to validate" });
-            }
-
-            var validationResult = _validationService.ValidatePeriodAssignments(
-                configUpdate.PeriodAssignments,
-                configUpdate.PeriodsPerDay);
-
-            return Ok(new
-            {
-                isValid = validationResult.IsValid,
-                canGenerate = validationResult.IsValid,
-                errors = validationResult.Errors,
-                message = validationResult.IsValid
-                    ? "Configuration is valid and ready for schedule generation"
-                    : "Configuration has validation errors"
-            });
-        }
+        // REMOVED METHODS (Security violations):
+        // - GetUsers() - Admin function, should be in separate AdminController
+        // - GetUser(int id) - Allows access to any user's profile
+        // - UpdateUser(int id, UserResource) - Allows modification of any user
+        // - DeleteUser(int id) - Allows deletion of any user
+        // - GetUserConfiguration(int id) - Allows access to any user's config
+        // - UpdateUserConfiguration(int id, ...) - Allows modification of any user's config
     }
 }

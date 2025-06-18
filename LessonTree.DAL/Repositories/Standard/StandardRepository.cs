@@ -35,57 +35,33 @@ namespace LessonTree.DAL.Repositories
         public async Task<int> AddAsync(Standard standard)
         {
             _logger.LogDebug("Adding standard: {Title}", standard.Title);
-            try
-            {
-                _context.Standards.Add(standard);
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Added standard with ID: {StandardId}, Title: {Title}", standard.Id, standard.Title);
-                return standard.Id;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to add standard: {Title}", standard.Title);
-                throw;
-            }
+            _context.Standards.Add(standard);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Added standard with ID: {StandardId}, Title: {Title}", standard.Id, standard.Title);
+            return standard.Id;
         }
 
         public async Task UpdateAsync(Standard standard)
         {
             _logger.LogDebug("Updating standard with ID: {StandardId}, Title: {Title}", standard.Id, standard.Title);
-            try
-            {
-                _context.Standards.Update(standard);
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Updated standard with ID: {StandardId}, Title: {Title}", standard.Id, standard.Title);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update standard with ID: {StandardId}", standard.Id);
-                throw;
-            }
+            _context.Standards.Update(standard);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Updated standard with ID: {StandardId}, Title: {Title}", standard.Id, standard.Title);
         }
 
         public async Task DeleteAsync(int id)
         {
             _logger.LogDebug("Deleting standard with ID: {StandardId}", id);
-            try
+            var standard = await _context.Standards.FindAsync(id);
+            if (standard != null)
             {
-                var standard = await _context.Standards.FindAsync(id);
-                if (standard != null)
-                {
-                    _context.Standards.Remove(standard);
-                    await _context.SaveChangesAsync();
-                    _logger.LogInformation("Deleted standard with ID: {StandardId}", id);
-                }
-                else
-                {
-                    _logger.LogWarning("Standard with ID {StandardId} not found for deletion", id);
-                }
+                _context.Standards.Remove(standard);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Deleted standard with ID: {StandardId}", id);
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Failed to delete standard with ID: {StandardId}", id);
-                throw;
+                _logger.LogWarning("Standard with ID {StandardId} not found for deletion", id);
             }
         }
 

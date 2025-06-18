@@ -1,15 +1,15 @@
 ﻿// RESPONSIBILITY: Handles HTTP requests for Lesson CRUD operations
-// DOES NOT: Handle business logic or data access directly
-// CALLED BY: Angular UI via HTTP requestsusing LessonTree.BLL.Service;
-using LessonTree.API.Controllers;
+// DOES NOT: Handle business logic or data access directly, access domain objects
+// CALLED BY: Angular UI via HTTP requests
+
 using LessonTree.BLL.Service;
+using LessonTree.API.Controllers;
 using LessonTree.DAL.Domain;
 using LessonTree.Models.DTO;
 using LessonTree.Models.Enums;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -30,7 +30,6 @@ public class LessonController : BaseController
         _logger = logger;
     }
 
-    
     [HttpGet]
     public async Task<IActionResult> GetLessons(ArchiveFilter filter = ArchiveFilter.Active)
     {
@@ -64,21 +63,13 @@ public class LessonController : BaseController
         int userId = GetCurrentUserId();
         _logger.LogDebug("Fetching lesson ID: {LessonId} for User ID: {UserId}", id, userId);
 
-        var lessonDomain = await _lessonService.GetDomainLessonByIdAsync(id);
-        if (lessonDomain == null)
+        var lessonDto = await _lessonService.GetByIdAsync(id, userId); // Service handles ownership validation
+        if (lessonDto == null)
         {
-            _logger.LogError("Lesson with ID {LessonId} not found", id);
+            _logger.LogWarning("Lesson with ID {LessonId} not found or not owned by User ID: {UserId}", id, userId);
             return NotFound();
         }
 
-        // Optional: Check ownership if needed
-        if (lessonDomain.UserId != userId)
-        {
-            _logger.LogWarning("User ID {UserId} attempted to access lesson ID {LessonId} owned by another user", userId, id);
-            return Forbid();
-        }
-
-        var lessonDto = await _lessonService.GetByIdAsync(id);
         return Ok(lessonDto);
     }
 
@@ -88,10 +79,18 @@ public class LessonController : BaseController
         int userId = GetCurrentUserId();
         _logger.LogDebug("Adding lesson with Title: {Title} for User ID: {UserId}", lessonCreateResource.Title, userId);
 
-        int createdId = await _lessonService.AddAsync(lessonCreateResource, userId);
-        var createdLesson = await _lessonService.GetByIdAsync(createdId);
-        _logger.LogInformation("Added lesson with ID: {LessonId}, Title: {Title}", createdLesson.Id, createdLesson.Title);
-        return CreatedAtAction(nameof(GetLesson), new { id = createdLesson.Id }, createdLesson);
+        try
+        {
+            int createdId = await _lessonService.AddAsync(lessonCreateResource, userId);
+            var createdLesson = await _lessonService.GetByIdAsync(createdId, userId);
+            _logger.LogInformation("Added lesson with ID: {LessonId}, Title: {Title}", createdLesson.Id, createdLesson.Title);
+            return CreatedAtAction(nameof(GetLesson), new { id = createdLesson.Id }, createdLesson);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Lesson creation failed: {Message}", ex.Message);
+            return BadRequest(new { status = "error", message = ex.Message });
+        }
     }
 
     [HttpPut("{id}")]
@@ -99,27 +98,29 @@ public class LessonController : BaseController
     {
         int userId = GetCurrentUserId();
         _logger.LogDebug("Updating lesson ID: {LessonId} for User ID: {UserId}", id, userId);
+
         if (id != lessonUpdateResource.Id)
         {
             _logger.LogWarning("ID mismatch: URL ID {UrlId} does not match body ID {BodyId}", id, lessonUpdateResource.Id);
             return BadRequest();
         }
 
-        var existingLesson = await _lessonService.GetDomainLessonByIdAsync(id);
-        if (existingLesson == null)
+        try
         {
-            _logger.LogError("Lesson with ID {LessonId} not found", id);
-            return NotFound();
+            var updatedLesson = await _lessonService.UpdateAsync(lessonUpdateResource, userId); // Service handles ownership validation
+            _logger.LogInformation("Updated lesson with ID: {LessonId}, Title: {Title} by User ID: {UserId}", id, lessonUpdateResource.Title, userId);
+            return Ok(updatedLesson);
         }
-        if (existingLesson.UserId != userId)
+        catch (ArgumentException ex)
         {
-            _logger.LogWarning("User ID {UserId} attempted to update lesson ID {LessonId} owned by another user", userId, id);
+            _logger.LogWarning("Lesson update failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized lesson update attempt for ID: {LessonId} by User ID: {UserId}", id, userId);
             return Forbid();
         }
-
-        var updatedLesson = await _lessonService.UpdateAsync(lessonUpdateResource, userId);
-        _logger.LogInformation("Updated lesson with ID: {LessonId}, Title: {Title}", id, lessonUpdateResource.Title);
-        return Ok(updatedLesson);
     }
 
     [HttpDelete("{id}")]
@@ -128,21 +129,22 @@ public class LessonController : BaseController
         int userId = GetCurrentUserId();
         _logger.LogDebug("Deleting lesson ID: {LessonId} for User ID: {UserId}", id, userId);
 
-        var lesson = await _lessonService.GetDomainLessonByIdAsync(id);
-        if (lesson == null)
+        try
         {
-            _logger.LogError("Lesson with ID {LessonId} not found", id);
-            return NotFound();
+            await _lessonService.DeleteAsync(id, userId); // Service handles ownership validation
+            _logger.LogInformation("Deleted lesson with ID: {LessonId} by User ID: {UserId}", id, userId);
+            return NoContent();
         }
-        if (lesson.UserId != userId)
+        catch (ArgumentException ex)
         {
-            _logger.LogWarning("User ID {UserId} attempted to delete lesson ID {LessonId} owned by another user", userId, id);
+            _logger.LogWarning("Lesson deletion failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized lesson deletion attempt for ID: {LessonId} by User ID: {UserId}", id, userId);
             return Forbid();
         }
-
-        await _lessonService.DeleteAsync(id);
-        _logger.LogInformation("Deleted lesson with ID: {LessonId}", id);
-        return NoContent();
     }
 
     [HttpPost("{id}/attachments")]
@@ -151,18 +153,6 @@ public class LessonController : BaseController
     {
         int userId = GetCurrentUserId();
         _logger.LogDebug("Adding attachment to Lesson ID: {LessonId} for User ID: {UserId}", id, userId);
-
-        var lesson = await _lessonService.GetDomainLessonByIdAsync(id);
-        if (lesson == null)
-        {
-            _logger.LogError("Lesson with ID {LessonId} not found", id);
-            return NotFound();
-        }
-        if (lesson.UserId != userId)
-        {
-            _logger.LogWarning("User ID {UserId} attempted to add attachment to lesson ID {LessonId} owned by another user", userId, id);
-            return Forbid();
-        }
 
         if (file == null || file.Length == 0)
         {
@@ -175,14 +165,23 @@ public class LessonController : BaseController
             var attachment = new Attachment
             {
                 FileName = file.FileName,
-                
                 ContentType = file.ContentType,
                 Blob = ReadFileBytes(file)
             };
-            int attachmentId = _attachmentService.CreateAttachment(attachment);
-            await _lessonService.AddAttachmentAsync(id, attachmentId);
-            _logger.LogInformation("Added attachment {FileName} to Lesson ID: {LessonId}", file.FileName, id);
+            int attachmentId = await _attachmentService.CreateAttachmentAsync(attachment);
+            await _lessonService.AddAttachmentAsync(id, attachmentId, userId); // Service handles ownership validation
+            _logger.LogInformation("Added attachment {FileName} to Lesson ID: {LessonId} by User ID: {UserId}", file.FileName, id, userId);
             return CreatedAtAction(nameof(GetLesson), new { id }, null);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Attachment addition failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized attachment addition attempt for Lesson ID: {LessonId} by User ID: {UserId}", id, userId);
+            return Forbid();
         }
         catch (Exception ex)
         {
@@ -207,28 +206,21 @@ public class LessonController : BaseController
         int userId = GetCurrentUserId();
         _logger.LogDebug("Removing attachment ID: {AttachmentId} from Lesson ID: {LessonId} for User ID: {UserId}", attachmentId, lessonId, userId);
 
-        var lesson = await _lessonService.GetDomainLessonByIdAsync(lessonId);
-        if (lesson == null)
-        {
-            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
-            return NotFound();
-        }
-        if (lesson.UserId != userId)
-        {
-            _logger.LogWarning("User ID {UserId} attempted to remove attachment from lesson ID {LessonId} owned by another user", userId, lessonId);
-            return Forbid();
-        }
-
         try
         {
-            await _lessonService.RemoveAttachmentAsync(lessonId, attachmentId);
-            _logger.LogInformation("Removed attachment ID: {AttachmentId} from Lesson ID: {LessonId}", attachmentId, lessonId);
+            await _lessonService.RemoveAttachmentAsync(lessonId, attachmentId, userId); // Service handles ownership validation
+            _logger.LogInformation("Removed attachment ID: {AttachmentId} from Lesson ID: {LessonId} by User ID: {UserId}", attachmentId, lessonId, userId);
             return NoContent();
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError("Error removing attachment: {Message}", ex.Message);
-            return NotFound(ex.Message);
+            _logger.LogWarning("Attachment removal failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized attachment removal attempt for Lesson ID: {LessonId} by User ID: {UserId}", lessonId, userId);
+            return Forbid();
         }
         catch (Exception ex)
         {
@@ -243,23 +235,21 @@ public class LessonController : BaseController
         int userId = GetCurrentUserId();
         _logger.LogDebug("Updating sort order for Lesson ID: {LessonId} to {SortOrder} for User ID: {UserId}", lessonId, sortOrder, userId);
 
-        var lesson = await _lessonService.GetDomainLessonByIdAsync(lessonId);
-        if (lesson == null)
-        {
-            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
-            return NotFound();
-        }
-        if (lesson.UserId != userId)
-        {
-            _logger.LogWarning("User ID {UserId} attempted to update sort order for lesson ID {LessonId} owned by another user", userId, lessonId);
-            return Forbid();
-        }
-
         try
         {
-            await _lessonService.UpdateSortOrderAsync(lessonId, sortOrder);
-            _logger.LogInformation("Updated sort order for Lesson ID: {LessonId} to {SortOrder}", lessonId, sortOrder);
+            await _lessonService.UpdateSortOrderAsync(lessonId, sortOrder, userId); // Service handles ownership validation
+            _logger.LogInformation("Updated sort order for Lesson ID: {LessonId} to {SortOrder} by User ID: {UserId}", lessonId, sortOrder, userId);
             return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Sort order update failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized sort order update attempt for Lesson ID: {LessonId} by User ID: {UserId}", lessonId, userId);
+            return Forbid();
         }
         catch (Exception ex)
         {
@@ -268,7 +258,6 @@ public class LessonController : BaseController
         }
     }
 
-    // Update MoveLesson to handle TopicId and SortOrder
     [HttpPost("move")]
     public async Task<IActionResult> MoveLesson([FromBody] LessonMoveResource moveResource)
     {
@@ -276,29 +265,22 @@ public class LessonController : BaseController
         _logger.LogDebug("Moving Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}, Topic ID: {NewTopicId} for User ID: {UserId}",
             moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId, userId);
 
-        var lesson = await _lessonService.GetDomainLessonByIdAsync(moveResource.LessonId);
-        if (lesson == null)
-        {
-            _logger.LogError("Lesson with ID {LessonId} not found", moveResource.LessonId);
-            return NotFound();
-        }
-        if (lesson.UserId != userId)
-        {
-            _logger.LogWarning("User ID {UserId} attempted to move lesson ID {LessonId} owned by another user", userId, moveResource.LessonId);
-            return Forbid();
-        }
-
         try
         {
-            await _lessonService.MoveLessonAsync(moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId);
-            _logger.LogInformation("Moved Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}, Topic ID: {NewTopicId}",
-                moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId);
+            await _lessonService.MoveLessonAsync(moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId, userId); // Service handles ownership validation
+            _logger.LogInformation("Moved Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}, Topic ID: {NewTopicId} by User ID: {UserId}",
+                moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId, userId);
             return Ok();
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError("Error moving lesson: {Message}", ex.Message);
-            return NotFound(ex.Message);
+            _logger.LogWarning("Lesson move failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized lesson move attempt for ID: {LessonId} by User ID: {UserId}", moveResource.LessonId, userId);
+            return Forbid();
         }
         catch (Exception ex)
         {
@@ -313,27 +295,21 @@ public class LessonController : BaseController
         int userId = GetCurrentUserId();
         _logger.LogDebug("Adding standard {StandardId} to Lesson ID: {LessonId} for User ID: {UserId}", standardId, lessonId, userId);
 
-        var lesson = await _lessonService.GetDomainLessonByIdAsync(lessonId);
-        if (lesson == null)
-        {
-            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
-            return NotFound();
-        }
-        if (lesson.UserId != userId)
-        {
-            _logger.LogWarning("User ID {UserId} attempted to add standard to lesson ID {LessonId} owned by another user", userId, lessonId);
-            return Forbid();
-        }
-
         try
         {
-            await _lessonService.AddStandardToLessonAsync(lessonId, standardId);
+            await _lessonService.AddStandardToLessonAsync(lessonId, standardId, userId); // Service handles ownership validation
+            _logger.LogInformation("Added standard {StandardId} to Lesson ID: {LessonId} by User ID: {UserId}", standardId, lessonId, userId);
             return Ok();
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError("Error adding standard: {Message}", ex.Message);
-            return NotFound(ex.Message);
+            _logger.LogWarning("Standard addition failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized standard addition attempt for Lesson ID: {LessonId} by User ID: {UserId}", lessonId, userId);
+            return Forbid();
         }
     }
 
@@ -343,27 +319,21 @@ public class LessonController : BaseController
         int userId = GetCurrentUserId();
         _logger.LogDebug("Removing standard {StandardId} from Lesson ID: {LessonId} for User ID: {UserId}", standardId, lessonId, userId);
 
-        var lesson = await _lessonService.GetDomainLessonByIdAsync(lessonId);
-        if (lesson == null)
-        {
-            _logger.LogError("Lesson with ID {LessonId} not found", lessonId);
-            return NotFound();
-        }
-        if (lesson.UserId != userId)
-        {
-            _logger.LogWarning("User ID {UserId} attempted to remove standard from lesson ID {LessonId} owned by another user", userId, lessonId);
-            return Forbid();
-        }
-
         try
         {
-            await _lessonService.RemoveStandardFromLessonAsync(lessonId, standardId);
+            await _lessonService.RemoveStandardFromLessonAsync(lessonId, standardId, userId); // Service handles ownership validation
+            _logger.LogInformation("Removed standard {StandardId} from Lesson ID: {LessonId} by User ID: {UserId}", standardId, lessonId, userId);
             return Ok();
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError("Error removing standard: {Message}", ex.Message);
-            return NotFound(ex.Message);
+            _logger.LogWarning("Standard removal failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized standard removal attempt for Lesson ID: {LessonId} by User ID: {UserId}", lessonId, userId);
+            return Forbid();
         }
     }
 
@@ -374,23 +344,16 @@ public class LessonController : BaseController
         _logger.LogDebug("Copying Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId} for User ID: {UserId}",
             copyResource.LessonId, copyResource.NewSubTopicId, userId);
 
-        var lesson = await _lessonService.GetDomainLessonByIdAsync(copyResource.LessonId);
-        if (lesson == null)
-        {
-            _logger.LogError("Lesson with ID {LessonId} not found", copyResource.LessonId);
-            return NotFound();
-        }
-
         try
         {
-            var newLesson = await _lessonService.CopyLessonAsync(copyResource.LessonId, copyResource.NewSubTopicId, null, userId);
-            _logger.LogInformation("Copied Lesson ID: {LessonId} to new Lesson ID: {NewLessonId}", copyResource.LessonId, newLesson.Id);
+            var newLesson = await _lessonService.CopyLessonAsync(copyResource.LessonId, copyResource.NewSubTopicId, copyResource.NewTopicId, userId);
+            _logger.LogInformation("Copied Lesson ID: {LessonId} to new Lesson ID: {NewLessonId} by User ID: {UserId}", copyResource.LessonId, newLesson.Id, userId);
             return CreatedAtAction(nameof(GetLesson), new { id = newLesson.Id }, newLesson);
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError("Error copying lesson: {Message}", ex.Message);
-            return NotFound(ex.Message);
+            _logger.LogWarning("Lesson copy failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -398,6 +361,4 @@ public class LessonController : BaseController
             return StatusCode(500, "Internal server error");
         }
     }
-
-
 }

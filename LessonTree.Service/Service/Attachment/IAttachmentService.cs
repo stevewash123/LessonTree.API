@@ -9,7 +9,6 @@ namespace LessonTree.BLL.Service
 {
     public interface IAttachmentService
     {
-        int CreateAttachment(Attachment attachment);
-        // Add other methods as needed
+        Task<int> CreateAttachmentAsync(Attachment attachment);
     }
 }

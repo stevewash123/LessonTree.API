@@ -17,7 +17,7 @@ using Microsoft.AspNetCore.Mvc.Formatters;
 using System.Text.Json.Serialization.Metadata;
 using System.Text.Json;
 using Microsoft.OpenApi.Models;
-using LessonTree.API.Services;
+using LessonTree.BLL.Services;
 
 namespace LessonTree.API.Configuration
 {
@@ -48,6 +48,8 @@ namespace LessonTree.API.Configuration
             builder.Services.AddTransient<IStandardRepository, StandardRepository>();
             builder.Services.AddTransient<IAttachmentRepository, AttachmentRepository>();
             builder.Services.AddTransient<INotesRepository, NotesRepository>();
+            builder.Services.AddTransient<IScheduleRepository, ScheduleRepository>();
+            builder.Services.AddTransient<IScheduleConfigurationRepository, ScheduleConfigurationRepository>();
 
             builder.Services.AddTransient<IUserService, UserService>();
             builder.Services.AddTransient<ICourseService, CourseService>();
@@ -55,9 +57,10 @@ namespace LessonTree.API.Configuration
             builder.Services.AddTransient<ISubTopicService, SubTopicService>();
             builder.Services.AddTransient<ILessonService, LessonService>();
             builder.Services.AddTransient<IStandardService, StandardService>();
-            builder.Services.AddTransient<IScheduleRepository, ScheduleRepository>();
             builder.Services.AddTransient<IAttachmentService, AttachmentService>();
-            builder.Services.AddTransient<IPeriodAssignmentValidationService, PeriodAssignmentValidationService>();
+            builder.Services.AddTransient<IScheduleService, ScheduleService>();
+            builder.Services.AddTransient<IScheduleConfigurationService, ScheduleConfigurationService>();
+            builder.Services.AddTransient<INoteService, NoteService>();
 
             builder.Services.AddHealthChecks()
                 .AddCheck("self", () => HealthCheckResult.Healthy(builder.Configuration["HealthChecks:Checks:0:Description"]))
@@ -106,11 +109,11 @@ namespace LessonTree.API.Configuration
                 options.Filters.Add<RequestLoggingFilter>();
                 options.OutputFormatters.Insert(0, new SystemTextJsonOutputFormatter(new JsonSerializerOptions
                 {
-                    ReferenceHandler = ReferenceHandler.Preserve, // Handle circular references
+                    ReferenceHandler = ReferenceHandler.IgnoreCycles, // Handle circular references without $id/$values overhead
                     MaxDepth = 64, // Increase max depth if needed (default is 32)
                     WriteIndented = true, // Optional: Make JSON readable for debugging
                     TypeInfoResolver = new DefaultJsonTypeInfoResolver(), // Required for .NET 8
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 }));
             });
             builder.Services.AddSwaggerGen(c =>

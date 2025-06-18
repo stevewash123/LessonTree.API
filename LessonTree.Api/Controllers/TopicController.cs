@@ -1,5 +1,5 @@
 ﻿// RESPONSIBILITY: Handles HTTP requests for Topic CRUD operations
-// DOES NOT: Handle business logic or data access directly
+// DOES NOT: Handle business logic or data access directly, access domain objects
 // CALLED BY: Angular UI via HTTP requests
 
 using LessonTree.API.Controllers;
@@ -9,7 +9,6 @@ using LessonTree.Models.Enums;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -111,17 +110,24 @@ public class TopicController : BaseController
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteTopic(int id)
     {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Deleting topic with ID: {TopicId} for User ID: {UserId}", id, userId);
+
         try
         {
-            _logger.LogDebug("Deleting topic with ID: {TopicId}", id);
-            await _service.DeleteAsync(id);
-            _logger.LogInformation("Topic deleted with ID: {TopicId}", id);
+            await _service.DeleteAsync(id, userId); // Service handles ownership validation
+            _logger.LogInformation("Topic deleted with ID: {TopicId} by User ID: {UserId}", id, userId);
             return NoContent();
         }
         catch (ArgumentException ex)
         {
-            _logger.LogWarning(ex, "Failed to delete topic with ID {TopicId}: {Message}", id, ex.Message);
+            _logger.LogWarning("Topic deletion failed: {Message}", ex.Message);
             return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized topic deletion attempt for ID: {TopicId} by User ID: {UserId}", id, userId);
+            return Forbid();
         }
         catch (Exception ex)
         {
@@ -154,30 +160,27 @@ public class TopicController : BaseController
         return CreatedAtAction(nameof(GetTopic), new { id = newTopic.Id }, newTopic);
     }
 
-    // Add SortOrder endpoint
     [HttpPut("{topicId}/sortOrder")]
     public async Task<IActionResult> UpdateTopicSortOrder(int topicId, [FromBody] int sortOrder)
     {
         int userId = GetCurrentUserId();
         _logger.LogDebug("Updating sort order for Topic ID: {TopicId} to {SortOrder} for User ID: {UserId}", topicId, sortOrder, userId);
 
-        var topic = await _service.GetDomainTopicByIdAsync(topicId);
-        if (topic == null)
-        {
-            _logger.LogError("Topic with ID {TopicId} not found", topicId);
-            return NotFound();
-        }
-        if (topic.UserId != userId)
-        {
-            _logger.LogWarning("User ID {UserId} attempted to update sort order for topic ID {TopicId} owned by another user", userId, topicId);
-            return Forbid();
-        }
-
         try
         {
-            await _service.UpdateSortOrderAsync(topicId, sortOrder);
-            _logger.LogInformation("Updated sort order for Topic ID: {TopicId} to {SortOrder}", topicId, sortOrder);
+            await _service.UpdateSortOrderAsync(topicId, sortOrder, userId); // Service handles ownership validation
+            _logger.LogInformation("Updated sort order for Topic ID: {TopicId} to {SortOrder} by User ID: {UserId}", topicId, sortOrder, userId);
             return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Sort order update failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized sort order update attempt for Topic ID: {TopicId} by User ID: {UserId}", topicId, userId);
+            return Forbid();
         }
         catch (Exception ex)
         {
@@ -185,5 +188,4 @@ public class TopicController : BaseController
             return StatusCode(500, "Internal server error");
         }
     }
-
 }

@@ -10,21 +10,27 @@ namespace LessonTree.DAL.Repositories
 {
     public interface IScheduleRepository
     {
-        // Master schedule operations (user-based, not course-based)
+        // === SCHEDULE CRUD ===
+        Task<Schedule> CreateOrReplaceScheduleAsync(int userId, List<ScheduleEvent> events, int? scheduleConfigurationId = null);
+        Task DeleteScheduleAsync(int userId);
+
+        // === SCHEDULE RETRIEVAL ===
         Task<Schedule?> GetByUserIdAsync(int userId);
         Task<Schedule?> GetByIdAsync(int id);
-        Task<Schedule> CreateAsync(Schedule schedule);
-        Task<Schedule> UpdateAsync(Schedule schedule);
-        Task DeleteAsync(int id);
+        Task<List<Schedule>> GetSchedulesByUserIdAsync(int userId);
+        Task<bool> UserHasScheduleAsync(int userId);
+        Task<Schedule?> GetByConfigurationIdAsync(int configurationId);
 
-        // Schedule event operations
+        // === SCHEDULE EVENT OPERATIONS ===
         Task<Schedule> UpdateScheduleEventsAsync(int scheduleId, List<ScheduleEvent> events);
         Task<ScheduleEvent> AddScheduleEventAsync(ScheduleEvent scheduleEvent);
         Task<ScheduleEvent> UpdateScheduleEventAsync(ScheduleEvent scheduleEvent);
         Task DeleteScheduleEventAsync(int scheduleEventId);
 
-        // Query operations
-        Task<List<Schedule>> GetSchedulesByUserIdAsync(int userId); // For potential multiple schedules
-        Task<bool> UserHasScheduleAsync(int userId);
+        // === SPECIAL DAY OPERATIONS ===
+        Task<SpecialDay> AddSpecialDayAsync(int scheduleId, SpecialDayCreateResource createResource);
+        Task<SpecialDay> UpdateSpecialDayAsync(SpecialDayUpdateResource updateResource);
+        Task DeleteSpecialDayAsync(int specialDayId);
+
     }
 }

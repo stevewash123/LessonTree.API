@@ -1,43 +1,40 @@
-﻿// **COMPLETE FILE** - Schedule-related DTOs with standardized string[] TeachingDays
-// RESPONSIBILITY: Schedule configuration and creation resources
-// DOES NOT: Handle events (see ScheduleEventResource.cs) or business logic
-// CALLED BY: Controllers for schedule operations
-
-using System;
-using System.Collections.Generic;
+﻿// **UPDATED** - Schedule DTOs (Simplified - References ScheduleConfiguration)
+// RESPONSIBILITY: Schedule event management only
+// DOES NOT: Handle configuration data (that's ScheduleConfiguration)
+// CALLED BY: ScheduleController for schedule event operations
 
 namespace LessonTree.Models.DTO
 {
+    // Simplified schedule resource - references configuration
     public class ScheduleResource
     {
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public int UserId { get; set; }
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public int ScheduleConfigurationId { get; set; } // NEW: Reference to configuration
         public bool IsLocked { get; set; }
-        public string[] TeachingDays { get; set; } = new[] { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday" };
-        public List<ScheduleEventResource>? ScheduleEvents { get; set; }
+        public DateTime CreatedDate { get; set; }
+
+        // Event data only
+        public List<ScheduleEventResource> ScheduleEvents { get; set; } = new List<ScheduleEventResource>();
     }
 
+    // Create schedule from configuration
     public class ScheduleCreateResource
     {
         public string Title { get; set; } = string.Empty;
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
-        public string[] TeachingDays { get; set; } = new[] { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday" };
+        public int ScheduleConfigurationId { get; set; } // Reference to configuration to use
 
-        // Support for batch event creation
+        // Optional: Include initial events
         public List<ScheduleEventResource>? ScheduleEvents { get; set; }
     }
 
-    public class ScheduleConfigUpdateResource
+    // Update schedule (basic properties only)
+    public class ScheduleUpdateResource
     {
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
-        public string[] TeachingDays { get; set; } = new[] { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday" };
         public bool IsLocked { get; set; }
     }
+
 }

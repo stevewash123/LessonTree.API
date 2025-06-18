@@ -1,517 +1,234 @@
-﻿// **COMPLETE FILE** - Updated ScheduleController for Master Schedule Support
-// RESPONSIBILITY: Manages user's master schedule (cross-course) with JWT-based authentication
-// DOES NOT: Handle course-specific schedules, individual event CRUD (separate controller)
-// CALLED BY: Frontend calendar components for schedule management
-
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using AutoMapper;
-using LessonTree.DAL.Domain;
 using LessonTree.Models.DTO;
-using LessonTree.DAL.Repositories;
-using System.Security.Claims;
+using LessonTree.BLL.Service;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using LessonTree.BLL.Services;
 
 namespace LessonTree.API.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
-    public class ScheduleController : ControllerBase
+    [ApiController]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    public class ScheduleController : BaseController
     {
-        private readonly IScheduleRepository _scheduleRepository;
-        private readonly IMapper _mapper;
+        private readonly IScheduleService _scheduleService;
         private readonly ILogger<ScheduleController> _logger;
 
         public ScheduleController(
-            IScheduleRepository scheduleRepository,
-            IMapper mapper,
+            IScheduleService scheduleService,
             ILogger<ScheduleController> logger)
         {
-            _scheduleRepository = scheduleRepository;
-            _mapper = mapper;
+            _scheduleService = scheduleService;
             _logger = logger;
         }
 
-        // GET /api/Schedule - Get user's master schedule (JWT-based)
+        // GET /api/Schedule - Get user's schedule (JWT-based)
         [HttpGet]
         public async Task<ActionResult<ScheduleResource>> GetUserSchedule()
         {
-            var userId = GetUserIdFromToken();
-            if (userId == null)
-            {
-                _logger.LogWarning("GetUserSchedule: User ID not found in token");
-                return Unauthorized("User ID not found in token");
-            }
+            int userId = GetCurrentUserId();
 
-            _logger.LogInformation($"GetUserSchedule: Fetching schedule for user {userId}");
-
-            var schedule = await _scheduleRepository.GetByUserIdAsync(userId.Value);
+            var schedule = await _scheduleService.GetUserScheduleAsync(userId);
             if (schedule == null)
             {
-                _logger.LogInformation($"GetUserSchedule: No schedule found for user {userId}");
                 return NotFound($"No schedule found for user {userId}");
             }
 
-            var scheduleResource = _mapper.Map<ScheduleResource>(schedule);
-            _logger.LogInformation($"GetUserSchedule: Returning schedule {schedule.Id} for user {userId}");
-
-            return Ok(scheduleResource);
+            return Ok(schedule);
         }
 
         // GET /api/Schedule/{id} - Get specific schedule by ID (with ownership check)
         [HttpGet("{id}")]
         public async Task<ActionResult<ScheduleResource>> GetSchedule(int id)
         {
-            var userId = GetUserIdFromToken();
-            if (userId == null)
-            {
-                return Unauthorized("User ID not found in token");
-            }
+            int userId = GetCurrentUserId();
 
-            _logger.LogInformation($"GetSchedule: Fetching schedule {id} for user {userId}");
-
-            var schedule = await _scheduleRepository.GetByIdAsync(id);
+            var schedule = await _scheduleService.GetByIdAsync(id, userId);
             if (schedule == null)
             {
-                _logger.LogWarning($"GetSchedule: Schedule {id} not found");
-                return NotFound($"Schedule {id} not found");
+                return NotFound($"Schedule {id} not found or not accessible");
             }
 
-            // Verify ownership
-            if (schedule.UserId != userId.Value)
-            {
-                _logger.LogWarning($"GetSchedule: User {userId} attempted to access schedule {id} owned by {schedule.UserId}");
-                return Forbid("You can only access your own schedules");
-            }
-
-            var scheduleResource = _mapper.Map<ScheduleResource>(schedule);
-            return Ok(scheduleResource);
+            return Ok(schedule);
         }
 
-        // POST /api/Schedule - Create user's master schedule
+        // POST /api/Schedule - Create/replace user's schedule with UI-generated events
         [HttpPost]
         public async Task<ActionResult<ScheduleResource>> CreateSchedule([FromBody] ScheduleCreateResource createResource)
         {
-            var userId = GetUserIdFromToken();
-            if (userId == null)
+            int userId = GetCurrentUserId();
+
+            try
             {
-                return Unauthorized("User ID not found in token");
+                var createdSchedule = await _scheduleService.CreateScheduleAsync(createResource, userId);
+                return CreatedAtAction(nameof(GetSchedule), new { id = createdSchedule.Id }, createdSchedule);
             }
-
-            _logger.LogInformation($"CreateSchedule: Creating schedule for user {userId}");
-
-            // Check if user already has a schedule
-            var existingSchedule = await _scheduleRepository.GetByUserIdAsync(userId.Value);
-            if (existingSchedule != null)
+            catch (ArgumentException ex)
             {
-                _logger.LogWarning($"CreateSchedule: User {userId} already has schedule {existingSchedule.Id}");
-                return Conflict($"User already has a schedule (ID: {existingSchedule.Id}). Use PUT to update.");
+                _logger.LogWarning("Invalid schedule creation request for User ID: {UserId} - {Message}", userId, ex.Message);
+                return BadRequest(new { status = "error", message = ex.Message });
             }
-
-            // Validate date range
-            if (createResource.StartDate >= createResource.EndDate)
-            {
-                return BadRequest("Start date must be before end date");
-            }
-
-            var schedule = _mapper.Map<Schedule>(createResource);
-            schedule.UserId = userId.Value;
-
-            var createdSchedule = await _scheduleRepository.CreateAsync(schedule);
-            var scheduleResource = _mapper.Map<ScheduleResource>(createdSchedule);
-
-            _logger.LogInformation($"CreateSchedule: Created schedule {createdSchedule.Id} for user {userId}");
-
-            return CreatedAtAction(nameof(GetSchedule), new { id = createdSchedule.Id }, scheduleResource);
         }
 
-        // PUT /api/Schedule/{id}/config - Update schedule configuration
-        [HttpPut("{id}/config")]
-        public async Task<ActionResult<ScheduleResource>> UpdateScheduleConfig(int id, [FromBody] ScheduleConfigUpdateResource updateResource)
-        {
-            var userId = GetUserIdFromToken();
-            if (userId == null)
-            {
-                return Unauthorized("User ID not found in token");
-            }
-
-            if (id != updateResource.Id)
-            {
-                return BadRequest("Schedule ID mismatch");
-            }
-
-            _logger.LogInformation($"UpdateScheduleConfig: Updating schedule {id} config for user {userId}");
-
-            var existingSchedule = await _scheduleRepository.GetByIdAsync(id);
-            if (existingSchedule == null)
-            {
-                return NotFound($"Schedule {id} not found");
-            }
-
-            // Verify ownership
-            if (existingSchedule.UserId != userId.Value)
-            {
-                _logger.LogWarning($"UpdateScheduleConfig: User {userId} attempted to update schedule {id} owned by {existingSchedule.UserId}");
-                return Forbid("You can only update your own schedules");
-            }
-
-            // Check if schedule is locked
-            if (existingSchedule.IsLocked)
-            {
-                return BadRequest("Cannot update configuration of a locked schedule");
-            }
-
-            // Validate date range
-            if (updateResource.StartDate >= updateResource.EndDate)
-            {
-                return BadRequest("Start date must be before end date");
-            }
-
-            // FIXED: Use AutoMapper instead of direct assignment for TeachingDays conversion
-            _mapper.Map(updateResource, existingSchedule);
-
-            var updatedSchedule = await _scheduleRepository.UpdateAsync(existingSchedule);
-            var scheduleResource = _mapper.Map<ScheduleResource>(updatedSchedule);
-
-            _logger.LogInformation($"UpdateScheduleConfig: Updated schedule {id} config for user {userId}");
-
-            return Ok(scheduleResource);
-        }
-
-        // PUT /api/Schedule/{id}/events - Bulk update schedule events
+        // PUT /api/Schedule/{id}/events - Replace all events with new UI-generated events
         [HttpPut("{id}/events")]
-        public async Task<ActionResult<ScheduleResource>> UpdateScheduleEvents(int id, [FromBody] ScheduleEventsUpdateResource eventsUpdate)
+        public async Task<ActionResult<ScheduleResource>> UpdateScheduleEvents(int id, [FromBody] List<ScheduleEventResource> events)
         {
-            var userId = GetUserIdFromToken();
-            if (userId == null)
+            int userId = GetCurrentUserId();
+
+            try
             {
-                return Unauthorized("User ID not found in token");
+                var updatedSchedule = await _scheduleService.UpdateScheduleEventsAsync(id, events, userId);
+                return Ok(updatedSchedule);
             }
-
-            if (id != eventsUpdate.ScheduleId)
+            catch (ArgumentException ex)
             {
-                return BadRequest("Schedule ID mismatch");
+                _logger.LogWarning("Invalid schedule update request for Schedule ID: {ScheduleId}, User ID: {UserId} - {Message}", id, userId, ex.Message);
+                return BadRequest(new { status = "error", message = ex.Message });
             }
-
-            _logger.LogInformation($"UpdateScheduleEvents: Updating {eventsUpdate.ScheduleEvents.Count} events for schedule {id}");
-
-            var existingSchedule = await _scheduleRepository.GetByIdAsync(id);
-            if (existingSchedule == null)
-            {
-                return NotFound($"Schedule {id} not found");
-            }
-
-            // Verify ownership
-            if (existingSchedule.UserId != userId.Value)
-            {
-                _logger.LogWarning($"UpdateScheduleEvents: User {userId} attempted to update schedule {id} owned by {existingSchedule.UserId}");
-                return Forbid("You can only update your own schedules");
-            }
-
-            // Check if schedule is locked
-            if (existingSchedule.IsLocked)
-            {
-                return BadRequest("Cannot update events of a locked schedule");
-            }
-
-            // Validate events
-            var validationErrors = ValidateScheduleEvents(eventsUpdate.ScheduleEvents);
-            if (validationErrors.Any())
-            {
-                return BadRequest($"Event validation failed: {string.Join(", ", validationErrors)}");
-            }
-
-            // Map events and assign schedule ID
-            var scheduleEvents = _mapper.Map<List<ScheduleEvent>>(eventsUpdate.ScheduleEvents);
-            foreach (var scheduleEvent in scheduleEvents)
-            {
-                scheduleEvent.ScheduleId = id;
-            }
-
-            var updatedSchedule = await _scheduleRepository.UpdateScheduleEventsAsync(id, scheduleEvents);
-            var scheduleResource = _mapper.Map<ScheduleResource>(updatedSchedule);
-
-            _logger.LogInformation($"UpdateScheduleEvents: Updated {scheduleEvents.Count} events for schedule {id}");
-
-            return Ok(scheduleResource);
         }
 
-        // DELETE /api/Schedule/{id} - Delete schedule
-        [HttpDelete("{id}")]
-        public async Task<ActionResult> DeleteSchedule(int id)
+        // DELETE /api/Schedule - Delete user's schedule
+        [HttpDelete]
+        public async Task<ActionResult> DeleteUserSchedule()
         {
-            var userId = GetUserIdFromToken();
-            if (userId == null)
-            {
-                return Unauthorized("User ID not found in token");
-            }
+            int userId = GetCurrentUserId();
 
-            _logger.LogInformation($"DeleteSchedule: Deleting schedule {id} for user {userId}");
-
-            var existingSchedule = await _scheduleRepository.GetByIdAsync(id);
-            if (existingSchedule == null)
-            {
-                return NotFound($"Schedule {id} not found");
-            }
-
-            // Verify ownership
-            if (existingSchedule.UserId != userId.Value)
-            {
-                _logger.LogWarning($"DeleteSchedule: User {userId} attempted to delete schedule {id} owned by {existingSchedule.UserId}");
-                return Forbid("You can only delete your own schedules");
-            }
-
-            await _scheduleRepository.DeleteAsync(id);
-
-            _logger.LogInformation($"DeleteSchedule: Deleted schedule {id} for user {userId}");
-
+            await _scheduleService.DeleteUserScheduleAsync(userId);
             return NoContent();
         }
 
+        // === SPECIAL DAY ENDPOINTS ===
 
-        // === USER-BASED MASTER SCHEDULE ENDPOINTS ===
-
-        // GET /api/User/masterSchedule - Get current user's master schedule
-        [HttpGet("~/api/User/masterSchedule")]
-        public async Task<ActionResult<ScheduleResource>> GetUserMasterSchedule()
+        // GET /api/Schedule/{scheduleId}/specialDays
+        [HttpGet("{scheduleId}/specialDays")]
+        public async Task<ActionResult<List<SpecialDayResource>>> GetSpecialDays(int scheduleId)
         {
-            var userId = GetUserIdFromToken();
-            if (userId == null)
+            int userId = GetCurrentUserId();
+
+            try
             {
-                _logger.LogWarning("GetUserMasterSchedule: User ID not found in token");
-                return Unauthorized("User ID not found in token");
+                var specialDays = await _scheduleService.GetSpecialDaysAsync(scheduleId, userId);
+                return Ok(specialDays);
             }
-
-            _logger.LogInformation($"GetUserMasterSchedule: Fetching master schedule for user {userId}");
-
-            var schedule = await _scheduleRepository.GetByUserIdAsync(userId.Value);
-            if (schedule == null)
+            catch (ArgumentException ex)
             {
-                _logger.LogInformation($"GetUserMasterSchedule: No master schedule found for user {userId}");
-                return NotFound($"No master schedule found for user {userId}");
+                _logger.LogWarning("Invalid special days request for Schedule ID: {ScheduleId}, User ID: {UserId} - {Message}", scheduleId, userId, ex.Message);
+                return BadRequest(new { status = "error", message = ex.Message });
             }
-
-            var scheduleResource = _mapper.Map<ScheduleResource>(schedule);
-            _logger.LogInformation($"GetUserMasterSchedule: Returning master schedule {schedule.Id} with {schedule.ScheduleEvents.Count} events");
-
-            return Ok(scheduleResource);
         }
 
-        // POST /api/User/masterSchedule - Create master schedule with full event payload
-        [HttpPost("~/api/User/masterSchedule")]
-        public async Task<ActionResult<ScheduleResource>> CreateUserMasterSchedule([FromBody] ScheduleCreateResource createResource)
+        // GET /api/Schedule/{scheduleId}/specialDays/{specialDayId}
+        [HttpGet("{scheduleId}/specialDays/{specialDayId}")]
+        public async Task<ActionResult<SpecialDayResource>> GetSpecialDay(int scheduleId, int specialDayId)
         {
-            var userId = GetUserIdFromToken();
-            if (userId == null)
-            {
-                return Unauthorized("User ID not found in token");
-            }
+            int userId = GetCurrentUserId();
 
-            _logger.LogInformation($"CreateUserMasterSchedule: Creating master schedule for user {userId} with {createResource.ScheduleEvents?.Count ?? 0} events");
-
-            // Check if user already has a master schedule
-            var existingSchedule = await _scheduleRepository.GetByUserIdAsync(userId.Value);
-            if (existingSchedule != null)
+            try
             {
-                _logger.LogWarning($"CreateUserMasterSchedule: User {userId} already has master schedule {existingSchedule.Id}");
-                return Conflict($"User already has a master schedule (ID: {existingSchedule.Id}). Use PUT to update.");
-            }
-
-            // Validate date range
-            if (createResource.StartDate >= createResource.EndDate)
-            {
-                return BadRequest("Start date must be before end date");
-            }
-
-            // Validate events if provided
-            if (createResource.ScheduleEvents != null && createResource.ScheduleEvents.Any())
-            {
-                var validationErrors = ValidateScheduleEvents(createResource.ScheduleEvents);
-                if (validationErrors.Any())
+                var specialDay = await _scheduleService.GetSpecialDayAsync(scheduleId, specialDayId, userId);
+                if (specialDay == null)
                 {
-                    return BadRequest($"Event validation failed: {string.Join(", ", validationErrors)}");
-                }
-            }
-
-            var schedule = _mapper.Map<Schedule>(createResource);
-            schedule.UserId = userId.Value;
-
-            // Map events if provided
-            if (createResource.ScheduleEvents != null)
-            {
-                var scheduleEvents = _mapper.Map<List<ScheduleEvent>>(createResource.ScheduleEvents);
-                foreach (var evt in scheduleEvents)
-                {
-                    evt.ScheduleId = 0; // Will be set when schedule is created
-                }
-                schedule.ScheduleEvents = scheduleEvents;
-            }
-
-            var createdSchedule = await _scheduleRepository.CreateAsync(schedule);
-            var scheduleResource = _mapper.Map<ScheduleResource>(createdSchedule);
-
-            _logger.LogInformation($"CreateUserMasterSchedule: Created master schedule {createdSchedule.Id} for user {userId} with {createdSchedule.ScheduleEvents.Count} events");
-
-            return CreatedAtAction(nameof(GetSchedule), new { id = createdSchedule.Id }, scheduleResource);
-        }
-
-        // PUT /api/User/masterSchedule/{id}/events - Replace all events (regeneration)
-        [HttpPut("~/api/User/masterSchedule/{id}/events")]
-        public async Task<ActionResult<ScheduleResource>> RegenerateUserMasterSchedule(int id, [FromBody] List<ScheduleEventResource> events)
-        {
-            var userId = GetUserIdFromToken();
-            if (userId == null)
-            {
-                return Unauthorized("User ID not found in token");
-            }
-
-            _logger.LogInformation($"RegenerateUserMasterSchedule: Regenerating {events.Count} events for master schedule {id}");
-
-            var existingSchedule = await _scheduleRepository.GetByIdAsync(id);
-            if (existingSchedule == null)
-            {
-                return NotFound($"Master schedule {id} not found");
-            }
-
-            // Verify ownership
-            if (existingSchedule.UserId != userId.Value)
-            {
-                _logger.LogWarning($"RegenerateUserMasterSchedule: User {userId} attempted to regenerate schedule {id} owned by {existingSchedule.UserId}");
-                return Forbid("You can only regenerate your own master schedule");
-            }
-
-            // Check if schedule is locked
-            if (existingSchedule.IsLocked)
-            {
-                return BadRequest("Cannot regenerate events of a locked master schedule");
-            }
-
-            // Validate events
-            var validationErrors = ValidateScheduleEvents(events);
-            if (validationErrors.Any())
-            {
-                return BadRequest($"Event validation failed: {string.Join(", ", validationErrors)}");
-            }
-
-            // Map events and assign schedule ID
-            var scheduleEvents = _mapper.Map<List<ScheduleEvent>>(events);
-            foreach (var scheduleEvent in scheduleEvents)
-            {
-                scheduleEvent.ScheduleId = id;
-            }
-
-            var updatedSchedule = await _scheduleRepository.UpdateScheduleEventsAsync(id, scheduleEvents);
-            var scheduleResource = _mapper.Map<ScheduleResource>(updatedSchedule);
-
-            _logger.LogInformation($"RegenerateUserMasterSchedule: Regenerated {scheduleEvents.Count} events for master schedule {id}");
-
-            return Ok(scheduleResource);
-        }
-
-        // DELETE /api/User/masterSchedule/{id} - Delete master schedule
-        [HttpDelete("~/api/User/masterSchedule/{id}")]
-        public async Task<ActionResult> DeleteUserMasterSchedule(int id)
-        {
-            var userId = GetUserIdFromToken();
-            if (userId == null)
-            {
-                return Unauthorized("User ID not found in token");
-            }
-
-            _logger.LogInformation($"DeleteUserMasterSchedule: Deleting master schedule {id} for user {userId}");
-
-            var existingSchedule = await _scheduleRepository.GetByIdAsync(id);
-            if (existingSchedule == null)
-            {
-                return NotFound($"Master schedule {id} not found");
-            }
-
-            // Verify ownership
-            if (existingSchedule.UserId != userId.Value)
-            {
-                _logger.LogWarning($"DeleteUserMasterSchedule: User {userId} attempted to delete schedule {id} owned by {existingSchedule.UserId}");
-                return Forbid("You can only delete your own master schedule");
-            }
-
-            await _scheduleRepository.DeleteAsync(id);
-
-            _logger.LogInformation($"DeleteUserMasterSchedule: Deleted master schedule {id} for user {userId}");
-
-            return NoContent();
-        }
-
-        // === PRIVATE HELPER METHODS ===
-
-        private int? GetUserIdFromToken()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value
-                           ?? User.FindFirst("userId")?.Value;
-
-            if (int.TryParse(userIdClaim, out var userId))
-            {
-                return userId;
-            }
-
-            _logger.LogWarning($"GetUserIdFromToken: Could not parse user ID from token. Claims: {string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}"))}");
-            return null;
-        }
-
-        private List<string> ValidateScheduleEvents(List<ScheduleEventResource> events)
-        {
-            var errors = new List<string>();
-
-            foreach (var evt in events)
-            {
-                // Validate required EventType
-                if (string.IsNullOrWhiteSpace(evt.EventType))
-                {
-                    errors.Add($"Event on {evt.Date:yyyy-MM-dd} Period {evt.Period}: EventType is required");
-                    continue;
+                    return NotFound($"Special day {specialDayId} not found in schedule {scheduleId}");
                 }
 
-                // Validate EventType/EventCategory combinations
-                if (!IsValidEventTypeCategory(evt.EventType, evt.EventCategory))
-                {
-                    errors.Add($"Event on {evt.Date:yyyy-MM-dd} Period {evt.Period}: Invalid EventType '{evt.EventType}' for EventCategory '{evt.EventCategory}'");
-                }
-
-                // Validate Period range
-                if (evt.Period < 1 || evt.Period > 10)
-                {
-                    errors.Add($"Event on {evt.Date:yyyy-MM-dd}: Period {evt.Period} must be between 1 and 10");
-                }
-
-                // Validate lesson events have CourseId
-                if (evt.EventType == "Lesson" && evt.LessonId.HasValue && (!evt.CourseId.HasValue || evt.CourseId <= 0))
-                {
-                    errors.Add($"Event on {evt.Date:yyyy-MM-dd} Period {evt.Period}: Lesson events must have a valid CourseId");
-                }
+                return Ok(specialDay);
             }
-
-            return errors;
-        }
-
-        private bool IsValidEventTypeCategory(string eventType, string? eventCategory)
-        {
-            return eventCategory switch
+            catch (ArgumentException ex)
             {
-                "Lesson" => eventType == "Lesson",
-                "SpecialPeriod" => IsValidSpecialPeriodType(eventType),
-                "SpecialDay" => IsValidSpecialDayType(eventType),
-                null => eventType is "OverflowError" or "UnderflowError",
-                _ => false
-            };
+                _logger.LogWarning("Invalid special day request for Schedule ID: {ScheduleId}, Special Day ID: {SpecialDayId}, User ID: {UserId} - {Message}",
+                    scheduleId, specialDayId, userId, ex.Message);
+                return BadRequest(new { status = "error", message = ex.Message });
+            }
         }
 
-        private bool IsValidSpecialPeriodType(string eventType)
+        // POST /api/Schedule/{scheduleId}/specialDays
+        [HttpPost("{scheduleId}/specialDays")]
+        public async Task<ActionResult<SpecialDayResource>> CreateSpecialDay(int scheduleId, [FromBody] SpecialDayCreateResource createResource)
         {
-            return eventType is "Lunch" or "HallDuty" or "CafeteriaDuty" or "StudyHall" or "Prep" or "OtherDuty";
+            int userId = GetCurrentUserId();
+
+            try
+            {
+                var createdSpecialDay = await _scheduleService.CreateSpecialDayAsync(scheduleId, createResource, userId);
+                return CreatedAtAction(nameof(GetSpecialDay),
+                    new { scheduleId = scheduleId, specialDayId = createdSpecialDay.Id },
+                    createdSpecialDay);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning("Invalid special day creation for Schedule ID: {ScheduleId}, User ID: {UserId} - {Message}", scheduleId, userId, ex.Message);
+                return BadRequest(new { status = "error", message = ex.Message });
+            }
         }
 
-        private bool IsValidSpecialDayType(string eventType)
+        // PUT /api/Schedule/{scheduleId}/specialDays/{specialDayId}
+        [HttpPut("{scheduleId}/specialDays/{specialDayId}")]
+        public async Task<ActionResult<SpecialDayResource>> UpdateSpecialDay(int scheduleId, int specialDayId, [FromBody] SpecialDayUpdateResource updateResource)
         {
-            return eventType is "Assembly" or "Testing" or "Holiday" or "ProfessionalDevelopment" or "FieldTrip" or "WeatherDelay" or "EarlyDismissal";
+            int userId = GetCurrentUserId();
+
+            try
+            {
+                var updatedSpecialDay = await _scheduleService.UpdateSpecialDayAsync(scheduleId, specialDayId, updateResource, userId);
+                return Ok(updatedSpecialDay);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning("Invalid special day update for Schedule ID: {ScheduleId}, Special Day ID: {SpecialDayId}, User ID: {UserId} - {Message}",
+                    scheduleId, specialDayId, userId, ex.Message);
+                return BadRequest(new { status = "error", message = ex.Message });
+            }
+        }
+
+        // DELETE /api/Schedule/{scheduleId}/specialDays/{specialDayId}
+        [HttpDelete("{scheduleId}/specialDays/{specialDayId}")]
+        public async Task<ActionResult> DeleteSpecialDay(int scheduleId, int specialDayId)
+        {
+            int userId = GetCurrentUserId();
+
+            try
+            {
+                await _scheduleService.DeleteSpecialDayAsync(scheduleId, specialDayId, userId);
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning("Invalid special day deletion for Schedule ID: {ScheduleId}, Special Day ID: {SpecialDayId}, User ID: {UserId} - {Message}",
+                    scheduleId, specialDayId, userId, ex.Message);
+                return BadRequest(new { status = "error", message = ex.Message });
+            }
+        }
+
+        // GET /api/Schedule/byConfiguration/{configurationId} - Get schedule by configuration ID
+        [HttpGet("byConfiguration/{configurationId}")]
+        public async Task<ActionResult<ScheduleResource>> GetScheduleByConfigurationId(int configurationId)
+        {
+            int userId = GetCurrentUserId();
+
+            try
+            {
+                var schedule = await _scheduleService.GetByConfigurationIdAsync(configurationId, userId);
+                if (schedule == null)
+                {
+                    return NotFound($"No schedule found for configuration {configurationId}");
+                }
+
+                return Ok(schedule);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning("Invalid schedule request for Configuration ID: {ConfigurationId}, User ID: {UserId} - {Message}",
+                    configurationId, userId, ex.Message);
+                return BadRequest(new { status = "error", message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning("Unauthorized schedule access for Configuration ID: {ConfigurationId}, User ID: {UserId} - {Message}",
+                    configurationId, userId, ex.Message);
+                return Forbid();
+            }
         }
     }
 }

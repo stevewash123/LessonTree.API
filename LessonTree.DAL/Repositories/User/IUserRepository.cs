@@ -9,15 +9,12 @@ namespace LessonTree.DAL.Repositories
 {
     public interface IUserRepository
     {
-        // Core user operations
         User? GetById(int id);
         User? GetByUserName(string userName);
         List<User> GetAll();
         void Add(User user);
-        void Update(User user);  // Only updates application data (District, Configuration)
+        void Update(User user);
         void Delete(int id);
-
-        // Configuration-specific operations
         UserConfiguration? GetUserConfiguration(int userId);
         void UpdateUserConfiguration(int userId, UserConfiguration configuration);
     }
