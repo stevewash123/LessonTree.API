@@ -1,4 +1,9 @@
-﻿using System;
+﻿// **COMPLETE FILE** - SubTopicRepository.cs - Standardized to enterprise patterns
+// RESPONSIBILITY: SubTopic data access with topic relationships and default handling
+// DOES NOT: Handle subtopic content validation or business rules (that's in services)
+// CALLED BY: SubTopicService for all subtopic operations
+
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using LessonTree.DAL.Domain;
@@ -20,7 +25,8 @@ namespace LessonTree.DAL.Repositories
 
         public IQueryable<SubTopic> GetAll(Func<IQueryable<SubTopic>, IQueryable<SubTopic>> include = null)
         {
-            _logger.LogDebug("Retrieving all subtopics");
+            _logger.LogInformation("GetAll: Retrieving all subtopics");
+
             IQueryable<SubTopic> query = _context.SubTopics;
             if (include != null)
             {
@@ -29,54 +35,65 @@ namespace LessonTree.DAL.Repositories
             return query;
         }
 
-        public async Task<SubTopic> GetByIdAsync(int id, Func<IQueryable<SubTopic>, IQueryable<SubTopic>> include = null)
+        public async Task<SubTopic?> GetByIdAsync(int id, Func<IQueryable<SubTopic>, IQueryable<SubTopic>> include = null)
         {
-            _logger.LogDebug("Retrieving subtopic by ID: {SubTopicId}", id);
+            _logger.LogInformation($"GetByIdAsync: Fetching subtopic {id}");
+
             IQueryable<SubTopic> query = _context.SubTopics;
             if (include != null)
             {
                 query = include(query);
             }
+
             var subTopic = await query.FirstOrDefaultAsync(st => st.Id == id);
-            if (subTopic == null)
+
+            if (subTopic != null)
             {
-                _logger.LogWarning("SubTopic with ID {SubTopicId} not found", id);
+                _logger.LogInformation($"GetByIdAsync: Found subtopic {id} for user {subTopic.UserId}");
             }
-            return subTopic; // Return null if not found, instead of new SubTopic()
+            else
+            {
+                _logger.LogInformation($"GetByIdAsync: SubTopic {id} not found");
+            }
+
+            return subTopic;
         }
 
         public async Task<int> AddAsync(SubTopic subTopic)
         {
-            _logger.LogDebug("Adding subtopic: {Title}", subTopic.Title);
+            _logger.LogInformation($"AddAsync: Creating subtopic '{subTopic.Title}' for user {subTopic.UserId}");
+
             _context.SubTopics.Add(subTopic);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Added subtopic with ID: {SubTopicId}, Title: {Title}", subTopic.Id, subTopic.Title);
+
+            _logger.LogInformation($"AddAsync: Created subtopic {subTopic.Id} for user {subTopic.UserId}");
             return subTopic.Id;
         }
 
         public async Task UpdateAsync(SubTopic subTopic)
         {
-            _logger.LogDebug("Updating subtopic: {Title}", subTopic.Title);
-            _logger.LogDebug("Updating SubTopic {Id} with TopicId {TopicId}, IsDefault {IsDefault}", subTopic.Id, subTopic.TopicId, subTopic.IsDefault);
+            _logger.LogInformation($"UpdateAsync: Updating subtopic {subTopic.Id}");
+
             _context.SubTopics.Update(subTopic);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Updated subtopic with ID: {SubTopicId}, Title: {Title}", subTopic.Id, subTopic.Title);
+
+            _logger.LogInformation($"UpdateAsync: Updated subtopic {subTopic.Id}");
         }
 
         public async Task DeleteAsync(int id)
         {
-            _logger.LogDebug("Deleting subtopic with ID: {SubTopicId}", id);
+            _logger.LogInformation($"DeleteAsync: Deleting subtopic {id}");
+
             var subTopic = await _context.SubTopics.FindAsync(id);
-            if (subTopic != null)
+            if (subTopic == null)
             {
-                _context.SubTopics.Remove(subTopic);
-                var changes = await _context.SaveChangesAsync();
-                _logger.LogInformation("Deleted subtopic with ID: {SubTopicId}, Rows affected: {Changes}", id, changes);
+                throw new ArgumentException($"SubTopic {id} not found");
             }
-            else
-            {
-                _logger.LogWarning("SubTopic with ID {SubTopicId} not found for deletion", id);
-            }
+
+            _context.SubTopics.Remove(subTopic);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation($"DeleteAsync: Deleted subtopic {id}");
         }
     }
 }

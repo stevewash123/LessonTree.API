@@ -22,7 +22,7 @@ public class CourseService : ICourseService
 
     public async Task<IEnumerable<CourseResource>> GetAllAsync(int userId, ArchiveFilter filter = ArchiveFilter.Active, int? visibility = null)
     {
-        _logger.LogDebug("Fetching courses for User ID: {UserId}, Filter: {Filter}, Visibility: {Visibility}", userId, filter, visibility);
+        _logger.LogInformation($"GetAllAsync: Fetching courses for user {userId}, filter: {filter}, visibility: {visibility}");
 
         var query = _repository.GetAll(q => q
             .Include(c => c.Topics)
@@ -58,11 +58,11 @@ public class CourseService : ICourseService
         var courses = await query.ToListAsync();
         if (!courses.Any())
         {
-            _logger.LogInformation("No courses found for User ID: {UserId} with Filter: {Filter}, Visibility: {Visibility}", userId, filter, visibility);
+            _logger.LogInformation($"GetAllAsync: No courses found for user {userId} with filter: {filter}, visibility: {visibility}");
         }
         else
         {
-            _logger.LogDebug("Found {Count} courses for User ID: {UserId}", courses.Count, userId);
+            _logger.LogInformation($"GetAllAsync: Found {courses.Count} courses for user {userId}");
         }
 
         var resource = _mapper.Map<IEnumerable<CourseResource>>(courses ?? new List<Course>());
@@ -71,7 +71,8 @@ public class CourseService : ICourseService
 
     public async Task<CourseResource> GetByIdAsync(int id, int userId)
     {
-        _logger.LogDebug("Fetching course with ID: {CourseId} for User ID: {UserId}", id, userId);
+        _logger.LogInformation($"GetByIdAsync: Fetching course {id} for user {userId}");
+
         var course = await _repository.GetByIdAsync(id, q => q
             .Include(c => c.Topics)
                 .ThenInclude(t => t.Lessons)
@@ -79,7 +80,7 @@ public class CourseService : ICourseService
 
         if (course == null)
         {
-            _logger.LogWarning("Course with ID: {CourseId} not found", id);
+            _logger.LogInformation($"GetByIdAsync: Course {id} not found");
             return null;
         }
 
@@ -88,50 +89,56 @@ public class CourseService : ICourseService
             && course.Visibility != VisibilityType.Public
             && !(course.Visibility == VisibilityType.Team && course.User.SchoolId != null && course.User.SchoolId == _repository.GetUserSchoolId(userId)))
         {
-            _logger.LogWarning("Course with ID: {CourseId} not accessible to User ID: {UserId}", id, userId);
+            _logger.LogWarning($"GetByIdAsync: Course {id} not accessible to user {userId}");
             return null;
         }
 
-        _logger.LogDebug("Course with ID: {CourseId} retrieved successfully for User ID: {UserId}", id, userId);
+        _logger.LogInformation($"GetByIdAsync: Found course {id} for user {userId}");
         return _mapper.Map<CourseResource>(course);
     }
 
     public async Task AddAsync(CourseCreateResource courseCreateResource, int userId)
     {
-        _logger.LogDebug("Adding course: {Title} for User ID: {UserId}", courseCreateResource.Title, userId);
+        _logger.LogInformation($"AddAsync: Creating course '{courseCreateResource.Title}' for user {userId}");
+
         var course = _mapper.Map<Course>(courseCreateResource);
         course.UserId = userId;
         course.Archived = false;
         await _repository.AddAsync(course);
-        _logger.LogInformation("Course added with ID: {CourseId}, Title: {Title}", course.Id, course.Title);
+
+        _logger.LogInformation($"AddAsync: Created course {course.Id} '{course.Title}' for user {userId}");
     }
 
     public async Task UpdateAsync(CourseUpdateResource courseUpdateResource, int userId)
     {
-        _logger.LogDebug("Updating course with ID: {CourseId} for User ID: {UserId}", courseUpdateResource.Id, userId);
+        _logger.LogInformation($"UpdateAsync: Updating course {courseUpdateResource.Id} for user {userId}");
+
         var existingCourse = await _repository.GetByIdAsync(courseUpdateResource.Id);
         if (existingCourse == null || existingCourse.UserId != userId)
         {
-            _logger.LogWarning("Course with ID: {CourseId} not found or not owned by User ID: {UserId}", courseUpdateResource.Id, userId);
-            throw new ArgumentException("Course not found or not owned by user");
+            _logger.LogWarning($"UpdateAsync: Course {courseUpdateResource.Id} not found or not owned by user {userId}");
+            throw new ArgumentException($"Course {courseUpdateResource.Id} not found or not owned by user");
         }
 
         _mapper.Map(courseUpdateResource, existingCourse);
         await _repository.UpdateAsync(existingCourse);
-        _logger.LogInformation("Course with ID: {CourseId} updated successfully", existingCourse.Id);
+
+        _logger.LogInformation($"UpdateAsync: Updated course {existingCourse.Id} for user {userId}");
     }
 
     public async Task DeleteAsync(int id, int userId)
     {
-        _logger.LogDebug("Deleting course with ID: {CourseId} for User ID: {UserId}", id, userId);
+        _logger.LogInformation($"DeleteAsync: Deleting course {id} for user {userId}");
+
         var course = await _repository.GetByIdAsync(id);
         if (course == null || course.UserId != userId)
         {
-            _logger.LogWarning("Course with ID: {CourseId} not found or not owned by User ID: {UserId}", id, userId);
-            throw new ArgumentException("Course not found or not owned by user");
+            _logger.LogWarning($"DeleteAsync: Course {id} not found or not owned by user {userId}");
+            throw new ArgumentException($"Course {id} not found or not owned by user");
         }
 
         await _repository.DeleteAsync(id);
-        _logger.LogInformation("Course with ID: {CourseId} deleted successfully", id);
+
+        _logger.LogInformation($"DeleteAsync: Deleted course {id} for user {userId}");
     }
 }

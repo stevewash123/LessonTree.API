@@ -1,4 +1,9 @@
-﻿using LessonTree.DAL.Domain;
+﻿// **COMPLETE FILE** - TopicRepository.cs - Standardized to enterprise patterns
+// RESPONSIBILITY: Topic data access with course relationships and hierarchy management
+// DOES NOT: Handle topic content validation or business rules (that's in services)
+// CALLED BY: TopicService for all topic operations
+
+using LessonTree.DAL.Domain;
 using LessonTree.DAL.Repositories;
 using LessonTree.DAL;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +22,8 @@ public class TopicRepository : ITopicRepository
 
     public IQueryable<Topic> GetAll(Func<IQueryable<Topic>, IQueryable<Topic>> include = null)
     {
-        _logger.LogDebug("Retrieving all topics");
+        _logger.LogInformation("GetAll: Retrieving all topics");
+
         IQueryable<Topic> query = _context.Topics;
         if (include != null)
         {
@@ -26,50 +32,64 @@ public class TopicRepository : ITopicRepository
         return query;
     }
 
-    public async Task<Topic> GetByIdAsync(int id, Func<IQueryable<Topic>, IQueryable<Topic>> include = null)
+    public async Task<Topic?> GetByIdAsync(int id, Func<IQueryable<Topic>, IQueryable<Topic>> include = null)
     {
-        _logger.LogDebug("Retrieving topic by ID: {TopicId}", id);
+        _logger.LogInformation($"GetByIdAsync: Fetching topic {id}");
+
         IQueryable<Topic> query = _context.Topics;
         if (include != null)
         {
             query = include(query);
         }
-        var topic = await query.FirstOrDefaultAsync(t => t.Id == id); 
-        if (topic == null)
-            _logger.LogWarning("Topic with ID {TopicId} not found", id);
+
+        var topic = await query.FirstOrDefaultAsync(t => t.Id == id);
+
+        if (topic != null)
+        {
+            _logger.LogInformation($"GetByIdAsync: Found topic {id} for user {topic.UserId}");
+        }
+        else
+        {
+            _logger.LogInformation($"GetByIdAsync: Topic {id} not found");
+        }
+
         return topic;
     }
 
     public async Task<int> AddAsync(Topic topic)
     {
-        _logger.LogDebug("Adding topic: {Title}", topic.Title);
+        _logger.LogInformation($"AddAsync: Creating topic '{topic.Title}' for user {topic.UserId}");
+
         _context.Topics.Add(topic);
         await _context.SaveChangesAsync();
-        _logger.LogInformation("Added topic with ID: {TopicId}, Title: {Title}", topic.Id, topic.Title);
-        return topic.Id; // Return the ID after saving
+
+        _logger.LogInformation($"AddAsync: Created topic {topic.Id} for user {topic.UserId}");
+        return topic.Id;
     }
 
     public async Task UpdateAsync(Topic topic)
     {
-        _logger.LogDebug("Updating topic: {Title}", topic.Title);
+        _logger.LogInformation($"UpdateAsync: Updating topic {topic.Id}");
+
         _context.Topics.Update(topic);
         await _context.SaveChangesAsync();
-        _logger.LogInformation("Updated topic with ID: {TopicId}, Title: {Title}", topic.Id, topic.Title);
+
+        _logger.LogInformation($"UpdateAsync: Updated topic {topic.Id}");
     }
 
     public async Task DeleteAsync(int id)
     {
-        _logger.LogDebug("Deleting topic with ID: {TopicId}", id);
+        _logger.LogInformation($"DeleteAsync: Deleting topic {id}");
+
         var topic = await _context.Topics.FindAsync(id);
-        if (topic != null)
+        if (topic == null)
         {
-            _context.Topics.Remove(topic);
-            await _context.SaveChangesAsync();
-            _logger.LogInformation("Deleted topic with ID: {TopicId}", id);
+            throw new ArgumentException($"Topic {id} not found");
         }
-        else
-        {
-            _logger.LogWarning("Topic with ID {TopicId} not found for deletion", id);
-        }
+
+        _context.Topics.Remove(topic);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"DeleteAsync: Deleted topic {id}");
     }
 }

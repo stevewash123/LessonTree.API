@@ -33,9 +33,13 @@ public class LessonService : ILessonService
         _mapper = mapper;
     }
 
+    // **PARTIAL FILE** - LessonService.cs - Logging Standardization (Key Methods)
+    // INTEGRATION: Replace the main CRUD method logging patterns
+
     public async Task<LessonDetailResource?> GetByIdAsync(int id, int userId)
     {
-        _logger.LogDebug("Fetching lesson by ID: {LessonId} for User ID: {UserId}", id, userId);
+        _logger.LogInformation($"GetByIdAsync: Fetching lesson {id} for user {userId}");
+
         var lesson = await _lessonRepository.GetByIdAsync(id, q => q
             .Include(l => l.SubTopic).ThenInclude(s => s.Topic)
             .Include(l => l.Topic)
@@ -46,18 +50,18 @@ public class LessonService : ILessonService
 
         if (lesson == null || lesson.UserId != userId)
         {
-            _logger.LogWarning("Lesson with ID {LessonId} not found or not owned by User ID {UserId}", id, userId);
+            _logger.LogWarning($"GetByIdAsync: Lesson {id} not found or not owned by user {userId}");
             return null;
         }
 
-        _logger.LogDebug("Lesson with ID {LessonId} found. Title: {Title}, SubTopicId: {SubTopicId}, TopicId: {TopicId}",
-            lesson.Id, lesson.Title, lesson.SubTopicId, lesson.TopicId);
+        _logger.LogInformation($"GetByIdAsync: Found lesson {id} '{lesson.Title}' for user {userId} - SubTopicId: {lesson.SubTopicId}, TopicId: {lesson.TopicId}");
         return _mapper.Map<LessonDetailResource>(lesson);
     }
 
     public async Task<List<LessonResource>> GetAllAsync(int userId, ArchiveFilter filter = ArchiveFilter.Active)
     {
-        _logger.LogDebug("Fetching all lessons for User ID: {UserId}, Filter: {Filter}", userId, filter);
+        _logger.LogInformation($"GetAllAsync: Fetching lessons for user {userId}, filter: {filter}");
+
         var query = _lessonRepository.GetAll().Where(l => l.UserId == userId);
 
         query = filter switch
@@ -72,10 +76,84 @@ public class LessonService : ILessonService
             .ProjectTo<LessonResource>(_mapper.ConfigurationProvider)
             .ToListAsync();
 
-        _logger.LogDebug("Fetched {Count} lessons for User ID: {UserId}", lessons.Count, userId);
+        _logger.LogInformation($"GetAllAsync: Found {lessons.Count} lessons for user {userId}");
         return lessons;
     }
 
+    public async Task<int> AddAsync(LessonCreateResource lessonCreateResource, int userId)
+    {
+        _logger.LogInformation($"AddAsync: Creating lesson '{lessonCreateResource.Title}' for user {userId}");
+
+        if (lessonCreateResource.SubTopicId.HasValue && lessonCreateResource.TopicId.HasValue)
+        {
+            _logger.LogError("AddAsync: Lesson cannot have both SubTopicId and TopicId assigned");
+            throw new ArgumentException("Lesson must be linked to either a SubTopic or a Topic, not both");
+        }
+
+        if (!lessonCreateResource.SubTopicId.HasValue && !lessonCreateResource.TopicId.HasValue)
+        {
+            _logger.LogError("AddAsync: Lesson must have either a SubTopicId or TopicId assigned");
+            throw new ArgumentException("Lesson must be linked to either a SubTopic or a Topic");
+        }
+
+        var lesson = _mapper.Map<Lesson>(lessonCreateResource);
+        lesson.UserId = userId;
+        var createdLessonId = await _lessonRepository.AddAsync(lesson);
+
+        _logger.LogInformation($"AddAsync: Created lesson {createdLessonId} '{lesson.Title}' for user {userId}");
+        return createdLessonId;
+    }
+
+    public async Task<LessonDetailResource> UpdateAsync(LessonUpdateResource lessonUpdateResource, int userId)
+    {
+        _logger.LogInformation($"UpdateAsync: Updating lesson {lessonUpdateResource.Id} '{lessonUpdateResource.Title}' for user {userId}");
+
+        var existingLesson = await _lessonRepository.GetByIdAsync(lessonUpdateResource.Id);
+        if (existingLesson == null)
+        {
+            _logger.LogInformation($"UpdateAsync: Lesson {lessonUpdateResource.Id} not found");
+            throw new ArgumentException($"Lesson {lessonUpdateResource.Id} not found");
+        }
+
+        // Verify ownership
+        if (existingLesson.UserId != userId)
+        {
+            _logger.LogWarning($"UpdateAsync: Lesson {lessonUpdateResource.Id} not owned by user {userId}");
+            throw new UnauthorizedAccessException($"Lesson {lessonUpdateResource.Id} not owned by user");
+        }
+
+        _mapper.Map(lessonUpdateResource, existingLesson);
+        await _lessonRepository.UpdateAsync(existingLesson);
+
+        _logger.LogInformation($"UpdateAsync: Updated lesson {existingLesson.Id} '{existingLesson.Title}' for user {userId}");
+
+        // Return the updated entity
+        return await GetByIdAsync(existingLesson.Id, userId) ?? throw new InvalidOperationException("Updated lesson could not be retrieved");
+    }
+
+    public async Task DeleteAsync(int id, int userId)
+    {
+        _logger.LogInformation($"DeleteAsync: Deleting lesson {id} for user {userId}");
+
+        var lesson = await _lessonRepository.GetByIdAsync(id);
+        if (lesson == null)
+        {
+            _logger.LogInformation($"DeleteAsync: Lesson {id} not found");
+            throw new ArgumentException($"Lesson {id} not found");
+        }
+
+        // Ownership validation - moved from controller to service
+        if (lesson.UserId != userId)
+        {
+            _logger.LogWarning($"DeleteAsync: Lesson {id} not owned by user {userId}");
+            throw new UnauthorizedAccessException($"Lesson {id} not owned by user");
+        }
+
+        await _lessonRepository.DeleteAsync(id);
+
+        _logger.LogInformation($"DeleteAsync: Deleted lesson {id} for user {userId}");
+    }
+   
     public async Task<List<LessonResource>> GetLessonsBySubtopic(int subTopicId, int userId, ArchiveFilter filter = ArchiveFilter.Active)
     {
         _logger.LogDebug("Fetching lessons by SubTopic ID: {SubTopicId} for User ID: {UserId}, Filter: {Filter}", subTopicId, userId, filter);
@@ -120,78 +198,6 @@ public class LessonService : ILessonService
 
         _logger.LogDebug("Fetched {Count} lessons for Topic ID: {TopicId}, User ID: {UserId}", lessons.Count, topicId, userId);
         return lessons;
-    }
-
-    public async Task<int> AddAsync(LessonCreateResource lessonCreateResource, int userId)
-    {
-        _logger.LogDebug("Adding lesson: {Title} for User ID: {UserId}", lessonCreateResource.Title, userId);
-
-        if (lessonCreateResource.SubTopicId.HasValue && lessonCreateResource.TopicId.HasValue)
-        {
-            _logger.LogError("Lesson cannot have both SubTopicId and TopicId assigned");
-            throw new ArgumentException("Lesson must be linked to either a SubTopic or a Topic, not both.");
-        }
-
-        if (!lessonCreateResource.SubTopicId.HasValue && !lessonCreateResource.TopicId.HasValue)
-        {
-            _logger.LogError("Lesson must have either a SubTopicId or TopicId assigned");
-            throw new ArgumentException("Lesson must be linked to either a SubTopic or a Topic.");
-        }
-
-        var lesson = _mapper.Map<Lesson>(lessonCreateResource);
-        lesson.UserId = userId;
-        var createdLessonId = await _lessonRepository.AddAsync(lesson);
-        _logger.LogInformation("Lesson added with ID: {LessonId}, Title: {Title}", createdLessonId, lesson.Title);
-        return createdLessonId;
-    }
-
-    public async Task<LessonDetailResource> UpdateAsync(LessonUpdateResource lessonUpdateResource, int userId)
-    {
-        _logger.LogDebug("Updating lesson with ID: {LessonId}, Title: {Title} for User ID: {UserId}",
-            lessonUpdateResource.Id, lessonUpdateResource.Title, userId);
-
-        var existingLesson = await _lessonRepository.GetByIdAsync(lessonUpdateResource.Id);
-        if (existingLesson == null)
-        {
-            _logger.LogWarning("Lesson with ID {LessonId} not found for update", lessonUpdateResource.Id);
-            throw new ArgumentException("Lesson not found");
-        }
-
-        // Verify ownership
-        if (existingLesson.UserId != userId)
-        {
-            _logger.LogWarning("User ID {UserId} attempted to update lesson ID {LessonId} owned by another user", userId, lessonUpdateResource.Id);
-            throw new UnauthorizedAccessException("Lesson not owned by user");
-        }
-
-        _mapper.Map(lessonUpdateResource, existingLesson);
-        await _lessonRepository.UpdateAsync(existingLesson);
-        _logger.LogInformation("Lesson updated with ID: {LessonId}, Title: {Title}", existingLesson.Id, existingLesson.Title);
-
-        // Return the updated entity
-        return await GetByIdAsync(existingLesson.Id, userId) ?? throw new InvalidOperationException("Updated lesson could not be retrieved");
-    }
-
-    public async Task DeleteAsync(int id, int userId)
-    {
-        _logger.LogDebug("Deleting lesson with ID: {LessonId} for User ID: {UserId}", id, userId);
-
-        var lesson = await _lessonRepository.GetByIdAsync(id);
-        if (lesson == null)
-        {
-            _logger.LogWarning("Lesson with ID {LessonId} not found for deletion", id);
-            throw new ArgumentException($"Lesson with ID {id} not found");
-        }
-
-        // Ownership validation - moved from controller to service
-        if (lesson.UserId != userId)
-        {
-            _logger.LogWarning("User ID {UserId} attempted to delete lesson ID {LessonId} owned by another user", userId, id);
-            throw new UnauthorizedAccessException("Lesson not owned by user");
-        }
-
-        await _lessonRepository.DeleteAsync(id);
-        _logger.LogInformation("Lesson deleted with ID: {LessonId} by User ID: {UserId}", id, userId);
     }
 
     public async Task UpdateSortOrderAsync(int lessonId, int sortOrder, int userId)

@@ -252,10 +252,15 @@ namespace LessonTree.DAL.Repositories
 
             _logger.LogInformation($"AddScheduleEventAsync: Added event {scheduleEvent.Id}");
 
-            // Return with includes
-            return await _context.ScheduleEvents
-                .Include(e => e.Lesson)
-                .FirstOrDefaultAsync(e => e.Id == scheduleEvent.Id) ?? scheduleEvent;
+            // ✅ PERFORMANCE FIX: Load lesson navigation if needed, avoid separate query
+            if (scheduleEvent.LessonId.HasValue)
+            {
+                await _context.Entry(scheduleEvent)
+                    .Reference(e => e.Lesson)
+                    .LoadAsync();
+            }
+
+            return scheduleEvent;
         }
 
         public async Task<ScheduleEvent> UpdateScheduleEventAsync(ScheduleEvent scheduleEvent)
@@ -281,10 +286,15 @@ namespace LessonTree.DAL.Repositories
 
             _logger.LogInformation($"UpdateScheduleEventAsync: Updated event {scheduleEvent.Id}");
 
-            // Return with includes
-            return await _context.ScheduleEvents
-                .Include(e => e.Lesson)
-                .FirstOrDefaultAsync(e => e.Id == scheduleEvent.Id) ?? existingEvent;
+            // ✅ PERFORMANCE FIX: Load lesson navigation if needed, avoid separate query
+            if (existingEvent.LessonId.HasValue)
+            {
+                await _context.Entry(existingEvent)
+                    .Reference(e => e.Lesson)
+                    .LoadAsync();
+            }
+
+            return existingEvent;
         }
 
         public async Task DeleteScheduleEventAsync(int scheduleEventId)

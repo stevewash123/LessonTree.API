@@ -20,9 +20,10 @@ public class NoteService : INoteService
         _logger = logger;
     }
 
+
     public async Task<NoteResource> CreateNoteAsync(NoteCreateResource noteCreateResource, int userId)
     {
-        _logger.LogDebug("Creating note for User ID: {UserId}", userId);
+        _logger.LogInformation("CreateNoteAsync: Creating note for User ID: {UserId}", userId);
 
         // Validate that exactly one parent ID is provided
         ValidateParentIds(noteCreateResource);
@@ -40,13 +41,13 @@ public class NoteService : INoteService
             throw new InvalidOperationException("Failed to retrieve created note");
         }
 
-        _logger.LogInformation("Note created with ID: {NoteId} for User ID: {UserId}", noteId, userId);
+        _logger.LogInformation("CreateNoteAsync: Note created with ID: {NoteId} for User ID: {UserId}", noteId, userId);
         return _mapper.Map<NoteResource>(createdNote);
     }
 
     public async Task<NoteResource?> UpdateNoteAsync(int id, NoteUpdateResource noteUpdateResource, int userId)
     {
-        _logger.LogDebug("Updating note with ID: {NoteId} for User ID: {UserId}", id, userId);
+        _logger.LogInformation("UpdateNoteAsync: Updating note with ID: {NoteId} for User ID: {UserId}", id, userId);
 
         var existingNote = await _notesRepository.GetByIdAsync(id);
         if (existingNote == null)
@@ -61,13 +62,13 @@ public class NoteService : INoteService
         _mapper.Map(noteUpdateResource, existingNote);
         await _notesRepository.UpdateAsync(existingNote);
 
-        _logger.LogInformation("Note with ID: {NoteId} updated successfully", id);
+        _logger.LogInformation("UpdateNoteAsync: Note with ID: {NoteId} updated successfully", id);
         return _mapper.Map<NoteResource>(existingNote);
     }
 
     public async Task DeleteNoteAsync(int id, int userId)
     {
-        _logger.LogDebug("Deleting note with ID: {NoteId} for User ID: {UserId}", id, userId);
+        _logger.LogInformation("DeleteNoteAsync: Deleting note with ID: {NoteId} for User ID: {UserId}", id, userId);
 
         var existingNote = await _notesRepository.GetByIdAsync(id);
         if (existingNote == null)
@@ -80,7 +81,7 @@ public class NoteService : INoteService
         // if (existingNote.CreatedBy?.Id != userId) { throw new UnauthorizedAccessException(); }
 
         await _notesRepository.DeleteAsync(id);
-        _logger.LogInformation("Note with ID: {NoteId} deleted successfully", id);
+        _logger.LogInformation("DeleteNoteAsync: Note with ID: {NoteId} deleted successfully", id);
     }
 
     // Private helper methods

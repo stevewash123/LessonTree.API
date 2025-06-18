@@ -20,13 +20,16 @@ namespace LessonTree.BLL.Service
             _logger = logger;
         }
 
+        // PARTIAL FILE - Integration: Replace the entry point logging in key business methods
+        // Focus: Standardize entry point logging and reduce excessive debug logging
+
         public async Task<List<StandardResource>> GetAllAsync()
         {
-            _logger.LogDebug("Fetching all standards in service");
+            _logger.LogInformation("GetAllAsync: Fetching all standards");
             try
             {
                 var standards = await _repository.GetAll().ToListAsync();
-                _logger.LogDebug("Fetched {Count} standards", standards.Count);
+                _logger.LogInformation("GetAllAsync: Fetched {Count} standards", standards.Count);
                 return _mapper.Map<List<StandardResource>>(standards);
             }
             catch (Exception ex)
@@ -38,20 +41,17 @@ namespace LessonTree.BLL.Service
 
         public async Task<StandardResource?> GetByIdAsync(int id)
         {
-            _logger.LogDebug("Fetching standard by ID: {StandardId} in service", id);
+            _logger.LogInformation("GetByIdAsync: Fetching standard by ID: {StandardId}", id);
             try
             {
                 var standard = await _repository.GetByIdAsync(id);
                 if (standard == null)
                 {
-                    _logger.LogWarning("Standard with ID {StandardId} not found in service", id);
+                    _logger.LogWarning("Standard with ID {StandardId} not found", id);
                     return null;
                 }
-                _logger.LogDebug("Standard with ID {StandardId} found. Title: {Title}, CourseId: {CourseId}",
-                    standard.Id, standard.Title, standard.CourseId);
-                var standardResource = _mapper.Map<StandardResource>(standard);
-                _logger.LogDebug("Mapped standard with ID {StandardId} to StandardResource", standardResource.Id);
-                return standardResource;
+                _logger.LogInformation("GetByIdAsync: Standard with ID {StandardId} found", standard.Id);
+                return _mapper.Map<StandardResource>(standard);
             }
             catch (Exception ex)
             {
@@ -62,12 +62,12 @@ namespace LessonTree.BLL.Service
 
         public async Task<int> AddAsync(StandardCreateResource standardCreateResource)
         {
-            _logger.LogDebug("Adding standard: {Title} in service", standardCreateResource.Title);
+            _logger.LogInformation("AddAsync: Adding standard: {Title}", standardCreateResource.Title);
             try
             {
                 var standard = _mapper.Map<Standard>(standardCreateResource);
                 var createdId = await _repository.AddAsync(standard);
-                _logger.LogInformation("Standard added with ID: {StandardId}", createdId);
+                _logger.LogInformation("AddAsync: Standard added with ID: {StandardId}", createdId);
                 return createdId;
             }
             catch (Exception ex)
@@ -79,8 +79,7 @@ namespace LessonTree.BLL.Service
 
         public async Task<StandardResource> UpdateAsync(StandardUpdateResource standardUpdateResource)
         {
-            _logger.LogDebug("Updating standard with ID: {StandardId}, Title: {Title} in service",
-                standardUpdateResource.Id, standardUpdateResource.Title);
+            _logger.LogInformation("UpdateAsync: Updating standard with ID: {StandardId}", standardUpdateResource.Id);
             try
             {
                 var existingStandard = await _repository.GetByIdAsync(standardUpdateResource.Id);
@@ -91,7 +90,7 @@ namespace LessonTree.BLL.Service
                 }
                 _mapper.Map(standardUpdateResource, existingStandard);
                 await _repository.UpdateAsync(existingStandard);
-                _logger.LogInformation("Standard updated with ID: {StandardId}", existingStandard.Id);
+                _logger.LogInformation("UpdateAsync: Standard updated with ID: {StandardId}", existingStandard.Id);
 
                 // Return the updated entity
                 return await GetByIdAsync(existingStandard.Id) ?? throw new InvalidOperationException("Updated standard could not be retrieved");
@@ -105,7 +104,7 @@ namespace LessonTree.BLL.Service
 
         public async Task DeleteAsync(int id)
         {
-            _logger.LogDebug("Deleting standard with ID: {StandardId} in service", id);
+            _logger.LogInformation("DeleteAsync: Deleting standard with ID: {StandardId}", id);
             try
             {
                 var standard = await _repository.GetByIdAsync(id);
@@ -115,7 +114,7 @@ namespace LessonTree.BLL.Service
                     throw new ArgumentException($"Standard with ID {id} not found");
                 }
                 await _repository.DeleteAsync(id);
-                _logger.LogInformation("Standard deleted with ID: {StandardId}", id);
+                _logger.LogInformation("DeleteAsync: Standard deleted with ID: {StandardId}", id);
             }
             catch (Exception ex)
             {
@@ -126,7 +125,7 @@ namespace LessonTree.BLL.Service
 
         public async Task<List<StandardResource>> GetByCourseIdAsync(int courseId, int? districtId = null)
         {
-            _logger.LogDebug("Fetching standards by Course ID: {CourseId}, District ID: {DistrictId} in service", courseId, districtId);
+            _logger.LogInformation("GetByCourseIdAsync: Fetching standards by Course ID: {CourseId}, District ID: {DistrictId}", courseId, districtId);
             try
             {
                 var query = _repository.GetByCourseId(courseId);
@@ -135,7 +134,7 @@ namespace LessonTree.BLL.Service
                     query = query.Where(s => s.DistrictId == districtId.Value);
                 }
                 var standards = await query.ToListAsync();
-                _logger.LogDebug("Found {Count} standards for Course ID: {CourseId}", standards.Count, courseId);
+                _logger.LogInformation("GetByCourseIdAsync: Found {Count} standards for Course ID: {CourseId}", standards.Count, courseId);
                 return _mapper.Map<List<StandardResource>>(standards);
             }
             catch (Exception ex)

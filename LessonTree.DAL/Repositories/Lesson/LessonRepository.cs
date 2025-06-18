@@ -1,4 +1,9 @@
-﻿using LessonTree.DAL;
+﻿// **COMPLETE FILE** - LessonRepository.cs - Standardized to enterprise patterns
+// RESPONSIBILITY: Lesson data access with attachment relationships and filtering
+// DOES NOT: Handle lesson content validation or attachment file management (that's in services)
+// CALLED BY: LessonService for all lesson operations
+
+using LessonTree.DAL;
 using LessonTree.DAL.Domain;
 using LessonTree.DAL.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +22,8 @@ public class LessonRepository : ILessonRepository
 
     public IQueryable<Lesson> GetAll(Func<IQueryable<Lesson>, IQueryable<Lesson>> include = null)
     {
-        _logger.LogDebug("Retrieving all lessons");
+        _logger.LogInformation("GetAll: Retrieving all lessons");
+
         var query = _context.Lessons.AsQueryable();
         if (include != null)
         {
@@ -28,7 +34,8 @@ public class LessonRepository : ILessonRepository
 
     public async Task<Lesson?> GetByIdAsync(int id, Func<IQueryable<Lesson>, IQueryable<Lesson>> include = null)
     {
-        _logger.LogDebug("Retrieving lesson by ID: {LessonId}", id);
+        _logger.LogInformation($"GetByIdAsync: Fetching lesson {id}");
+
         IQueryable<Lesson> query = _context.Lessons;
         if (include != null)
         {
@@ -39,50 +46,62 @@ public class LessonRepository : ILessonRepository
             query = query
                 .Include(l => l.LessonAttachments).ThenInclude(ld => ld.Attachment)
                 .Include(l => l.SubTopic)
-                .Include(l => l.Topic) // New: Include Topic
-                .Include(l => l.User) // New: Include User
+                .Include(l => l.Topic)
+                .Include(l => l.User)
                 .Include(l => l.LessonStandards).ThenInclude(ls => ls.Standard);
         }
+
         var lesson = await query.FirstOrDefaultAsync(l => l.Id == id);
-        if (lesson == null)
+
+        if (lesson != null)
         {
-            _logger.LogWarning("Lesson with ID {LessonId} not found", id);
+            _logger.LogInformation($"GetByIdAsync: Found lesson {id} for user {lesson.UserId}");
         }
+        else
+        {
+            _logger.LogInformation($"GetByIdAsync: Lesson {id} not found");
+        }
+
         return lesson;
     }
 
     public async Task<int> AddAsync(Lesson lesson)
     {
-        _logger.LogDebug("Adding lesson: {Title}", lesson.Title);
+        _logger.LogInformation($"AddAsync: Creating lesson '{lesson.Title}' for user {lesson.UserId}");
+
         _context.Lessons.Add(lesson);
         await _context.SaveChangesAsync();
-        _logger.LogInformation("Added lesson with ID: {LessonId}, Title: {Title}", lesson.Id, lesson.Title);
+
+        _logger.LogInformation($"AddAsync: Created lesson {lesson.Id} for user {lesson.UserId}");
         return lesson.Id;
     }
 
     public async Task UpdateAsync(Lesson lesson)
     {
-        _logger.LogDebug("Updating lesson: {Title}", lesson.Title);
+        _logger.LogInformation($"UpdateAsync: Updating lesson {lesson.Id}");
+
         _context.Lessons.Update(lesson);
         await _context.SaveChangesAsync();
-        _logger.LogInformation("Updated lesson with ID: {LessonId}, Title: {Title}", lesson.Id, lesson.Title);
+
+        _logger.LogInformation($"UpdateAsync: Updated lesson {lesson.Id}");
     }
 
     public async Task DeleteAsync(int id)
     {
-        _logger.LogDebug("Deleting lesson with ID: {LessonId}", id);
+        _logger.LogInformation($"DeleteAsync: Deleting lesson {id}");
+
         var lesson = await _context.Lessons.FindAsync(id);
-        if (lesson != null)
+        if (lesson == null)
         {
-            _context.Lessons.Remove(lesson);
-            await _context.SaveChangesAsync();
-            _logger.LogInformation("Deleted lesson with ID: {LessonId}", id);
+            throw new ArgumentException($"Lesson {id} not found");
         }
-        else
-        {
-            _logger.LogWarning("Lesson with ID {LessonId} not found for deletion", id);
-        }
+
+        _context.Lessons.Remove(lesson);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation($"DeleteAsync: Deleted lesson {id}");
     }
+
 
     public async Task AddAttachmentAsync(int lessonId, int attachmentId)
     {

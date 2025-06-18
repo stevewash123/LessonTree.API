@@ -1,4 +1,9 @@
-﻿using LessonTree.DAL.Domain;
+﻿// **COMPLETE FILE** - StandardRepository.cs - Standardized to enterprise patterns
+// RESPONSIBILITY: Standard data access with course/topic filtering and district-level operations
+// DOES NOT: Handle standard content validation or educational compliance (that's in services)
+// CALLED BY: StandardService for all standard operations
+
+using LessonTree.DAL.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -17,63 +22,74 @@ namespace LessonTree.DAL.Repositories
 
         public IQueryable<Standard> GetAll()
         {
-            _logger.LogDebug("Retrieving all standards");
+            _logger.LogInformation("GetAll: Retrieving all standards");
             return _context.Standards.AsQueryable();
         }
 
         public async Task<Standard?> GetByIdAsync(int id)
         {
-            _logger.LogDebug("Retrieving standard by ID: {StandardId}", id);
+            _logger.LogInformation($"GetByIdAsync: Fetching standard {id}");
+
             var standard = await _context.Standards.FindAsync(id);
-            if (standard == null)
+
+            if (standard != null)
             {
-                _logger.LogWarning("Standard with ID {StandardId} not found", id);
+                _logger.LogInformation($"GetByIdAsync: Found standard {id} - '{standard.Title}'");
             }
+            else
+            {
+                _logger.LogInformation($"GetByIdAsync: Standard {id} not found");
+            }
+
             return standard;
         }
 
         public async Task<int> AddAsync(Standard standard)
         {
-            _logger.LogDebug("Adding standard: {Title}", standard.Title);
+            _logger.LogInformation($"AddAsync: Creating standard '{standard.Title}' for course {standard.CourseId}");
+
             _context.Standards.Add(standard);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Added standard with ID: {StandardId}, Title: {Title}", standard.Id, standard.Title);
+
+            _logger.LogInformation($"AddAsync: Created standard {standard.Id} for course {standard.CourseId}");
             return standard.Id;
         }
 
         public async Task UpdateAsync(Standard standard)
         {
-            _logger.LogDebug("Updating standard with ID: {StandardId}, Title: {Title}", standard.Id, standard.Title);
+            _logger.LogInformation($"UpdateAsync: Updating standard {standard.Id}");
+
             _context.Standards.Update(standard);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Updated standard with ID: {StandardId}, Title: {Title}", standard.Id, standard.Title);
+
+            _logger.LogInformation($"UpdateAsync: Updated standard {standard.Id}");
         }
 
         public async Task DeleteAsync(int id)
         {
-            _logger.LogDebug("Deleting standard with ID: {StandardId}", id);
+            _logger.LogInformation($"DeleteAsync: Deleting standard {id}");
+
             var standard = await _context.Standards.FindAsync(id);
-            if (standard != null)
+            if (standard == null)
             {
-                _context.Standards.Remove(standard);
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Deleted standard with ID: {StandardId}", id);
+                throw new ArgumentException($"Standard {id} not found");
             }
-            else
-            {
-                _logger.LogWarning("Standard with ID {StandardId} not found for deletion", id);
-            }
+
+            _context.Standards.Remove(standard);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation($"DeleteAsync: Deleted standard {id}");
         }
 
         public IQueryable<Standard> GetByTopicId(int topicId)
         {
-            _logger.LogDebug("Retrieving standards by Topic ID: {TopicId}", topicId);
+            _logger.LogInformation($"GetByTopicId: Retrieving standards for topic {topicId}");
             return _context.Standards.Where(s => s.TopicId == topicId);
         }
 
         public IQueryable<Standard> GetByCourseId(int courseId)
         {
-            _logger.LogDebug("Retrieving standards by Course ID: {CourseId}", courseId);
+            _logger.LogInformation($"GetByCourseId: Retrieving standards for course {courseId}");
             return _context.Standards.Where(s => s.CourseId == courseId);
         }
     }

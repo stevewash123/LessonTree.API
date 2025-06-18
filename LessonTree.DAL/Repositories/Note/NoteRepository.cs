@@ -1,4 +1,9 @@
-﻿using LessonTree.DAL.Domain;
+﻿// **COMPLETE FILE** - NoteRepository.cs - Standardized to match ScheduleRepository patterns
+// RESPONSIBILITY: Note data access with consistent enterprise patterns
+// DOES NOT: Handle note content validation (that's in services)
+// CALLED BY: NoteService for all note operations
+
+using LessonTree.DAL.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -20,16 +25,17 @@ namespace LessonTree.DAL.Repositories
 
         public async Task<Note?> GetByIdAsync(int id)
         {
-            _logger.LogDebug("Retrieving note with ID: {NoteId}", id);
+            _logger.LogInformation($"GetByIdAsync: Fetching note {id}");
 
             var note = await _context.Notes.FirstOrDefaultAsync(n => n.Id == id);
-            if (note == null)
+
+            if (note != null)
             {
-                _logger.LogWarning("Note with ID {NoteId} not found", id);
+                _logger.LogInformation($"GetByIdAsync: Found note {id} for user {note.UserId}");
             }
             else
             {
-                _logger.LogDebug("Note with ID {NoteId} retrieved successfully", id);
+                _logger.LogInformation($"GetByIdAsync: Note {id} not found");
             }
 
             return note;
@@ -37,40 +43,52 @@ namespace LessonTree.DAL.Repositories
 
         public async Task<int> AddAsync(Note note)
         {
-            _logger.LogDebug("Adding note for User ID: {UserId}", note.UserId);
+            _logger.LogInformation($"AddAsync: Creating note for user {note.UserId}");
 
             _context.Notes.Add(note);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Note added with ID: {NoteId} for User ID: {UserId}", note.Id, note.UserId);
+            _logger.LogInformation($"AddAsync: Created note {note.Id} for user {note.UserId}");
             return note.Id;
         }
 
         public async Task UpdateAsync(Note note)
         {
-            _logger.LogDebug("Updating note with ID: {NoteId}", note.Id);
+            _logger.LogInformation($"UpdateAsync: Updating note {note.Id}");
 
-            _context.Notes.Update(note);
+            var existingNote = await _context.Notes.FindAsync(note.Id);
+            if (existingNote == null)
+            {
+                throw new ArgumentException($"Note {note.Id} not found");
+            }
+
+            // Update fields
+            existingNote.Content = note.Content;
+            existingNote.CourseId = note.CourseId;
+            existingNote.TopicId = note.TopicId;
+            existingNote.SubTopicId = note.SubTopicId;
+            existingNote.LessonId = note.LessonId;
+            existingNote.Visibility = note.Visibility;
+
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Note with ID: {NoteId} updated successfully", note.Id);
+            _logger.LogInformation($"UpdateAsync: Updated note {note.Id}");
         }
 
         public async Task DeleteAsync(int id)
         {
-            _logger.LogDebug("Deleting note with ID: {NoteId}", id);
+            _logger.LogInformation($"DeleteAsync: Deleting note {id}");
 
             var note = await _context.Notes.FindAsync(id);
-            if (note != null)
+            if (note == null)
             {
-                _context.Notes.Remove(note);
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Note with ID: {NoteId} deleted successfully", id);
+                throw new ArgumentException($"Note {id} not found");
             }
-            else
-            {
-                _logger.LogWarning("Note with ID {NoteId} not found for deletion", id);
-            }
+
+            _context.Notes.Remove(note);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation($"DeleteAsync: Deleted note {id}");
         }
     }
 }

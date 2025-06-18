@@ -29,120 +29,142 @@ namespace LessonTree.BLL.Services
 
         public async Task<List<ScheduleConfigurationResource>> GetAllAsync(int userId)
         {
-            _logger.LogDebug("Getting all schedule configurations for user {UserId}", userId);
+            _logger.LogInformation($"GetAllAsync: Fetching configurations for user {userId}");
 
             var configurations = await _repository.GetByUserIdAsync(userId);
+
+            _logger.LogInformation($"GetAllAsync: Found {configurations.Count} configurations for user {userId}");
             return _mapper.Map<List<ScheduleConfigurationResource>>(configurations);
         }
 
         public async Task<ScheduleConfigurationResource?> GetByIdAsync(int id, int userId)
         {
-            _logger.LogDebug("Getting schedule configuration {ConfigId} for user {UserId}", id, userId);
+            _logger.LogInformation($"GetByIdAsync: Fetching configuration {id} for user {userId}");
 
             var configuration = await _repository.GetByIdAsync(id);
             if (configuration == null)
             {
-                _logger.LogWarning("Schedule configuration {ConfigId} not found", id);
+                _logger.LogInformation($"GetByIdAsync: ScheduleConfiguration {id} not found");
                 return null;
             }
 
             if (configuration.UserId != userId)
             {
-                _logger.LogWarning("Schedule configuration {ConfigId} not owned by user {UserId}", id, userId);
-                throw new UnauthorizedAccessException("Schedule configuration not owned by user");
+                _logger.LogWarning($"GetByIdAsync: ScheduleConfiguration {id} not owned by user {userId}");
+                throw new UnauthorizedAccessException($"ScheduleConfiguration {id} not owned by user {userId}");
             }
 
+            _logger.LogInformation($"GetByIdAsync: Found configuration {id} for user {userId}");
             return _mapper.Map<ScheduleConfigurationResource>(configuration);
         }
 
         public async Task<ScheduleConfigurationResource?> GetActiveAsync(int userId)
         {
-            _logger.LogDebug("Getting active schedule configuration for user {UserId}", userId);
+            _logger.LogInformation($"GetActiveAsync: Fetching active configuration for user {userId}");
 
             var configuration = await _repository.GetActiveByUserIdAsync(userId);
+
+            if (configuration != null)
+            {
+                _logger.LogInformation($"GetActiveAsync: Found active configuration {configuration.Id} for user {userId}");
+            }
+            else
+            {
+                _logger.LogInformation($"GetActiveAsync: No active configuration found for user {userId}");
+            }
+
             return configuration != null ? _mapper.Map<ScheduleConfigurationResource>(configuration) : null;
         }
 
         public async Task<ScheduleConfigurationResource?> GetBySchoolYearAsync(int userId, string schoolYear)
         {
-            _logger.LogDebug("Getting schedule configuration for user {UserId} and school year {SchoolYear}", userId, schoolYear);
+            _logger.LogInformation($"GetBySchoolYearAsync: Fetching configuration for user {userId}, school year {schoolYear}");
 
             var configuration = await _repository.GetByUserIdAndSchoolYearAsync(userId, schoolYear);
+
+            if (configuration != null)
+            {
+                _logger.LogInformation($"GetBySchoolYearAsync: Found configuration {configuration.Id} for user {userId}, school year {schoolYear}");
+            }
+            else
+            {
+                _logger.LogInformation($"GetBySchoolYearAsync: No configuration found for user {userId}, school year {schoolYear}");
+            }
+
             return configuration != null ? _mapper.Map<ScheduleConfigurationResource>(configuration) : null;
         }
 
         public async Task<List<ScheduleConfigurationResource>> GetTemplatesAsync(int userId)
         {
-            _logger.LogDebug("Getting template schedule configurations for user {UserId}", userId);
+            _logger.LogInformation($"GetTemplatesAsync: Fetching templates for user {userId}");
 
             var templates = await _repository.GetTemplatesAsync(userId);
+
+            _logger.LogInformation($"GetTemplatesAsync: Found {templates.Count} templates for user {userId}");
             return _mapper.Map<List<ScheduleConfigurationResource>>(templates);
         }
 
         public async Task DeleteAsync(int id, int userId)
         {
-            _logger.LogDebug("Deleting schedule configuration {ConfigId} for user {UserId}", id, userId);
+            _logger.LogInformation($"DeleteAsync: Deleting configuration {id} for user {userId}");
 
             // Validate ownership
             var configuration = await _repository.GetByIdAsync(id);
             if (configuration == null)
             {
-                throw new ArgumentException("Schedule configuration not found");
+                throw new ArgumentException($"ScheduleConfiguration {id} not found");
             }
 
             if (configuration.UserId != userId)
             {
-                throw new UnauthorizedAccessException("Schedule configuration not owned by user");
+                throw new UnauthorizedAccessException($"ScheduleConfiguration {id} not owned by user {userId}");
             }
 
             await _repository.DeleteAsync(id);
 
-            _logger.LogInformation("Deleted schedule configuration {ConfigId} for user {UserId}", id, userId);
+            _logger.LogInformation($"DeleteAsync: Deleted configuration {id} for user {userId}");
         }
 
         public async Task<ScheduleConfigurationResource> SetActiveAsync(int id, int userId)
         {
-            _logger.LogDebug("Setting schedule configuration {ConfigId} as active for user {UserId}", id, userId);
+            _logger.LogInformation($"SetActiveAsync: Setting configuration {id} as active for user {userId}");
 
             var updated = await _repository.SetActiveConfigurationAsync(userId, id);
 
-            _logger.LogInformation("Set schedule configuration {ConfigId} as active for user {UserId}", id, userId);
+            _logger.LogInformation($"SetActiveAsync: Set configuration {id} as active for user {userId}");
             return _mapper.Map<ScheduleConfigurationResource>(updated);
         }
 
         public async Task<ScheduleConfigurationResource> CopyAsTemplateAsync(int id, CopyConfigurationRequest request, int userId)
         {
-            _logger.LogDebug("Copying schedule configuration {ConfigId} as template '{NewTitle}' for user {UserId}",
-                id, request.NewTitle, userId);
+            _logger.LogInformation($"CopyAsTemplateAsync: Copying configuration {id} as template '{request.NewTitle}' for user {userId}");
 
             // Validate ownership of source
             var source = await _repository.GetByIdAsync(id);
             if (source == null)
             {
-                throw new ArgumentException("Source schedule configuration not found");
+                throw new ArgumentException($"ScheduleConfiguration {id} not found");
             }
 
             if (source.UserId != userId)
             {
-                throw new UnauthorizedAccessException("Source schedule configuration not owned by user");
+                throw new UnauthorizedAccessException($"ScheduleConfiguration {id} not owned by user {userId}");
             }
 
             var copied = await _repository.CopyAsTemplateAsync(id, request.NewTitle);
 
-            _logger.LogInformation("Copied schedule configuration {SourceId} as template {NewId} '{NewTitle}' for user {UserId}",
-                id, copied.Id, request.NewTitle, userId);
-
+            _logger.LogInformation($"CopyAsTemplateAsync: Copied configuration {id} as template {copied.Id} '{request.NewTitle}' for user {userId}");
             return _mapper.Map<ScheduleConfigurationResource>(copied);
         }
 
         public async Task<ScheduleConfigurationValidationResource> ValidateAsync(int id, int userId)
         {
-            _logger.LogDebug("Validating schedule configuration {ConfigId} for user {UserId}", id, userId);
+            _logger.LogInformation($"ValidateAsync: Validating configuration {id} for user {userId}");
 
             var configuration = await GetByIdAsync(id, userId);
             if (configuration == null)
             {
-                throw new ArgumentException("Schedule configuration not found");
+                throw new ArgumentException($"ScheduleConfiguration {id} not found");
             }
 
             var validation = new ScheduleConfigurationValidationResource
@@ -191,20 +213,18 @@ namespace LessonTree.BLL.Services
                 validation.Warnings.Add($"No assignments for period(s): {string.Join(", ", missingPeriods)}");
             }
 
-            _logger.LogDebug("Validation complete for configuration {ConfigId}: Valid={IsValid}, CanGenerate={CanGenerate}",
-                id, validation.IsValid, validation.CanGenerateSchedule);
-
+            _logger.LogInformation($"ValidateAsync: Validation complete for configuration {id} - Valid: {validation.IsValid}, CanGenerate: {validation.CanGenerateSchedule}");
             return validation;
         }
 
         public async Task<List<ScheduleConfigurationSummaryResource>> GetSummariesAsync(int userId)
         {
-            _logger.LogDebug("Getting schedule configuration summaries for user {UserId}", userId);
+            _logger.LogInformation($"GetSummariesAsync: Fetching summaries for user {userId}");
 
             var configurations = await _repository.GetByUserIdAsync(userId);
 
             // Map to summary resources manually since AutoMapper mapping would be complex
-            return configurations.Select(config => new ScheduleConfigurationSummaryResource
+            var summaries = configurations.Select(config => new ScheduleConfigurationSummaryResource
             {
                 Id = config.Id,
                 Title = config.Title,
@@ -215,6 +235,55 @@ namespace LessonTree.BLL.Services
                 PeriodCount = config.PeriodsPerDay,
                 AssignedPeriods = config.PeriodAssignments.Count
             }).ToList();
+
+            _logger.LogInformation($"GetSummariesAsync: Found {summaries.Count} summaries for user {userId}");
+            return summaries;
+        }
+
+        public async Task<ScheduleConfigurationResource> CreateAsync(ScheduleConfigurationCreateResource resource, int userId)
+        {
+            _logger.LogInformation($"CreateAsync: Creating configuration '{resource.Title}' for user {userId}");
+
+            var configuration = _mapper.Map<ScheduleConfiguration>(resource);
+            configuration.UserId = userId; // Set ownership
+
+            // Always auto-compute school year from dates
+            configuration.SchoolYear = ComputeSchoolYear(configuration.StartDate, configuration.EndDate);
+            _logger.LogDebug($"CreateAsync: Auto-computed school year '{configuration.SchoolYear}' for configuration '{resource.Title}'");
+
+            var created = await _repository.CreateAsync(configuration);
+
+            _logger.LogInformation($"CreateAsync: Created configuration {created.Id} '{resource.Title}' (School Year: {created.SchoolYear}) for user {userId}");
+            return _mapper.Map<ScheduleConfigurationResource>(created);
+        }
+
+        public async Task<ScheduleConfigurationResource> UpdateAsync(int id, ScheduleConfigurationUpdateResource resource, int userId)
+        {
+            _logger.LogInformation($"UpdateAsync: Updating configuration {id} for user {userId}");
+
+            // Validate ownership first
+            var existing = await _repository.GetByIdAsync(id);
+            if (existing == null)
+            {
+                throw new ArgumentException($"ScheduleConfiguration {id} not found");
+            }
+
+            if (existing.UserId != userId)
+            {
+                throw new UnauthorizedAccessException($"ScheduleConfiguration {id} not owned by user {userId}");
+            }
+
+            var configuration = _mapper.Map<ScheduleConfiguration>(resource);
+            configuration.UserId = userId; // Maintain ownership
+
+            // Always auto-compute school year from dates
+            configuration.SchoolYear = ComputeSchoolYear(configuration.StartDate, configuration.EndDate);
+            _logger.LogDebug($"UpdateAsync: Auto-computed school year '{configuration.SchoolYear}' for configuration {id}");
+
+            var updated = await _repository.UpdateAsync(configuration);
+
+            _logger.LogInformation($"UpdateAsync: Updated configuration {id} '{resource.Title}' (School Year: {updated.SchoolYear}) for user {userId}");
+            return _mapper.Map<ScheduleConfigurationResource>(updated);
         }
 
         // === SMART SCHOOL YEAR COMPUTATION ===
@@ -262,60 +331,5 @@ namespace LessonTree.BLL.Services
             return $"Instructional Period {startYear} to {endYear}";
         }
 
-        // === UPDATED CREATE METHOD ===
-
-        public async Task<ScheduleConfigurationResource> CreateAsync(ScheduleConfigurationCreateResource resource, int userId)
-        {
-            _logger.LogDebug("Creating schedule configuration '{Title}' for user {UserId}", resource.Title, userId);
-
-            var configuration = _mapper.Map<ScheduleConfiguration>(resource);
-            configuration.UserId = userId; // Set ownership
-
-            // Always auto-compute school year from dates
-            configuration.SchoolYear = ComputeSchoolYear(configuration.StartDate, configuration.EndDate);
-            _logger.LogDebug("Auto-computed school year: '{SchoolYear}' for configuration '{Title}'",
-                configuration.SchoolYear, resource.Title);
-
-            var created = await _repository.CreateAsync(configuration);
-
-            _logger.LogInformation("Created schedule configuration {ConfigId} '{Title}' (School Year: {SchoolYear}) for user {UserId}",
-                created.Id, resource.Title, created.SchoolYear, userId);
-
-            return _mapper.Map<ScheduleConfigurationResource>(created);
-        }
-
-        // === UPDATED UPDATE METHOD ===
-
-        public async Task<ScheduleConfigurationResource> UpdateAsync(int id, ScheduleConfigurationUpdateResource resource, int userId)
-        {
-            _logger.LogDebug("Updating schedule configuration {ConfigId} for user {UserId}", id, userId);
-
-            // Validate ownership first
-            var existing = await _repository.GetByIdAsync(id);
-            if (existing == null)
-            {
-                throw new ArgumentException("Schedule configuration not found");
-            }
-
-            if (existing.UserId != userId)
-            {
-                throw new UnauthorizedAccessException("Schedule configuration not owned by user");
-            }
-
-            var configuration = _mapper.Map<ScheduleConfiguration>(resource);
-            configuration.UserId = userId; // Maintain ownership
-
-            // Always auto-compute school year from dates
-            configuration.SchoolYear = ComputeSchoolYear(configuration.StartDate, configuration.EndDate);
-            _logger.LogDebug("Auto-computed school year: '{SchoolYear}' for configuration {ConfigId}",
-                configuration.SchoolYear, id);
-
-            var updated = await _repository.UpdateAsync(configuration);
-
-            _logger.LogInformation("Updated schedule configuration {ConfigId} '{Title}' (School Year: {SchoolYear}) for user {UserId}",
-                id, resource.Title, updated.SchoolYear, userId);
-
-            return _mapper.Map<ScheduleConfigurationResource>(updated);
-        }
     }
 }
