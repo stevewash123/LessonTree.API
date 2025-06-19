@@ -168,7 +168,7 @@ public class TopicController : BaseController
 
         try
         {
-            await _service.UpdateSortOrderAsync(topicId, sortOrder, userId); // Service handles ownership validation
+            await _service.UpdateSortOrderAsync(topicId, sortOrder); // Service handles ownership validation
             _logger.LogInformation("Updated sort order for Topic ID: {TopicId} to {SortOrder} by User ID: {UserId}", topicId, sortOrder, userId);
             return NoContent();
         }
