@@ -7,6 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="logs\**" />
+    <Content Remove="logs\**" />
+    <EmbeddedResource Remove="logs\**" />
+    <None Remove="logs\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Remove="scripts\LessonTreePostmanTests.json" />
   </ItemGroup>
 
@@ -32,10 +39,6 @@
     <ProjectReference Include="..\LessonTree.DAL\LessonTree.DAL.csproj" />
     <ProjectReference Include="..\LessonTree.Models\LessonTree.Models.csproj" />
     <ProjectReference Include="..\LessonTree.Service\LessonTree.BLL.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="logs\" />
   </ItemGroup>
 
 </Project>

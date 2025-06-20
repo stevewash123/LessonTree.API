@@ -130,6 +130,26 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.NodeType, opt => opt.MapFrom(src => "SubTopic"))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes));
 
+
+        CreateMap<SubTopicCreateResource, SubTopic>()
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
+            .ForMember(dest => dest.TopicId, opt => opt.MapFrom(src => src.TopicId))
+            .ForMember(dest => dest.Visibility, opt => opt.MapFrom(src => VisibilityConverter.ConvertStringToEnum(src.Visibility)))
+            .ForMember(dest => dest.SortOrder, opt => opt.MapFrom(src => src.SortOrder))
+            .ForMember(dest => dest.UserId, opt => opt.Ignore()) // Set in controller
+            .ForMember(dest => dest.Id, opt => opt.Ignore())
+            .ForMember(dest => dest.Archived, opt => opt.Ignore());
+
+        CreateMap<SubTopicUpdateResource, SubTopic>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
+            .ForMember(dest => dest.Visibility, opt => opt.MapFrom(src => VisibilityConverter.ConvertStringToEnum(src.Visibility)))
+            .ForMember(dest => dest.Archived, opt => opt.MapFrom(src => src.Archived))
+            .ForMember(dest => dest.SortOrder, opt => opt.MapFrom(src => src.SortOrder));
+
+
         // =============================================================================
         // LESSON MAPPINGS
         // =============================================================================

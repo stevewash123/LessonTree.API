@@ -11,3 +11,5 @@ obj/
 
 # Ignore sensitive files (if applicable)
 appsettings.json
+/LessonTree.Api/logs/log20250619.txt
+/LessonTree.Api/logs/log20250620.txt
