@@ -18,9 +18,9 @@ namespace LessonTree.BLL.Service
         Task DeleteAsync(int id, int userId); // ADDED userId parameter
 
         // Operations - all include userId for ownership validation
-        Task MoveTopicAsync(int topicId, int newCourseId, int userId);
         Task<TopicResource> CopyTopicAsync(int topicId, int newCourseId, int userId);
-        Task UpdateSortOrderAsync(int topicId, int sortOrder); 
+        Task UpdateSortOrderAsync(int topicId, int sortOrder);
+        Task<TopicResource> MoveTopicAsync(TopicMoveResource moveResource, int userId);
 
         // REMOVED: Task<Topic?> GetDomainTopicByIdAsync(int id) - No domain object exposure
     }

@@ -92,4 +92,161 @@ public class TopicRepository : ITopicRepository
 
         _logger.LogInformation($"DeleteAsync: Deleted topic {id}");
     }
+
+    public async Task<Topic> MoveTopicToPositionAsync(int topicId, int targetCourseId, int relativeTopicId, string position)
+    {
+        _logger.LogInformation($"MoveTopicToPositionAsync: Moving topic {topicId} {position} topic {relativeTopicId} in course {targetCourseId}");
+
+        using var transaction = await _context.Database.BeginTransactionAsync();
+
+        try
+        {
+            // Get the topic to move
+            var topic = await GetByIdAsync(topicId);
+            if (topic == null)
+            {
+                throw new ArgumentException($"Topic {topicId} not found");
+            }
+
+            // Get relative topic for position calculation
+            var relativeTopic = await GetByIdAsync(relativeTopicId);
+            if (relativeTopic == null)
+            {
+                throw new ArgumentException($"Relative topic {relativeTopicId} not found");
+            }
+
+            // Get all topics in target course
+            var courseTopics = await _context.Topics
+                .Where(t => t.CourseId == targetCourseId && !t.Archived)
+                .OrderBy(t => t.SortOrder)
+                .ToListAsync();
+
+            // Calculate target position based on relative topic
+            var targetSortOrder = CalculateTargetSortOrder(courseTopics, relativeTopicId, position);
+
+            _logger.LogInformation($"MoveTopicToPositionAsync: Calculated target sort order {targetSortOrder} for topic {topicId}");
+
+            // Update topic course and position
+            topic.CourseId = targetCourseId;
+            topic.SortOrder = targetSortOrder;
+
+            // Renumber all affected topics to prevent collisions
+            await RenumberCourseTopicsAsync(courseTopics, topicId, targetSortOrder);
+
+            // Save the moved topic
+            _context.Topics.Update(topic);
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+            _logger.LogInformation($"MoveTopicToPositionAsync: Successfully moved topic {topicId} to position {targetSortOrder}");
+
+            return topic;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<int> GetMaxSortOrderInCourseAsync(int courseId)
+    {
+        var maxSortOrder = await _context.Topics
+            .Where(t => t.CourseId == courseId && !t.Archived)
+            .MaxAsync(t => (int?)t.SortOrder) ?? -1;
+
+        return maxSortOrder;
+    }
+
+    private int CalculateTargetSortOrder(List<Topic> courseTopics, int relativeTopicId, string position)
+    {
+        var relativeTopic = courseTopics.FirstOrDefault(t => t.Id == relativeTopicId);
+        if (relativeTopic != null)
+        {
+            return position == "before" ? relativeTopic.SortOrder : relativeTopic.SortOrder + 1;
+        }
+
+        // Fallback: append to end
+        return courseTopics.Any() ? courseTopics.Max(t => t.SortOrder) + 1 : 0;
+    }
+
+    private async Task RenumberCourseTopicsAsync(List<Topic> courseTopics, int movedTopicId, int targetSortOrder)
+    {
+        // Filter out the moved topic
+        var otherTopics = courseTopics.Where(t => t.Id != movedTopicId).ToList();
+
+        // Create new clean sequence
+        var sortOrder = 0;
+        foreach (var topic in otherTopics.OrderBy(t => t.SortOrder))
+        {
+            // Skip target position for moved topic
+            if (sortOrder == targetSortOrder)
+            {
+                sortOrder++;
+            }
+
+            // Only update if sort order actually changes
+            if (topic.SortOrder != sortOrder)
+            {
+                topic.SortOrder = sortOrder;
+                _context.Topics.Update(topic);
+                _logger.LogDebug($"RenumberCourseTopicsAsync: Updated topic {topic.Id} to sort order {sortOrder}");
+            }
+
+            sortOrder++;
+        }
+    }
+
+    /// <summary>
+    /// Get all topics in a course ordered by sort order
+    /// </summary>
+    public async Task<List<Topic>> GetTopicsByCourseIdAsync(int courseId, bool includeArchived = false)
+    {
+        _logger.LogInformation($"GetTopicsByCourseIdAsync: Fetching topics for course {courseId}");
+
+        var query = _context.Topics.Where(t => t.CourseId == courseId);
+
+        if (!includeArchived)
+        {
+            query = query.Where(t => !t.Archived);
+        }
+
+        var topics = await query
+            .OrderBy(t => t.SortOrder)
+            .ToListAsync();
+
+        _logger.LogInformation($"GetTopicsByCourseIdAsync: Found {topics.Count} topics for course {courseId}");
+        return topics;
+    }
+
+    /// <summary>
+    /// Check if a topic belongs to a specific course
+    /// </summary>
+    public async Task<bool> IsTopicInCourseAsync(int topicId, int courseId)
+    {
+        return await _context.Topics
+            .AnyAsync(t => t.Id == topicId && t.CourseId == courseId && !t.Archived);
+    }
+
+    /// <summary>
+    /// Get the next available sort order for a course
+    /// </summary>
+    public async Task<int> GetNextSortOrderForCourseAsync(int courseId)
+    {
+        var maxSortOrder = await GetMaxSortOrderInCourseAsync(courseId);
+        return maxSortOrder + 1;
+    }
+
+    /// <summary>
+    /// Update multiple topics' sort orders in a single transaction
+    /// </summary>
+    public async Task UpdateTopicSortOrdersAsync(IEnumerable<Topic> topics)
+    {
+        foreach (var topic in topics)
+        {
+            _context.Topics.Update(topic);
+        }
+
+        await _context.SaveChangesAsync();
+    }
 }

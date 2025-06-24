@@ -325,8 +325,9 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
             .ForMember(dest => dest.ScheduleConfigurationId, opt => opt.MapFrom(src => src.ScheduleConfigurationId))
             .ForMember(dest => dest.IsLocked, opt => opt.MapFrom(src => src.IsLocked))
-            .ForMember(dest => dest.ScheduleEvents, opt => opt.MapFrom(src => src.ScheduleEvents));
-        // REMOVED: CreatedDate (audit property)
+            .ForMember(dest => dest.CreatedDate, opt => opt.MapFrom(src => src.CreatedDate))
+            .ForMember(dest => dest.ScheduleEvents, opt => opt.MapFrom(src => src.ScheduleEvents))
+            .ForMember(dest => dest.SpecialDays, opt => opt.MapFrom(src => src.SpecialDays));
 
         CreateMap<ScheduleCreateResource, Schedule>()
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
@@ -334,7 +335,9 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.UserId, opt => opt.Ignore()) // Set in controller
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.IsLocked, opt => opt.Ignore())
-            .ForMember(dest => dest.CreatedDate, opt => opt.Ignore()); // Set by repository
+            .ForMember(dest => dest.CreatedDate, opt => opt.Ignore()) // Set by repository
+            .ForMember(dest => dest.ScheduleEvents, opt => opt.MapFrom(src => src.ScheduleEvents ?? new List<ScheduleEventResource>()))
+            .ForMember(dest => dest.SpecialDays, opt => opt.MapFrom(src => src.SpecialDays ?? new List<SpecialDayResource>()));
 
         CreateMap<ScheduleEventResource, ScheduleEvent>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
@@ -361,12 +364,14 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.LessonId, opt => opt.MapFrom(src => src.LessonId))
             .ForMember(dest => dest.EventType, opt => opt.MapFrom(src => src.EventType))
             .ForMember(dest => dest.EventCategory, opt => opt.MapFrom(src => src.EventCategory))
+            .ForMember(dest => dest.LessonSort, opt => opt.MapFrom(src => src.Lesson != null ? src.Lesson.SortOrder : (int?)null))
             .ForMember(dest => dest.LessonTitle, opt => opt.MapFrom(src => src.Lesson != null ? src.Lesson.Title : null))
             .ForMember(dest => dest.LessonObjective, opt => opt.MapFrom(src => src.Lesson != null ? src.Lesson.Objective : null))
             .ForMember(dest => dest.LessonMethods, opt => opt.MapFrom(src => src.Lesson != null ? src.Lesson.Methods : null))
             .ForMember(dest => dest.LessonMaterials, opt => opt.MapFrom(src => src.Lesson != null ? src.Lesson.Materials : null))
             .ForMember(dest => dest.LessonAssessment, opt => opt.MapFrom(src => src.Lesson != null ? src.Lesson.Assessment : null))
             .ForMember(dest => dest.Comment, opt => opt.MapFrom(src => src.Comment));
+        
 
         CreateMap<ScheduleEventCreateResource, ScheduleEvent>()
             .ForMember(dest => dest.ScheduleId, opt => opt.MapFrom(src => src.ScheduleId))

@@ -4,6 +4,7 @@
 
 using LessonTree.API.Controllers;
 using LessonTree.BLL.Service;
+using LessonTree.DAL.Domain;
 using LessonTree.Models.DTO;
 using LessonTree.Models.Enums;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -136,18 +137,6 @@ public class TopicController : BaseController
         }
     }
 
-    [HttpPost("move")]
-    public async Task<IActionResult> MoveTopic([FromBody] TopicMoveResource moveResource)
-    {
-        int userId = GetCurrentUserId();
-        _logger.LogDebug("Moving Topic ID: {TopicId} to Course ID: {NewCourseId} for User ID: {UserId}",
-            moveResource.TopicId, moveResource.NewCourseId, userId);
-        await _service.MoveTopicAsync(moveResource.TopicId, moveResource.NewCourseId, userId);
-        _logger.LogInformation("Moved Topic ID: {TopicId} to Course ID: {NewCourseId}",
-            moveResource.TopicId, moveResource.NewCourseId);
-        return Ok();
-    }
-
     [HttpPost("copy")]
     public async Task<IActionResult> CopyTopic([FromBody] TopicMoveResource copyResource)
     {
@@ -188,4 +177,37 @@ public class TopicController : BaseController
             return StatusCode(500, "Internal server error");
         }
     }
+
+    [HttpPost("move")]
+    public async Task<IActionResult> MoveTopic([FromBody] TopicMoveResource moveResource)
+    {
+        try
+        {
+            // Extract user ID from JWT claims (following established pattern)
+            var userId = GetCurrentUserId();
+
+            // Delegate all logic to service layer (unified endpoint pattern)
+            var movedTopic = await _service.MoveTopicAsync(moveResource, userId);
+
+            return Ok(movedTopic);
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error moving topic {TopicId}", moveResource?.TopicId);
+            return StatusCode(500, "An error occurred while moving the topic");
+        }
+    }
+
 }

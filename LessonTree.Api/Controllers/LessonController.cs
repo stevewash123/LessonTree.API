@@ -229,35 +229,6 @@ public class LessonController : BaseController
         }
     }
 
-    [HttpPut("{lessonId}/sortOrder")]
-    public async Task<IActionResult> UpdateLessonSortOrder(int lessonId, [FromBody] int sortOrder)
-    {
-        int userId = GetCurrentUserId();
-        _logger.LogDebug("Updating sort order for Lesson ID: {LessonId} to {SortOrder} for User ID: {UserId}", lessonId, sortOrder, userId);
-
-        try
-        {
-            await _lessonService.UpdateSortOrderAsync(lessonId, sortOrder, userId); // Service handles ownership validation
-            _logger.LogInformation("Updated sort order for Lesson ID: {LessonId} to {SortOrder} by User ID: {UserId}", lessonId, sortOrder, userId);
-            return NoContent();
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning("Sort order update failed: {Message}", ex.Message);
-            return NotFound(new { status = "error", message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _logger.LogWarning("Unauthorized sort order update attempt for Lesson ID: {LessonId} by User ID: {UserId}", lessonId, userId);
-            return Forbid();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to update sort order for Lesson ID: {LessonId}", lessonId);
-            return StatusCode(500, "Internal server error");
-        }
-    }
-
     [HttpPost("move")]
     public async Task<IActionResult> MoveLesson([FromBody] LessonMoveResource moveResource)
     {
@@ -267,7 +238,7 @@ public class LessonController : BaseController
 
         try
         {
-            await _lessonService.MoveLessonAsync(moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId, userId); // Service handles ownership validation
+            await _lessonService.MoveLessonAsync(moveResource, userId);
             _logger.LogInformation("Moved Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}, Topic ID: {NewTopicId} by User ID: {UserId}",
                 moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId, userId);
             return Ok();
@@ -275,7 +246,7 @@ public class LessonController : BaseController
         catch (ArgumentException ex)
         {
             _logger.LogWarning("Lesson move failed: {Message}", ex.Message);
-            return NotFound(new { status = "error", message = ex.Message });
+            return BadRequest(new { status = "error", message = ex.Message });
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -361,4 +332,6 @@ public class LessonController : BaseController
             return StatusCode(500, "Internal server error");
         }
     }
+
+
 }

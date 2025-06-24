@@ -142,33 +142,35 @@ namespace LessonTree.API.Controllers
         [HttpPost("move")]
         public async Task<IActionResult> MoveSubTopic([FromBody] SubTopicMoveResource moveResource)
         {
-            int userId = GetCurrentUserId();
-            _logger.LogDebug("Moving SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId} for User ID: {UserId}",
-                moveResource.SubTopicId, moveResource.NewTopicId, userId);
-
             try
             {
-                await _service.MoveSubTopic(moveResource.SubTopicId, moveResource.NewTopicId, userId); // Service handles ownership validation
-                _logger.LogInformation("Moved SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId} by User ID: {UserId}",
-                    moveResource.SubTopicId, moveResource.NewTopicId, userId);
-                return Ok(new { status = "success", message = "SubTopic moved successfully" });
+                // Extract user ID from JWT claims (following established pattern)
+                var userId = GetCurrentUserId();
+
+                // Delegate all logic to service layer (unified endpoint pattern)
+                var movedSubTopic = await _service.MoveSubTopicAsync(moveResource, userId);
+
+                return Ok(movedSubTopic);
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning("SubTopic move failed: {Message}", ex.Message);
                 return NotFound(ex.Message);
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogWarning("Unauthorized subtopic move attempt for ID: {SubTopicId} by User ID: {UserId}", moveResource.SubTopicId, userId);
-                return Forbid();
+                return Forbid(ex.Message);
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning("SubTopic move invalid operation: {Message}", ex.Message);
                 return BadRequest(ex.Message);
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error moving subtopic {SubTopicId}", moveResource?.SubTopicId);
+                return StatusCode(500, "An error occurred while moving the subtopic");
+            }
         }
+
         [HttpPost("copy")]
         public async Task<IActionResult> CopySubTopic([FromBody] SubTopicMoveResource copyResource)
         {

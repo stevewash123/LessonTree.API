@@ -28,6 +28,8 @@ namespace LessonTree.Models.DTO
         public string? LessonMethods { get; set; }
         public string? LessonMaterials { get; set; }
         public string? LessonAssessment { get; set; }
+        public int? LessonSort { get; set; }
+        public int ScheduleSort { get; set; }
     }
 
     public class ScheduleEventCreateResource

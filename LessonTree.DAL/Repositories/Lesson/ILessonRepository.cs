@@ -1,4 +1,5 @@
 ﻿using LessonTree.DAL.Domain;
+using LessonTree.Models.DTO;
 using System.Linq;
 
 namespace LessonTree.DAL.Repositories
@@ -16,5 +17,6 @@ namespace LessonTree.DAL.Repositories
         IQueryable<Lesson> GetByTopicId(int topicId, bool includeArchived = false);
         IQueryable<Lesson> GetBySubTopicId(int subTopicId, bool includeArchived = false);
         IQueryable<Lesson> GetByUserId(int userId, bool includeArchived = false);
+        Task MoveLessonToPositionAsync(LessonMoveResource moveResource, int userId);
     }
 }

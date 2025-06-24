@@ -31,5 +31,7 @@ namespace LessonTree.DAL.Domain
 
         [MaxLength(1000)]
         public string? Comment { get; set; }
+
+        public int ScheduleSort { get; set; }
     }
 }

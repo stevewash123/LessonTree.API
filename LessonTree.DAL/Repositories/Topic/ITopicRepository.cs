@@ -14,5 +14,8 @@ namespace LessonTree.DAL.Repositories
         Task<int> AddAsync(Topic topic); // Changed return type to Task<int>
         Task UpdateAsync(Topic topic);
         Task DeleteAsync(int id);
+        Task<Topic> MoveTopicToPositionAsync(int topicId, int targetCourseId, int relativeTopicId, string position);
+        Task<int> GetMaxSortOrderInCourseAsync(int courseId);
+
     }
 }

@@ -23,14 +23,12 @@ namespace LessonTree.BLL.Service
         Task RemoveAttachmentAsync(int lessonId, int attachmentId, int userId);
 
         // Move/Copy operations - all include userId for ownership validation
-        Task MoveLessonAsync(int lessonId, int? newSubTopicId, int? newTopicId, int userId);
+        Task MoveLessonAsync(LessonMoveResource moveResource, int userId);
         Task<LessonResource> CopyLessonAsync(int lessonId, int? newSubTopicId, int? newTopicId, int userId);
 
         // Standards operations - all include userId for ownership validation
         Task AddStandardToLessonAsync(int lessonId, int standardId, int userId);
         Task RemoveStandardFromLessonAsync(int lessonId, int standardId, int userId);
 
-        // Sort order operations - all include userId for ownership validation
-        Task UpdateSortOrderAsync(int lessonId, int sortOrder, int userId);
     }
 }

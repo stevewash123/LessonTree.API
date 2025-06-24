@@ -221,48 +221,119 @@ public class SubTopicService : ISubTopicService
         _logger.LogInformation("SubTopic deleted with ID: {SubTopicId} by User ID: {UserId}", id, userId);
     }
 
-    public async Task MoveSubTopic(int subTopicId, int newTopicId, int userId)
+    public async Task<SubTopicResource> MoveSubTopicAsync(SubTopicMoveResource moveResource, int userId)
     {
-        _logger.LogDebug("Moving SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId} for User ID: {UserId}", subTopicId, newTopicId, userId);
+        _logger.LogInformation($"MoveSubTopicAsync: Moving subtopic {moveResource.SubTopicId} for user {userId}");
 
-        var subTopic = await _subTopicRepository.GetByIdAsync(subTopicId, q => q.Include(s => s.Lessons));
+        // Validate subtopic exists and user owns it
+        var subTopic = await _subTopicRepository.GetByIdAsync(moveResource.SubTopicId);
         if (subTopic == null)
         {
-            _logger.LogError("SubTopic with ID {SubTopicId} not found", subTopicId);
-            throw new ArgumentException("SubTopic not found");
+            throw new ArgumentException($"SubTopic {moveResource.SubTopicId} not found");
         }
 
-        // Ownership validation - moved from controller to service
         if (subTopic.UserId != userId)
         {
-            _logger.LogWarning("User ID {UserId} attempted to move subtopic ID {SubTopicId} owned by another user", userId, subTopicId);
-            throw new UnauthorizedAccessException("SubTopic not owned by user");
+            throw new UnauthorizedAccessException($"SubTopic {moveResource.SubTopicId} not owned by user {userId}");
         }
 
-        if (subTopic.TopicId == newTopicId)
+        // Validate target topic exists and user owns it
+        var targetTopic = await _topicRepository.GetByIdAsync(moveResource.NewTopicId);
+        if (targetTopic == null)
         {
-            _logger.LogWarning("SubTopic ID {SubTopicId} is already in Topic ID {TopicId}", subTopicId, newTopicId);
-            throw new InvalidOperationException("SubTopic is already in the specified Topic.");
+            throw new ArgumentException($"Target topic {moveResource.NewTopicId} not found");
         }
 
-        var newTopic = await _topicRepository.GetByIdAsync(newTopicId, q => q.Include(t => t.SubTopics));
-        if (newTopic == null)
+        if (targetTopic.UserId != userId)
         {
-            _logger.LogError("Topic with ID {TopicId} not found", newTopicId);
-            throw new ArgumentException("Topic not found");
+            throw new UnauthorizedAccessException($"Target topic {moveResource.NewTopicId} not owned by user {userId}");
         }
 
-        // Verify user owns the target topic as well
-        if (newTopic.UserId != userId)
+        // Route operation: positional move vs simple move
+        SubTopicResource result;
+
+        if (moveResource.RelativeToId.HasValue)
         {
-            _logger.LogWarning("User ID {UserId} attempted to move subtopic to topic ID {TopicId} owned by another user", userId, newTopicId);
-            throw new UnauthorizedAccessException("Target topic not owned by user");
+            // Positional move - delegate to repository for atomic operation
+            result = await MoveSubTopicToPositionAsync(moveResource, userId);
+        }
+        else
+        {
+            // Simple move - update topic and append to end
+            result = await MoveSubTopicSimpleAsync(moveResource, userId);
         }
 
-        subTopic.TopicId = newTopicId;
-        await _subTopicRepository.UpdateAsync(subTopic);
-        _logger.LogInformation("Moved SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId} by User ID: {UserId}", subTopic.Id, newTopicId, userId);
+        _logger.LogInformation($"MoveSubTopicAsync: Successfully moved subtopic {moveResource.SubTopicId}");
+        return result;
     }
+
+    private async Task<SubTopicResource> MoveSubTopicToPositionAsync(SubTopicMoveResource moveResource, int userId)
+    {
+        // Validate relative object exists and is in target topic
+        if (moveResource.RelativeToType == "SubTopic")
+        {
+            var relativeSubTopic = await _subTopicRepository.GetByIdAsync(moveResource.RelativeToId.Value);
+            if (relativeSubTopic == null)
+            {
+                throw new ArgumentException($"Relative subtopic {moveResource.RelativeToId.Value} not found");
+            }
+
+            if (relativeSubTopic.TopicId != moveResource.NewTopicId)
+            {
+                throw new ArgumentException("Relative subtopic must be in the target topic");
+            }
+        }
+        else if (moveResource.RelativeToType == "Lesson")
+        {
+            var relativeLesson = await _lessonRepository.GetByIdAsync(moveResource.RelativeToId.Value);
+            if (relativeLesson == null)
+            {
+                throw new ArgumentException($"Relative lesson {moveResource.RelativeToId.Value} not found");
+            }
+
+            // Check if lesson is in target topic (either direct or through subtopic)
+            if (relativeLesson.TopicId != moveResource.NewTopicId &&
+                relativeLesson.SubTopic?.TopicId != moveResource.NewTopicId)
+            {
+                throw new ArgumentException("Relative lesson must be in the target topic");
+            }
+        }
+        else
+        {
+            throw new ArgumentException("RelativeToType must be 'SubTopic' or 'Lesson' for subtopic positioning");
+        }
+
+        // Delegate atomic positioning to repository
+        var positionedSubTopic = await _subTopicRepository.MoveSubTopicToPositionAsync(
+            moveResource.SubTopicId,
+            moveResource.NewTopicId,
+            moveResource.RelativeToId.Value,
+            moveResource.Position ?? "after",
+            moveResource.RelativeToType ?? "SubTopic"
+        );
+
+        return _mapper.Map<SubTopicResource>(positionedSubTopic);
+    }
+
+    private async Task<SubTopicResource> MoveSubTopicSimpleAsync(SubTopicMoveResource moveResource, int userId)
+    {
+        // Get subtopic and update topic
+        var subTopic = await _subTopicRepository.GetByIdAsync(moveResource.SubTopicId);
+
+        // If moving to different topic, get next sort order
+        if (subTopic.TopicId != moveResource.NewTopicId)
+        {
+            var maxSortOrder = await _subTopicRepository.GetMaxSortOrderInTopicAsync(moveResource.NewTopicId);
+            subTopic.SortOrder = maxSortOrder + 1;
+        }
+
+        subTopic.TopicId = moveResource.NewTopicId;
+
+        await _subTopicRepository.UpdateAsync(subTopic);
+
+        return _mapper.Map<SubTopicResource>(subTopic);
+    }
+
 
     public async Task<SubTopicResource> CopySubTopicAsync(int subTopicId, int newTopicId, int userId)
     {

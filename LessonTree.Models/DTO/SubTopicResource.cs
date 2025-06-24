@@ -44,5 +44,11 @@ namespace LessonTree.Models.DTO
     {
         public int SubTopicId { get; set; }
         public int NewTopicId { get; set; }
+
+        // NEW: Optional positioning parameters (following Lesson pattern)
+        public int? RelativeToId { get; set; }
+        public string? Position { get; set; } // "before" | "after"  
+        public string? RelativeToType { get; set; } // "SubTopic" | "Lesson"
     }
+
 }

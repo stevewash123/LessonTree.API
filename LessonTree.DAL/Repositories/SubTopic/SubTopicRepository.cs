@@ -1,7 +1,7 @@
 ﻿// **COMPLETE FILE** - SubTopicRepository.cs - Standardized to enterprise patterns
-// RESPONSIBILITY: SubTopic data access with topic relationships and default handling
+// RESPONSIBILITY: SubTopic data access with topic relationships and default handling.  Atomic database transactions, sort order calculations for mixed containers
 // DOES NOT: Handle subtopic content validation or business rules (that's in services)
-// CALLED BY: SubTopicService for all subtopic operations
+// CALLED BY: SubTopicService for all subtopic operations and positional move operations
 
 using System;
 using System.Linq;
@@ -95,5 +95,235 @@ namespace LessonTree.DAL.Repositories
 
             _logger.LogInformation($"DeleteAsync: Deleted subtopic {id}");
         }
+
+        public async Task<SubTopic> MoveSubTopicToPositionAsync(int subTopicId, int targetTopicId, int relativeToId, string position, string relativeToType)
+        {
+            _logger.LogInformation($"MoveSubTopicToPositionAsync: Moving subtopic {subTopicId} {position} {relativeToType} {relativeToId} in topic {targetTopicId}");
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Get the subtopic to move
+                var subTopic = await GetByIdAsync(subTopicId);
+                if (subTopic == null)
+                {
+                    throw new ArgumentException($"SubTopic {subTopicId} not found");
+                }
+
+                // Get all items in target topic (subtopics + direct lessons)
+                var topicItems = await GetTopicItemsAsync(targetTopicId);
+
+                // Calculate target position based on relative object
+                var targetSortOrder = CalculateTargetSortOrder(topicItems, relativeToId, position, relativeToType);
+
+                _logger.LogInformation($"MoveSubTopicToPositionAsync: Calculated target sort order {targetSortOrder} for subtopic {subTopicId}");
+
+                // Update subtopic topic and position
+                subTopic.TopicId = targetTopicId;
+                subTopic.SortOrder = targetSortOrder;
+
+                // Renumber all affected items to prevent collisions
+                await RenumberTopicItemsAsync(topicItems, subTopicId, targetSortOrder, "SubTopic");
+
+                // Save the moved subtopic
+                _context.SubTopics.Update(subTopic);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                _logger.LogInformation($"MoveSubTopicToPositionAsync: Successfully moved subtopic {subTopicId} to position {targetSortOrder}");
+
+                return subTopic;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        public async Task<int> GetMaxSortOrderInTopicAsync(int topicId)
+        {
+            // Check both subtopics and direct lessons to get the maximum sort order
+            var maxSubTopicSort = await _context.SubTopics
+                .Where(st => st.TopicId == topicId && !st.Archived)
+                .MaxAsync(st => (int?)st.SortOrder) ?? -1;
+
+            var maxLessonSort = await _context.Lessons
+                .Where(l => l.TopicId == topicId && l.SubTopicId == null && !l.Archived)
+                .MaxAsync(l => (int?)l.SortOrder) ?? -1;
+
+            return Math.Max(maxSubTopicSort, maxLessonSort);
+        }
+
+        private async Task<List<TopicItem>> GetTopicItemsAsync(int topicId)
+        {
+            var items = new List<TopicItem>();
+
+            // Get subtopics
+            var subTopics = await _context.SubTopics
+                .Where(st => st.TopicId == topicId && !st.Archived)
+                .OrderBy(st => st.SortOrder)
+                .ToListAsync();
+
+            items.AddRange(subTopics.Select(st => new TopicItem
+            {
+                Id = st.Id,
+                SortOrder = st.SortOrder,
+                Type = "SubTopic"
+            }));
+
+            // Get direct lessons (not in subtopics)
+            var directLessons = await _context.Lessons
+                .Where(l => l.TopicId == topicId && l.SubTopicId == null && !l.Archived)
+                .OrderBy(l => l.SortOrder)
+                .ToListAsync();
+
+            items.AddRange(directLessons.Select(l => new TopicItem
+            {
+                Id = l.Id,
+                SortOrder = l.SortOrder,
+                Type = "Lesson"
+            }));
+
+            return items.OrderBy(i => i.SortOrder).ToList();
+        }
+
+        private int CalculateTargetSortOrder(List<TopicItem> topicItems, int relativeToId, string position, string relativeToType)
+        {
+            var relativeItem = topicItems.FirstOrDefault(i => i.Id == relativeToId && i.Type == relativeToType);
+            if (relativeItem != null)
+            {
+                return position == "before" ? relativeItem.SortOrder : relativeItem.SortOrder + 1;
+            }
+
+            // Fallback: append to end
+            return topicItems.Any() ? topicItems.Max(i => i.SortOrder) + 1 : 0;
+        }
+
+        private async Task RenumberTopicItemsAsync(List<TopicItem> topicItems, int movedItemId, int targetSortOrder, string movedItemType)
+        {
+            // Filter out the moved item
+            var otherItems = topicItems.Where(i => !(i.Id == movedItemId && i.Type == movedItemType)).ToList();
+
+            // Create new clean sequence
+            var sortOrder = 0;
+            foreach (var item in otherItems.OrderBy(i => i.SortOrder))
+            {
+                // Skip target position for moved item
+                if (sortOrder == targetSortOrder)
+                {
+                    sortOrder++;
+                }
+
+                // Only update if sort order actually changes
+                if (item.SortOrder != sortOrder)
+                {
+                    if (item.Type == "SubTopic")
+                    {
+                        var subTopic = await _context.SubTopics.FindAsync(item.Id);
+                        if (subTopic != null)
+                        {
+                            subTopic.SortOrder = sortOrder;
+                            _context.SubTopics.Update(subTopic);
+                        }
+                    }
+                    else if (item.Type == "Lesson")
+                    {
+                        var lesson = await _context.Lessons.FindAsync(item.Id);
+                        if (lesson != null)
+                        {
+                            lesson.SortOrder = sortOrder;
+                            _context.Lessons.Update(lesson);
+                        }
+                    }
+
+                    _logger.LogDebug($"RenumberTopicItemsAsync: Updated {item.Type} {item.Id} to sort order {sortOrder}");
+                }
+
+                sortOrder++;
+            }
+        }
+
+        // **PARTIAL FILE** - SubTopicRepository.cs - Add helper methods for positioning support
+        // RESPONSIBILITY: Helper methods for atomic database transactions and mixed container support
+        // DOES NOT: Handle business logic validation (that's in services) 
+        // CALLED BY: SubTopicRepository positioning methods
+
+        // Add these helper methods to SubTopicRepository.cs:
+
+        /// <summary>
+        /// Get all subtopics in a topic ordered by sort order
+        /// </summary>
+        public async Task<List<SubTopic>> GetSubTopicsByTopicIdAsync(int topicId, bool includeArchived = false)
+        {
+            _logger.LogInformation($"GetSubTopicsByTopicIdAsync: Fetching subtopics for topic {topicId}");
+
+            var query = _context.SubTopics.Where(st => st.TopicId == topicId);
+
+            if (!includeArchived)
+            {
+                query = query.Where(st => !st.Archived);
+            }
+
+            var subTopics = await query
+                .OrderBy(st => st.SortOrder)
+                .ToListAsync();
+
+            _logger.LogInformation($"GetSubTopicsByTopicIdAsync: Found {subTopics.Count} subtopics for topic {topicId}");
+            return subTopics;
+        }
+
+        /// <summary>
+        /// Check if a subtopic belongs to a specific topic
+        /// </summary>
+        public async Task<bool> IsSubTopicInTopicAsync(int subTopicId, int topicId)
+        {
+            return await _context.SubTopics
+                .AnyAsync(st => st.Id == subTopicId && st.TopicId == topicId && !st.Archived);
+        }
+
+        /// <summary>
+        /// Get the next available sort order for a topic (considering both subtopics and direct lessons)
+        /// </summary>
+        public async Task<int> GetNextSortOrderForTopicAsync(int topicId)
+        {
+            var maxSortOrder = await GetMaxSortOrderInTopicAsync(topicId);
+            return maxSortOrder + 1;
+        }
+
+        /// <summary>
+        /// Update multiple subtopics' sort orders in a single transaction
+        /// </summary>
+        public async Task UpdateSubTopicSortOrdersAsync(IEnumerable<SubTopic> subTopics)
+        {
+            foreach (var subTopic in subTopics)
+            {
+                _context.SubTopics.Update(subTopic);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Check if a lesson belongs to a specific topic (either directly or through subtopic)
+        /// </summary>
+        public async Task<bool> IsLessonInTopicAsync(int lessonId, int topicId)
+        {
+            return await _context.Lessons
+                .AnyAsync(l => l.Id == lessonId &&
+                              (l.TopicId == topicId || l.SubTopic.TopicId == topicId) &&
+                              !l.Archived);
+        }
+
+        // Helper class for mixed container management
+        private class TopicItem
+        {
+            public int Id { get; set; }
+            public int SortOrder { get; set; }
+            public string Type { get; set; } // "SubTopic" or "Lesson"
+        }
+
+
     }
 }
