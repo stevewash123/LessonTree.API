@@ -61,6 +61,7 @@ namespace LessonTree.API.Configuration
             builder.Services.AddTransient<IScheduleService, ScheduleService>();
             builder.Services.AddTransient<IScheduleConfigurationService, ScheduleConfigurationService>();
             builder.Services.AddTransient<INoteService, NoteService>();
+            builder.Services.AddTransient<IEntityPositioningService, EntityPositioningService>();
 
             builder.Services.AddHealthChecks()
                 .AddCheck("self", () => HealthCheckResult.Healthy(builder.Configuration["HealthChecks:Checks:0:Description"]))

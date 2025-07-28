@@ -134,25 +134,32 @@ public class SubTopicService : ISubTopicService
     public async Task<int> AddAsync(SubTopicCreateResource subTopicCreateResource, int userId)
     {
         _logger.LogDebug("Adding subtopic: {Title} for User ID: {UserId}", subTopicCreateResource.Title, userId);
+
         if (string.IsNullOrWhiteSpace(subTopicCreateResource.Title))
         {
             throw new ArgumentException("Title is required", nameof(subTopicCreateResource.Title));
         }
+
         var topic = await _topicRepository.GetByIdAsync(subTopicCreateResource.TopicId);
         if (topic == null)
         {
             _logger.LogWarning("Topic ID {TopicId} not found for new SubTopic.", subTopicCreateResource.TopicId);
             throw new ArgumentException("The specified Topic does not exist.", nameof(subTopicCreateResource.TopicId));
         }
+
         var subTopic = _mapper.Map<SubTopic>(subTopicCreateResource);
-        subTopic.UserId = userId; // Set UserId here
-        subTopic.Archived = false; // Default to active on creation
+        subTopic.UserId = userId;
+        subTopic.Archived = false;
+
+        // ✅ FIXED: Use existing repository method
+        subTopic.SortOrder = await _subTopicRepository.GetNextSortOrderForTopicAsync(subTopicCreateResource.TopicId);
+
         var createdId = await _subTopicRepository.AddAsync(subTopic);
-        _logger.LogInformation("SubTopic added with ID: {SubTopicId}", createdId);
+
+        _logger.LogInformation("SubTopic added with ID: {SubTopicId} and sort order {SortOrder}", createdId, subTopic.SortOrder);
         return createdId;
     }
 
-    
     public async Task<SubTopicResource> UpdateAsync(SubTopicUpdateResource subTopicUpdateResource, int userId)
     {
         _logger.LogDebug("Attempting to update subtopic: {Title} for User ID: {UserId}", subTopicUpdateResource.Title, userId);

@@ -1,5 +1,5 @@
-﻿// **COMPLETE FILE** - Conservative DatabaseSeeder for basic testing
-// RESPONSIBILITY: Seeds minimal test data that should compile
+﻿// **COMPLETE FILE** - Enhanced DatabaseSeeder with comprehensive test data
+// RESPONSIBILITY: Seeds expanded test data with 2 courses, topics, subtopics, and lessons
 // DOES NOT: Seed complex schedule configurations yet
 // CALLED BY: Application startup configuration in development mode
 
@@ -30,7 +30,7 @@ namespace LessonTree.API.Configuration
                     return;
                 }
 
-                logger.LogInformation("Seeding basic test data in Development mode...");
+                logger.LogInformation("Seeding comprehensive test data in Development mode...");
 
                 // Clear existing data in dependency order - keep it simple
                 context.ScheduleEvents.RemoveRange(context.ScheduleEvents);
@@ -113,50 +113,125 @@ namespace LessonTree.API.Configuration
                     await context.SaveChangesAsync();
                 }
 
-                // Seed 1 Simple Course for testing
-                var mathCourse = new Course
+                // Seed 2 Courses with comprehensive structure
+                var courses = new List<Course>();
+
+                // ✅ FIXED: Separate counters for each entity type
+                int globalTopicNumber = 1;
+                int globalSubTopicNumber = 1;
+                int globalLessonNumber = 1;
+
+                for (int courseIndex = 1; courseIndex <= 2; courseIndex++)
                 {
-                    Title = "Algebra I",
-                    Description = "First year algebra course",
-                    UserId = adminUser.Id,
-                    Archived = false,
-                    Visibility = VisibilityType.Private,
-                    Topics = new List<Topic>
+                    var course = new Course
                     {
-                        new Topic
+                        Title = $"Course {courseIndex}",
+                        Description = $"Test course {courseIndex} for comprehensive testing",
+                        UserId = adminUser.Id,
+                        Archived = false,
+                        Visibility = VisibilityType.Private,
+                        Topics = new List<Topic>()
+                    };
+
+                    // Create 2 topics per course
+                    for (int topicIndex = 1; topicIndex <= 2; topicIndex++)
+                    {
+                        var topic = new Topic
                         {
-                            Title = "Linear Equations",
-                            Description = "Solving linear equations",
+                            Title = $"Course {courseIndex} Topic {globalTopicNumber}",
+                            Description = $"Topic {globalTopicNumber} for Course {courseIndex}",
                             UserId = adminUser.Id,
                             Archived = false,
                             Visibility = VisibilityType.Private,
-                            SortOrder = 0,
-                            Lessons = new List<Lesson>
+                            SortOrder = topicIndex - 1,
+                            Lessons = new List<Lesson>(),
+                            SubTopics = new List<SubTopic>()
+                        };
+                        globalTopicNumber++;
+
+                        if (topicIndex == 1)
+                        {
+                            // First topic: 2 direct lessons + 2 subtopics (each with 2 lessons)
+                            // ✅ FIXED: Sequential sort orders across ALL entities in Topic
+
+                            int sortOrderCounter = 0;
+
+                            // Add 2 direct lessons to the topic FIRST
+                            for (int directLessonIndex = 1; directLessonIndex <= 2; directLessonIndex++)
                             {
-                                new Lesson
+                                var lesson = new Lesson
                                 {
-                                    Title = "Introduction to Linear Equations",
-                                    Objective = "Understand what makes an equation linear",
+                                    Title = $"Course {courseIndex} Topic {globalTopicNumber - 1} Lesson {globalLessonNumber}",
+                                    Objective = $"Learn lesson {globalLessonNumber} concepts in topic {globalTopicNumber - 1}",
                                     UserId = adminUser.Id,
                                     Archived = false,
                                     Visibility = VisibilityType.Private,
-                                    SortOrder = 0
-                                },
-                                new Lesson
+                                    SortOrder = sortOrderCounter++  // 0, 1
+                                };
+                                topic.Lessons.Add(lesson);
+                                globalLessonNumber++;
+                            }
+
+                            // Add 2 subtopics AFTER the direct lessons
+                            for (int subTopicIndex = 1; subTopicIndex <= 2; subTopicIndex++)
+                            {
+                                var subTopic = new SubTopic
                                 {
-                                    Title = "Solving One-Step Equations",
-                                    Objective = "Solve equations using addition and subtraction",
+                                    Title = $"Course {courseIndex} Topic {globalTopicNumber - 1} SubTopic {globalSubTopicNumber}",
+                                    Description = $"SubTopic {globalSubTopicNumber} under Topic {globalTopicNumber - 1}",
                                     UserId = adminUser.Id,
                                     Archived = false,
                                     Visibility = VisibilityType.Private,
-                                    SortOrder = 1
+                                    SortOrder = sortOrderCounter++,  // 2, 3
+                                    Lessons = new List<Lesson>()
+                                };
+                                globalSubTopicNumber++;
+
+                                // Add 2 lessons to each subtopic
+                                for (int subLessonIndex = 1; subLessonIndex <= 2; subLessonIndex++)
+                                {
+                                    var lesson = new Lesson
+                                    {
+                                        Title = $"Course {courseIndex} Topic {globalTopicNumber - 1} SubTopic {globalSubTopicNumber - 1} Lesson {globalLessonNumber}",
+                                        Objective = $"Learn lesson {globalLessonNumber} in subtopic {globalSubTopicNumber - 1}",
+                                        UserId = adminUser.Id,
+                                        Archived = false,
+                                        Visibility = VisibilityType.Private,
+                                        SortOrder = subLessonIndex - 1  // Within SubTopic: 0, 1
+                                    };
+                                    subTopic.Lessons.Add(lesson);
+                                    globalLessonNumber++;
                                 }
+
+                                topic.SubTopics.Add(subTopic);
                             }
                         }
-                    }
-                };
+                        else
+                        {
+                            // Second topic: just 2 direct lessons (simpler structure)
+                            for (int directLessonIndex = 1; directLessonIndex <= 2; directLessonIndex++)
+                            {
+                                var lesson = new Lesson
+                                {
+                                    Title = $"Course {courseIndex} Topic {globalTopicNumber - 1} Lesson {globalLessonNumber}",
+                                    Objective = $"Learn lesson {globalLessonNumber} concepts in topic {globalTopicNumber - 1}",
+                                    UserId = adminUser.Id,
+                                    Archived = false,
+                                    Visibility = VisibilityType.Private,
+                                    SortOrder = directLessonIndex - 1  // 0, 1
+                                };
+                                topic.Lessons.Add(lesson);
+                                globalLessonNumber++;
+                            }
+                        }
 
-                context.Courses.Add(mathCourse);
+                        course.Topics.Add(topic);
+                    }
+
+                    courses.Add(course);
+                }
+
+                context.Courses.AddRange(courses);
                 await context.SaveChangesAsync();
 
                 // SEED MINIMAL USER CONFIGURATION (Profile data only)
@@ -170,14 +245,11 @@ namespace LessonTree.API.Configuration
                 context.UserConfigurations.Add(userConfig);
                 await context.SaveChangesAsync();
 
-                logger.LogInformation("Basic test data seeded successfully:");
-                logger.LogInformation("- 1 course: Algebra I with 2 lessons");
-                logger.LogInformation("- Admin user created");
-                logger.LogInformation("- Basic user configuration");
+                logger.LogInformation("Comprehensive test data seeded successfully:");
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to seed basic test data: {Message}", ex.Message);
+                logger.LogError(ex, "Failed to seed comprehensive test data: {Message}", ex.Message);
                 throw;
             }
         }

@@ -15,7 +15,7 @@ namespace LessonTree.Models.DTO
         public bool Archived { get; set; }
         public string Visibility { get; set; } = "Private";
         public int UserId { get; set; } 
-        public string NodeType { get; set; } = "Lesson";
+        public string EntityType { get; set; } = "Lesson";
     }
 
     public class LessonCreateResource
@@ -57,10 +57,9 @@ namespace LessonTree.Models.DTO
         public int? NewSubTopicId { get; set; }
         public int? NewTopicId { get; set; }
 
-        // Optional positioning parameters - if provided, enables precise positioning
         public int? RelativeToId { get; set; }
-        public string? Position { get; set; } // "before" | "after"  
-        public string? RelativeToType { get; set; } // "Lesson" | "SubTopic"
+        public string Position { get; set; } = string.Empty; // "before" | "after"  
+        public string RelativeToType { get; set; } = string.Empty; // "Lesson" | "SubTopic"
     }
 
     public class LessonDetailResource
@@ -78,8 +77,9 @@ namespace LessonTree.Models.DTO
         public string? SpecialNeeds { get; set; }
         public string? Assessment { get; set; }
         public bool Archived { get; set; }
+        public int SortOrder { get; set; }
         public string Visibility { get; set; }
-        public string NodeType { get; set; } = "Lesson"; // Add nodeType
+        public string EntityType { get; set; } = "Lesson"; 
         public List<StandardResource> Standards { get; set; } = new List<StandardResource>();
         public List<AttachmentResource> Attachments { get; set; }
         public List<NoteResource> Notes { get; set; } = new List<NoteResource>();

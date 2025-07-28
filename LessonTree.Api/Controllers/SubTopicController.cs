@@ -19,11 +19,14 @@ namespace LessonTree.API.Controllers
     public class SubTopicController : BaseController
     {
         private readonly ISubTopicService _service;
+        private readonly IEntityPositioningService _entityPositioningService;
         private readonly ILogger<SubTopicController> _logger;
 
-        public SubTopicController(ISubTopicService service, ILogger<SubTopicController> logger)
+
+        public SubTopicController(ISubTopicService service, IEntityPositioningService entityPositioningService, ILogger<SubTopicController> logger)
         {
             _service = service;
+            _entityPositioningService = entityPositioningService;
             _logger = logger;
         }
 
@@ -144,32 +147,23 @@ namespace LessonTree.API.Controllers
         {
             try
             {
-                // Extract user ID from JWT claims (following established pattern)
                 var userId = GetCurrentUserId();
+                var result = await _entityPositioningService.MoveSubTopic(moveResource, userId);
 
-                // Delegate all logic to service layer (unified endpoint pattern)
-                var movedSubTopic = await _service.MoveSubTopicAsync(moveResource, userId);
+                if (!result.IsSuccess)
+                {
+                    return BadRequest(result.ErrorMessage);
+                }
 
-                return Ok(movedSubTopic);
-            }
-            catch (ArgumentException ex)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Forbid(ex.Message);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
+                return Ok(new { success = true, modifiedEntities = result.ModifiedEntities });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error moving subtopic {SubTopicId}", moveResource?.SubTopicId);
-                return StatusCode(500, "An error occurred while moving the subtopic");
+                _logger.LogError(ex, "Error moving SubTopic");
+                return StatusCode(500, "Internal server error");
             }
         }
+
 
         [HttpPost("copy")]
         public async Task<IActionResult> CopySubTopic([FromBody] SubTopicMoveResource copyResource)

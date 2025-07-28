@@ -49,7 +49,6 @@ public class MappingProfile : Profile
         CreateMap<Course, CourseResource>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.NodeId, opt => opt.MapFrom(src => $"course_{src.Id}"))
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
             .ForMember(dest => dest.Topics, opt => opt.MapFrom(src => src.Topics))
@@ -58,7 +57,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
             .ForMember(dest => dest.Visibility, opt => opt.MapFrom(src => src.Visibility))
             .ForMember(dest => dest.Standards, opt => opt.MapFrom(src => src.Standards))
-            .ForMember(dest => dest.NodeType, opt => opt.MapFrom(src => "Course"))
+            .ForMember(dest => dest.EntityType, opt => opt.MapFrom(src => "Course"))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes));
 
         CreateMap<CourseCreateResource, Course>()
@@ -80,19 +79,17 @@ public class MappingProfile : Profile
         // TOPIC MAPPINGS
         // =============================================================================
         CreateMap<Topic, TopicResource>()
-            .ForMember(dest => dest.NodeId, opt => opt.MapFrom(src => $"topic_{src.Id}"))
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
             .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
             .ForMember(dest => dest.SubTopics, opt => opt.MapFrom(src => src.SubTopics))
             .ForMember(dest => dest.Lessons, opt => opt.MapFrom(src => src.Lessons))
-            .ForMember(dest => dest.HasChildren, opt => opt.MapFrom(src => src.SubTopics.Any() || src.Lessons.Any()))
             .ForMember(dest => dest.Archived, opt => opt.MapFrom(src => src.Archived))
             .ForMember(dest => dest.SortOrder, opt => opt.MapFrom(src => src.SortOrder))
             .ForMember(dest => dest.Visibility, opt => opt.MapFrom(src => src.Visibility))
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
-            .ForMember(dest => dest.NodeType, opt => opt.MapFrom(src => "Topic"))
+            .ForMember(dest => dest.EntityType, opt => opt.MapFrom(src => "Topic"))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes));
 
         CreateMap<TopicCreateResource, Topic>()
@@ -115,19 +112,17 @@ public class MappingProfile : Profile
         // SUBTOPIC MAPPINGS
         // =============================================================================
         CreateMap<SubTopic, SubTopicResource>()
-            .ForMember(dest => dest.NodeId, opt => opt.MapFrom(src => $"subtopic_{src.Id}"))
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
             .ForMember(dest => dest.TopicId, opt => opt.MapFrom(src => src.TopicId))
             .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.Topic.CourseId))
             .ForMember(dest => dest.Lessons, opt => opt.MapFrom(src => src.Lessons ?? new List<Lesson>()))
-            .ForMember(dest => dest.HasChildren, opt => opt.MapFrom(src => src.Lessons.Any()))
             .ForMember(dest => dest.Archived, opt => opt.MapFrom(src => src.Archived))
             .ForMember(dest => dest.SortOrder, opt => opt.MapFrom(src => src.SortOrder))
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
             .ForMember(dest => dest.Visibility, opt => opt.MapFrom(src => src.Visibility))
-            .ForMember(dest => dest.NodeType, opt => opt.MapFrom(src => "SubTopic"))
+            .ForMember(dest => dest.EntityType, opt => opt.MapFrom(src => "SubTopic"))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes));
 
 
@@ -154,7 +149,6 @@ public class MappingProfile : Profile
         // LESSON MAPPINGS
         // =============================================================================
         CreateMap<Lesson, LessonResource>()
-            .ForMember(dest => dest.NodeId, opt => opt.MapFrom(src => $"lesson_{src.Id}"))
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.SubTopic != null ? src.SubTopic.Topic.CourseId : src.Topic.CourseId))
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
@@ -165,7 +159,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Archived, opt => opt.MapFrom(src => src.Archived))
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
             .ForMember(dest => dest.Visibility, opt => opt.MapFrom(src => src.Visibility))
-            .ForMember(dest => dest.NodeType, opt => opt.MapFrom(src => "Lesson"));
+            .ForMember(dest => dest.EntityType, opt => opt.MapFrom(src => "Lesson"));
 
         CreateMap<Lesson, LessonDetailResource>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
@@ -184,7 +178,8 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Standards, opt => opt.MapFrom(src => src.LessonStandards.Select(ls => ls.Standard)))
             .ForMember(dest => dest.Archived, opt => opt.MapFrom(src => src.Archived))
             .ForMember(dest => dest.Visibility, opt => opt.MapFrom(src => src.Visibility))
-            .ForMember(dest => dest.NodeType, opt => opt.MapFrom(src => "Lesson"))
+            .ForMember(dest => dest.EntityType, opt => opt.MapFrom(src => "Lesson"))
+            .ForMember(dest => dest.SortOrder, opt => opt.MapFrom(src => src.SortOrder))
             .ForMember(dest => dest.Notes, opt => opt.MapFrom(src => src.Notes));
 
         CreateMap<LessonCreateResource, Lesson>()

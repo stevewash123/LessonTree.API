@@ -16,7 +16,7 @@ namespace LessonTree.Models.DTO
         public int UserId { get; set; }
         public int SortOrder { get; set; }
         public string Visibility { get; set; }
-        public string NodeType { get; set; } = "SubTopic"; // Add nodeType
+        public string EntityType { get; set; } = "SubTopic"; 
         public List<LessonResource> Lessons { get; set; } = new List<LessonResource>();
         public List<NoteResource> Notes { get; set; } = new List<NoteResource>();
     }

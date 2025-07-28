@@ -17,11 +17,13 @@ using Microsoft.AspNetCore.Mvc;
 public class TopicController : BaseController
 {
     private readonly ITopicService _service;
+    private readonly IEntityPositioningService _entityPositioningService;
     private readonly ILogger<TopicController> _logger;
 
-    public TopicController(ITopicService service, ILogger<TopicController> logger)
+    public TopicController(ITopicService service, IEntityPositioningService entityPositioningService, ILogger<TopicController> logger)
     {
         _service = service;
+        _entityPositioningService = entityPositioningService;
         _logger = logger;
     }
 
@@ -183,31 +185,23 @@ public class TopicController : BaseController
     {
         try
         {
-            // Extract user ID from JWT claims (following established pattern)
             var userId = GetCurrentUserId();
+            var result = await _entityPositioningService.MoveTopic(moveResource, userId);
 
-            // Delegate all logic to service layer (unified endpoint pattern)
-            var movedTopic = await _service.MoveTopicAsync(moveResource, userId);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result.ErrorMessage);
+            }
 
-            return Ok(movedTopic);
-        }
-        catch (ArgumentException ex)
-        {
-            return NotFound(ex.Message);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Forbid(ex.Message);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ex.Message);
+            return Ok(new { success = true, modifiedEntities = result.ModifiedEntities });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error moving topic {TopicId}", moveResource?.TopicId);
-            return StatusCode(500, "An error occurred while moving the topic");
+            _logger.LogError(ex, "Error moving Topic");
+            return StatusCode(500, "Internal server error");
         }
     }
+
+    private int GetCurrentUserId() => int.Parse(User.FindFirst("UserId")?.Value ?? "0");
 
 }

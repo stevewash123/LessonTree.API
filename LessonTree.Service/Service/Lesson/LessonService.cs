@@ -98,11 +98,25 @@ public class LessonService : ILessonService
 
         var lesson = _mapper.Map<Lesson>(lessonCreateResource);
         lesson.UserId = userId;
+
+        // ✅ FIXED: Calculate proper sort order using existing repository pattern
+        if (lessonCreateResource.SubTopicId.HasValue)
+        {
+            lesson.SortOrder = (await _lessonRepository.GetBySubTopicId(lessonCreateResource.SubTopicId.Value, true)
+                .MaxAsync(l => (int?)l.SortOrder) ?? -1) + 1;
+        }
+        else
+        {
+            lesson.SortOrder = (await _lessonRepository.GetByTopicId(lessonCreateResource.TopicId.Value, true)
+                .MaxAsync(l => (int?)l.SortOrder) ?? -1) + 1;
+        }
+
         var createdLessonId = await _lessonRepository.AddAsync(lesson);
 
-        _logger.LogInformation($"AddAsync: Created lesson {createdLessonId} '{lesson.Title}' for user {userId}");
+        _logger.LogInformation($"AddAsync: Created lesson {createdLessonId} '{lesson.Title}' with sort order {lesson.SortOrder} for user {userId}");
         return createdLessonId;
     }
+
 
     public async Task<LessonDetailResource> UpdateAsync(LessonUpdateResource lessonUpdateResource, int userId)
     {
@@ -283,10 +297,18 @@ public class LessonService : ILessonService
         }
     }
 
+    // **PARTIAL FILE** - LessonService.cs - Replace MoveLessonAsync method
+    // INTEGRATION: Replace the existing MoveLessonAsync method with this enhanced version
+
     public async Task MoveLessonAsync(LessonMoveResource moveResource, int userId)
     {
-        _logger.LogDebug("Moving Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId} or Topic ID: {NewTopicId} for User ID: {UserId}",
+        _logger.LogInformation("=== LESSON MOVE DIAGNOSTICS START ===");
+        _logger.LogInformation("MoveLessonAsync: LessonId={LessonId}, NewSubTopicId={NewSubTopicId}, NewTopicId={NewTopicId}, UserId={UserId}",
             moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId, userId);
+
+        // ✅ CRITICAL: Log positioning parameters to see why positional move isn't being called
+        _logger.LogInformation("MoveLessonAsync: RelativeToId={RelativeToId}, Position={Position}, RelativeToType={RelativeToType}",
+            moveResource.RelativeToId, moveResource.Position, moveResource.RelativeToType);
 
         // Validate input
         if (moveResource.NewSubTopicId.HasValue && moveResource.NewTopicId.HasValue)
@@ -301,6 +323,8 @@ public class LessonService : ILessonService
         // Check if this is a positional move
         if (moveResource.RelativeToId.HasValue)
         {
+            _logger.LogInformation("MoveLessonAsync: POSITIONAL MOVE detected - calling MoveLessonToPositionAsync");
+
             // Validate position parameters
             if (moveResource.Position != "before" && moveResource.Position != "after")
             {
@@ -312,10 +336,14 @@ public class LessonService : ILessonService
             }
 
             await _lessonRepository.MoveLessonToPositionAsync(moveResource, userId);
+            _logger.LogInformation("MoveLessonAsync: POSITIONAL MOVE completed successfully");
+            _logger.LogInformation("=== LESSON MOVE DIAGNOSTICS END ===");
             return;
         }
 
-        // Simple move (append to end) - existing logic from original method
+        _logger.LogWarning("MoveLessonAsync: SIMPLE MOVE (append to end) - this might be wrong for drag operations!");
+
+        // Simple move (append to end) - FIXED: Consider all entities in Topic
         var lesson = await _lessonRepository.GetByIdAsync(moveResource.LessonId, q => q.Include(l => l.SubTopic).Include(l => l.Topic));
         if (lesson == null)
         {
@@ -329,6 +357,9 @@ public class LessonService : ILessonService
             throw new UnauthorizedAccessException("Lesson not owned by user");
         }
 
+        _logger.LogInformation("MoveLessonAsync: Current lesson state - SubTopicId={CurrentSubTopicId}, TopicId={CurrentTopicId}, SortOrder={CurrentSortOrder}",
+            lesson.SubTopicId, lesson.TopicId, lesson.SortOrder);
+
         int sortOrder;
         if (moveResource.NewSubTopicId.HasValue)
         {
@@ -340,32 +371,44 @@ public class LessonService : ILessonService
             }
             lesson.SubTopicId = moveResource.NewSubTopicId;
             lesson.TopicId = null;
-            sortOrder = (await _lessonRepository.GetBySubTopicId(moveResource.NewSubTopicId.Value).MaxAsync(l => (int?)l.SortOrder) ?? -1) + 1;
+
+            // Get max sort order within SubTopic
+            sortOrder = (await _lessonRepository.GetBySubTopicId(moveResource.NewSubTopicId.Value, true)
+                .MaxAsync(l => (int?)l.SortOrder) ?? -1) + 1;
+
+            _logger.LogInformation("MoveLessonAsync: Moving to SubTopic - calculated sortOrder={SortOrder}", sortOrder);
         }
         else
         {
-            var topicExists = await _lessonRepository.GetByTopicId(moveResource.NewTopicId.Value).AnyAsync();
-            if (!topicExists)
+            var topic = await _topicRepository.GetByIdAsync(moveResource.NewTopicId.Value);
+            if (topic == null)
             {
-                var topic = await _topicRepository.GetByIdAsync(moveResource.NewTopicId.Value);
-                if (topic == null)
-                {
-                    _logger.LogError("Topic with ID {TopicId} not found", moveResource.NewTopicId);
-                    throw new ArgumentException("Topic not found");
-                }
+                _logger.LogError("Topic with ID {TopicId} not found", moveResource.NewTopicId);
+                throw new ArgumentException("Topic not found");
             }
             lesson.TopicId = moveResource.NewTopicId;
             lesson.SubTopicId = null;
-            sortOrder = (await _lessonRepository.GetByTopicId(moveResource.NewTopicId.Value).MaxAsync(l => (int?)l.SortOrder) ?? -1) + 1;
+
+            // ✅ FIXED: Get max sort order across ALL entities in Topic (SubTopics + direct Lessons)
+            var maxSubTopicSort = await _subTopicRepository.GetAll()
+                .Where(st => st.TopicId == moveResource.NewTopicId.Value)
+                .MaxAsync(st => (int?)st.SortOrder) ?? -1;
+
+            var maxLessonSort = await _lessonRepository.GetByTopicId(moveResource.NewTopicId.Value, true)
+                .MaxAsync(l => (int?)l.SortOrder) ?? -1;
+
+            sortOrder = Math.Max(maxSubTopicSort, maxLessonSort) + 1;
+
+            _logger.LogInformation("MoveLessonAsync: Moving to Topic - maxSubTopicSort={MaxSubTopicSort}, maxLessonSort={MaxLessonSort}, calculated sortOrder={SortOrder}",
+                maxSubTopicSort, maxLessonSort, sortOrder);
         }
 
         lesson.SortOrder = sortOrder;
         await _lessonRepository.UpdateAsync(lesson);
-        _logger.LogInformation("Lesson ID: {LessonId} moved to SubTopic ID: {NewSubTopicId} or Topic ID: {NewTopicId} with SortOrder: {SortOrder} by User ID: {UserId}",
-            moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId, sortOrder, userId);
+
+        _logger.LogInformation("MoveLessonAsync: SIMPLE MOVE completed - final SortOrder={FinalSortOrder}", sortOrder);
+        _logger.LogInformation("=== LESSON MOVE DIAGNOSTICS END ===");
     }
-
-
 
     public async Task AddStandardToLessonAsync(int lessonId, int standardId, int userId)
     {

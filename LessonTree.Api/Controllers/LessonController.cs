@@ -18,15 +18,18 @@ public class LessonController : BaseController
 {
     private readonly ILessonService _lessonService;
     private readonly IAttachmentService _attachmentService;
+    private readonly IEntityPositioningService _entityPositioningService;
     private readonly ILogger<LessonController> _logger;
 
     public LessonController(
         ILessonService lessonService,
-        IAttachmentService attachmentService,
+        IAttachmentService attachmentService, 
+        IEntityPositioningService entityPositioningService,
         ILogger<LessonController> logger)
     {
         _lessonService = lessonService;
         _attachmentService = attachmentService;
+        _entityPositioningService = entityPositioningService;
         _logger = logger;
     }
 
@@ -232,30 +235,24 @@ public class LessonController : BaseController
     [HttpPost("move")]
     public async Task<IActionResult> MoveLesson([FromBody] LessonMoveResource moveResource)
     {
-        int userId = GetCurrentUserId();
-        _logger.LogDebug("Moving Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}, Topic ID: {NewTopicId} for User ID: {UserId}",
-            moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId, userId);
-
         try
         {
-            await _lessonService.MoveLessonAsync(moveResource, userId);
-            _logger.LogInformation("Moved Lesson ID: {LessonId} to SubTopic ID: {NewSubTopicId}, Topic ID: {NewTopicId} by User ID: {UserId}",
-                moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId, userId);
-            return Ok();
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogWarning("Lesson move failed: {Message}", ex.Message);
-            return BadRequest(new { status = "error", message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _logger.LogWarning("Unauthorized lesson move attempt for ID: {LessonId} by User ID: {UserId}", moveResource.LessonId, userId);
-            return Forbid();
+            var userId = GetCurrentUserId();
+
+            // Fix: Explicitly declare the variable type as Task<EntityPositionResult>
+            var result = await _entityPositioningService.MoveLesson(moveResource, userId);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result.ErrorMessage);
+            }
+
+            // Return the full EntityPositionResult directly
+            return Ok(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error moving Lesson ID: {LessonId}", moveResource.LessonId);
+            _logger.LogError(ex, "Error moving lesson");
             return StatusCode(500, "Internal server error");
         }
     }

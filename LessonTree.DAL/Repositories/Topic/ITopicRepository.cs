@@ -16,6 +16,7 @@ namespace LessonTree.DAL.Repositories
         Task DeleteAsync(int id);
         Task<Topic> MoveTopicToPositionAsync(int topicId, int targetCourseId, int relativeTopicId, string position);
         Task<int> GetMaxSortOrderInCourseAsync(int courseId);
+        Task<int> GetNextSortOrderForCourseAsync(int topicId);
 
     }
 }

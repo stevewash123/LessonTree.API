@@ -84,11 +84,16 @@ public class TopicService : ITopicService
 
         var topic = _mapper.Map<Topic>(topicCreateResource);
         topic.UserId = userId;
+
+        // ✅ FIXED: Use existing repository method
+        topic.SortOrder = await _topicRepository.GetNextSortOrderForCourseAsync(topicCreateResource.CourseId);
+
         var createdTopicId = await _topicRepository.AddAsync(topic);
 
-        _logger.LogInformation($"AddAsync: Created topic {createdTopicId} '{topicCreateResource.Title}' for user {userId}");
+        _logger.LogInformation($"AddAsync: Created topic {createdTopicId} '{topicCreateResource.Title}' with sort order {topic.SortOrder} for user {userId}");
         return createdTopicId;
     }
+
 
     public async Task<TopicResource> UpdateAsync(TopicUpdateResource topicUpdateResource, int userId)
     {
