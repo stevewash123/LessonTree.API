@@ -93,9 +93,9 @@ public class TopicRepository : ITopicRepository
         _logger.LogInformation($"DeleteAsync: Deleted topic {id}");
     }
 
-    public async Task<Topic> MoveTopicToPositionAsync(int topicId, int targetCourseId, int relativeTopicId, string position)
+    public async Task<Topic> MoveTopicToPositionAsync(int topicId, int targetCourseId, int afterSiblingId)
     {
-        _logger.LogInformation($"MoveTopicToPositionAsync: Moving topic {topicId} {position} topic {relativeTopicId} in course {targetCourseId}");
+        _logger.LogInformation($"MoveTopicToPositionAsync: Moving topic {topicId} after topic {afterSiblingId} in course {targetCourseId}");
 
         using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -108,11 +108,11 @@ public class TopicRepository : ITopicRepository
                 throw new ArgumentException($"Topic {topicId} not found");
             }
 
-            // Get relative topic for position calculation
-            var relativeTopic = await GetByIdAsync(relativeTopicId);
-            if (relativeTopic == null)
+            // Get sibling topic for position calculation
+            var siblingTopic = await GetByIdAsync(afterSiblingId);
+            if (siblingTopic == null)
             {
-                throw new ArgumentException($"Relative topic {relativeTopicId} not found");
+                throw new ArgumentException($"Sibling topic {afterSiblingId} not found");
             }
 
             // Get all topics in target course
@@ -121,8 +121,8 @@ public class TopicRepository : ITopicRepository
                 .OrderBy(t => t.SortOrder)
                 .ToListAsync();
 
-            // Calculate target position based on relative topic
-            var targetSortOrder = CalculateTargetSortOrder(courseTopics, relativeTopicId, position);
+            // Calculate target position based on sibling (always after sibling)
+            var targetSortOrder = CalculateTargetSortOrderFromSibling(courseTopics, afterSiblingId);
 
             _logger.LogInformation($"MoveTopicToPositionAsync: Calculated target sort order {targetSortOrder} for topic {topicId}");
 
@@ -149,6 +149,19 @@ public class TopicRepository : ITopicRepository
         }
     }
 
+    private int CalculateTargetSortOrderFromSibling(List<Topic> courseTopics, int afterSiblingId)
+    {
+        var siblingTopic = courseTopics.FirstOrDefault(t => t.Id == afterSiblingId);
+        if (siblingTopic != null)
+        {
+            // Position after the sibling
+            return siblingTopic.SortOrder + 1;
+        }
+
+        // Fallback: append to end
+        return courseTopics.Any() ? courseTopics.Max(t => t.SortOrder) + 1 : 0;
+    }
+
     public async Task<int> GetMaxSortOrderInCourseAsync(int courseId)
     {
         var maxSortOrder = await _context.Topics
@@ -156,18 +169,6 @@ public class TopicRepository : ITopicRepository
             .MaxAsync(t => (int?)t.SortOrder) ?? -1;
 
         return maxSortOrder;
-    }
-
-    private int CalculateTargetSortOrder(List<Topic> courseTopics, int relativeTopicId, string position)
-    {
-        var relativeTopic = courseTopics.FirstOrDefault(t => t.Id == relativeTopicId);
-        if (relativeTopic != null)
-        {
-            return position == "before" ? relativeTopic.SortOrder : relativeTopic.SortOrder + 1;
-        }
-
-        // Fallback: append to end
-        return courseTopics.Any() ? courseTopics.Max(t => t.SortOrder) + 1 : 0;
     }
 
     private async Task RenumberCourseTopicsAsync(List<Topic> courseTopics, int movedTopicId, int targetSortOrder)

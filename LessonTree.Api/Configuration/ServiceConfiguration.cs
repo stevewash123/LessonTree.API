@@ -2,6 +2,9 @@
 using LessonTree.DAL.Repositories;
 using LessonTree.BLL.Service;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Sqlite;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -29,6 +32,7 @@ namespace LessonTree.API.Configuration
                 .AddDbContext<LessonTreeContext>(options =>
                 {
                     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+
                     if (builder.Environment.IsDevelopment())
                     {
                         options.EnableSensitiveDataLogging();
@@ -40,6 +44,7 @@ namespace LessonTree.API.Configuration
                 .AddEntityFrameworkStores<LessonTreeContext>()
                 .AddDefaultTokenProviders();
 
+            // === EXISTING REPOSITORY REGISTRATIONS (unchanged) ===
             builder.Services.AddTransient<IUserRepository, UserRepository>();
             builder.Services.AddTransient<ICourseRepository, CourseRepository>();
             builder.Services.AddTransient<ITopicRepository, TopicRepository>();
@@ -51,6 +56,7 @@ namespace LessonTree.API.Configuration
             builder.Services.AddTransient<IScheduleRepository, ScheduleRepository>();
             builder.Services.AddTransient<IScheduleConfigurationRepository, ScheduleConfigurationRepository>();
 
+            // === EXISTING SERVICE REGISTRATIONS (unchanged) ===
             builder.Services.AddTransient<IUserService, UserService>();
             builder.Services.AddTransient<ICourseService, CourseService>();
             builder.Services.AddTransient<ITopicService, TopicService>();
@@ -63,12 +69,17 @@ namespace LessonTree.API.Configuration
             builder.Services.AddTransient<INoteService, NoteService>();
             builder.Services.AddTransient<IEntityPositioningService, EntityPositioningService>();
 
+            // === NEW SERVICE REGISTRATION FOR SCHEDULE GENERATION MIGRATION ===
+            builder.Services.AddTransient<IScheduleGenerationService, ScheduleGenerationService>();
+
+            // === EXISTING HEALTH CHECKS (unchanged) ===
             builder.Services.AddHealthChecks()
                 .AddCheck("self", () => HealthCheckResult.Healthy(builder.Configuration["HealthChecks:Checks:0:Description"]))
                 .AddDbContextCheck<LessonTreeContext>(
                     builder.Configuration["HealthChecks:Checks:1:Name"],
                     failureStatus: Enum.Parse<HealthStatus>(builder.Configuration["HealthChecks:Checks:1:FailureStatus"] ?? "Unhealthy"));
 
+            // === EXISTING AUTHENTICATION (unchanged) ===
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -89,6 +100,7 @@ namespace LessonTree.API.Configuration
 
             builder.Services.AddAuthorization();
 
+            // === EXISTING CORS (unchanged) ===
             builder.Services.AddCors(options =>
             {
                 var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? Array.Empty<string>();
@@ -104,6 +116,7 @@ namespace LessonTree.API.Configuration
 
             builder.Services.AddMemoryCache(); // Keep MemoryCache for other uses
 
+            // === EXISTING CONTROLLERS AND SWAGGER (unchanged) ===
             builder.Services.AddScoped<RequestLoggingFilter>();
             builder.Services.AddControllers(options =>
             {

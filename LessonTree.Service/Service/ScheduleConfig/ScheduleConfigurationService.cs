@@ -14,15 +14,18 @@ namespace LessonTree.BLL.Services
     public class ScheduleConfigurationService : IScheduleConfigurationService
     {
         private readonly IScheduleConfigurationRepository _repository;
+        private readonly IScheduleGenerationService _scheduleGenerationService;
         private readonly IMapper _mapper;
         private readonly ILogger<ScheduleConfigurationService> _logger;
 
         public ScheduleConfigurationService(
             IScheduleConfigurationRepository repository,
             IMapper mapper,
-            ILogger<ScheduleConfigurationService> logger)
+            ILogger<ScheduleConfigurationService> logger,
+            IScheduleGenerationService scheduleGenerationService)
         {
             _repository = repository;
+            _scheduleGenerationService = scheduleGenerationService;
             _mapper = mapper;
             _logger = logger;
         }
@@ -254,6 +257,10 @@ namespace LessonTree.BLL.Services
             var created = await _repository.CreateAsync(configuration);
 
             _logger.LogInformation($"CreateAsync: Created configuration {created.Id} '{resource.Title}' (School Year: {created.SchoolYear}) for user {userId}");
+
+            // ✅ NEW: Auto-generate schedule after configuration creation
+            await TriggerScheduleGenerationAsync(created.Id, userId, "created");
+
             return _mapper.Map<ScheduleConfigurationResource>(created);
         }
 
@@ -283,6 +290,10 @@ namespace LessonTree.BLL.Services
             var updated = await _repository.UpdateAsync(configuration);
 
             _logger.LogInformation($"UpdateAsync: Updated configuration {id} '{resource.Title}' (School Year: {updated.SchoolYear}) for user {userId}");
+
+            // ✅ NEW: Auto-regenerate schedule after configuration update
+            await TriggerScheduleRegenerationAsync(updated.Id, userId, "updated");
+
             return _mapper.Map<ScheduleConfigurationResource>(updated);
         }
 
@@ -331,5 +342,64 @@ namespace LessonTree.BLL.Services
             return $"Instructional Period {startYear} to {endYear}";
         }
 
+        private async Task TriggerScheduleGenerationAsync(int configurationId, int userId, string operation)
+        {
+            try
+            {
+                _logger.LogInformation($"TriggerScheduleGenerationAsync: Auto-generating schedule for configuration {configurationId} (operation: {operation})");
+
+                // Generate schedule using the existing service
+                var generationResult = await _scheduleGenerationService.GenerateScheduleFromConfigurationAsync(configurationId, userId);
+
+                if (generationResult.Success && generationResult.Schedule != null)
+                {
+                    // ✅ TODO: Save the generated schedule to database
+                    // This would typically involve converting ScheduleResource → Schedule entity and persisting
+                    // For now, just log the successful generation
+
+                    _logger.LogInformation($"TriggerScheduleGenerationAsync: Successfully generated schedule with {generationResult.TotalEventsGenerated} events");
+                    _logger.LogInformation($"   📊 Event breakdown across {generationResult.EventsByPeriod.Count} periods");
+                }
+                else
+                {
+                    _logger.LogError($"TriggerScheduleGenerationAsync: Failed to generate schedule for configuration {configurationId}");
+                    _logger.LogError($"   ❌ Errors: {string.Join(", ", generationResult.Errors)}");
+
+                    if (generationResult.Warnings.Any())
+                    {
+                        _logger.LogWarning($"   ⚠️ Warnings: {string.Join(", ", generationResult.Warnings)}");
+                    }
+
+                    // ✅ IMPORTANT: Don't throw - configuration save should succeed even if generation fails
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"TriggerScheduleGenerationAsync: Exception during auto-generation for configuration {configurationId}: {ex.Message}");
+
+                // ✅ IMPORTANT: Don't throw - configuration save should succeed even if generation fails
+                // The user can manually trigger generation later if needed
+            }
+        }
+
+        private async Task TriggerScheduleRegenerationAsync(int configurationId, int userId, string operation)
+        {
+            try
+            {
+                _logger.LogInformation($"TriggerScheduleRegenerationAsync: Auto-regenerating schedule for configuration {configurationId} (operation: {operation})");
+
+                // ✅ TODO: Check if schedule exists and update it, or create new one
+                // This might involve deleting existing schedule events and regenerating
+                // For now, use the same generation logic as create
+
+                await TriggerScheduleGenerationAsync(configurationId, userId, $"regeneration-{operation}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"TriggerScheduleRegenerationAsync: Exception during auto-regeneration for configuration {configurationId}: {ex.Message}");
+
+                // ✅ IMPORTANT: Don't throw - configuration update should succeed even if regeneration fails
+            }
+        }
     }
 }

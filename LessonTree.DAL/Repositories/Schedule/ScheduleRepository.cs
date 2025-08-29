@@ -34,48 +34,82 @@ namespace LessonTree.DAL.Repositories
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Remove existing master schedule if it exists
+                // Find existing schedule
                 var existingSchedule = await _context.Schedules
                     .Include(s => s.ScheduleEvents)
                     .Include(s => s.SpecialDays)
                     .FirstOrDefaultAsync(s => s.UserId == userId);
 
+                Schedule scheduleToReturn;
+
                 if (existingSchedule != null)
                 {
-                    _logger.LogInformation($"CreateOrReplaceScheduleAsync: Removing existing schedule {existingSchedule.Id} for user {userId}");
-                    _context.Schedules.Remove(existingSchedule);
+                    // ✅ UPDATE existing schedule in-place - keeps same ID
+                    _logger.LogInformation($"CreateOrReplaceScheduleAsync: Updating existing schedule {existingSchedule.Id} for user {userId}");
+
+                    // Clear existing events and special days but keep the Schedule entity
+                    existingSchedule.ScheduleEvents.Clear();
+                    existingSchedule.SpecialDays.Clear();
+
+                    // Update schedule properties
+                    if (scheduleConfigurationId.HasValue)
+                    {
+                        existingSchedule.ScheduleConfigurationId = scheduleConfigurationId.Value;
+                    }
+                    existingSchedule.CreatedDate = DateTime.UtcNow;
+
+                    // Add new events to existing schedule
+                    foreach (var evt in events)
+                    {
+                        // Ensure event belongs to this schedule
+                        evt.ScheduleId = existingSchedule.Id;
+                        evt.Id = 0; // Reset for new entity
+                        existingSchedule.ScheduleEvents.Add(evt);
+                    }
+
+                    scheduleToReturn = existingSchedule;
+
+                    _logger.LogInformation($"CreateOrReplaceScheduleAsync: Updated existing schedule {existingSchedule.Id} with {events.Count} events");
+                }
+                else
+                {
+                    // ✅ CREATE new schedule only if none exists
+                    _logger.LogInformation($"CreateOrReplaceScheduleAsync: Creating new schedule for user {userId}");
+
+                    var newSchedule = new Schedule
+                    {
+                        UserId = userId,
+                        CreatedDate = DateTime.UtcNow,
+                        ScheduleEvents = new List<ScheduleEvent>(),
+                        SpecialDays = new List<SpecialDay>()
+                    };
+
+                    if (scheduleConfigurationId.HasValue)
+                    {
+                        newSchedule.ScheduleConfigurationId = scheduleConfigurationId.Value;
+                    }
+
+                    // Add events to new schedule
+                    foreach (var evt in events)
+                    {
+                        evt.ScheduleId = 0; // Will be set when schedule is saved
+                        evt.Id = 0; // Reset for new entity
+                        newSchedule.ScheduleEvents.Add(evt);
+                    }
+
+                    _context.Schedules.Add(newSchedule);
+                    scheduleToReturn = newSchedule;
+
+                    _logger.LogInformation($"CreateOrReplaceScheduleAsync: Created new schedule with {events.Count} events");
                 }
 
-                // Create new schedule
-                var newSchedule = new Schedule
-                {
-                    UserId = userId,
-                    CreatedDate = DateTime.UtcNow,
-                    ScheduleEvents = new List<ScheduleEvent>(),
-                    SpecialDays = new List<SpecialDay>()
-                };
-                if (scheduleConfigurationId.HasValue)
-                {
-                    newSchedule.ScheduleConfigurationId = scheduleConfigurationId.Value;
-                }
-
-                // Add events
-                foreach (var evt in events)
-                {
-                    evt.ScheduleId = 0; // Will be set when schedule is saved
-                    evt.Id = 0; // Reset for new entity
-                    newSchedule.ScheduleEvents.Add(evt);
-                }
-
-                _context.Schedules.Add(newSchedule);
                 await _context.SaveChangesAsync();
-
                 await transaction.CommitAsync();
 
-                _logger.LogInformation($"CreateOrReplaceScheduleAsync: Created schedule {newSchedule.Id} with {events.Count} events for user {userId}");
+                _logger.LogInformation($"CreateOrReplaceScheduleAsync: Successfully persisted schedule {scheduleToReturn.Id} with {events.Count} events for user {userId}");
 
-                // Return with includes
-                return await GetByIdAsync(newSchedule.Id) ?? newSchedule;
+                // Return with includes for consistency
+                return await GetByIdAsync(scheduleToReturn.Id) ?? scheduleToReturn;
             }
             catch (Exception ex)
             {
@@ -407,6 +441,30 @@ namespace LessonTree.DAL.Repositories
             }
 
             return schedule;
+        }
+
+        public async Task<List<Schedule>> FindAllSchedulesByCourseIdAsync(int courseId, int userId)
+        {
+            // Find all ScheduleConfigurations that have PeriodAssignments with this CourseId
+            var configurationsWithCourse = await _context.ScheduleConfigurations
+                .Where(sc => sc.UserId == userId &&
+                             sc.PeriodAssignments.Any(pa => pa.CourseId == courseId))
+                .Select(sc => sc.Id)
+                .ToListAsync();
+
+            if (!configurationsWithCourse.Any())
+            {
+                return new List<Schedule>();
+            }
+
+            // Find all Schedules that use these configurations
+            var schedules = await _context.Schedules
+                .Where(s => s.UserId == userId &&
+                           configurationsWithCourse.Contains(s.ScheduleConfigurationId))
+                .Include(s => s.ScheduleConfiguration)
+                .ToListAsync();
+
+            return schedules;
         }
     }
 }

@@ -207,9 +207,11 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasIndex("SubTopicId");
 
-                    b.HasIndex("TopicId");
+                    b.HasIndex("TopicId", "SubTopicId", "SortOrder")
+                        .HasDatabaseName("IX_Lessons_Container_SortOrder");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "TopicId", "SubTopicId")
+                        .HasDatabaseName("IX_Lessons_UserId_TopicId_SubTopicId");
 
                     b.ToTable("Lessons");
                 });
@@ -468,9 +470,6 @@ namespace LessonTree.DAL.Migrations
                     b.Property<int?>("LessonId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("LessonId1")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("Period")
                         .HasColumnType("INTEGER");
 
@@ -485,7 +484,8 @@ namespace LessonTree.DAL.Migrations
                     b.HasIndex("LessonId")
                         .HasDatabaseName("IX_ScheduleEvents_LessonId");
 
-                    b.HasIndex("LessonId1");
+                    b.HasIndex("ScheduleId", "LessonId")
+                        .HasDatabaseName("IX_ScheduleEvents_Schedule_Lesson");
 
                     b.HasIndex("ScheduleId", "Date", "Period")
                         .IsUnique()
@@ -626,9 +626,10 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TopicId");
-
                     b.HasIndex("UserId");
+
+                    b.HasIndex("TopicId", "SortOrder")
+                        .HasDatabaseName("IX_SubTopics_Topic_SortOrder");
 
                     b.ToTable("SubTopics");
                 });
@@ -663,9 +664,10 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CourseId");
-
                     b.HasIndex("UserId");
+
+                    b.HasIndex("CourseId", "SortOrder")
+                        .HasDatabaseName("IX_Topics_Course_SortOrder");
 
                     b.ToTable("Topics");
                 });
@@ -1089,10 +1091,6 @@ namespace LessonTree.DAL.Migrations
                         .HasForeignKey("LessonId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("LessonTree.DAL.Domain.Lesson", null)
-                        .WithMany("ScheduleEvents")
-                        .HasForeignKey("LessonId1");
-
                     b.HasOne("LessonTree.DAL.Domain.Schedule", "Schedule")
                         .WithMany("ScheduleEvents")
                         .HasForeignKey("ScheduleId")
@@ -1300,8 +1298,6 @@ namespace LessonTree.DAL.Migrations
                     b.Navigation("LessonStandards");
 
                     b.Navigation("Notes");
-
-                    b.Navigation("ScheduleEvents");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Schedule", b =>

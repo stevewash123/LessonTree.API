@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using LessonTree.BLL.Service;
+using LessonTree.BLL.Services;
 using LessonTree.DAL.Domain;
 using LessonTree.DAL.Repositories;
 using LessonTree.Models.DTO;
@@ -16,6 +17,8 @@ public class LessonService : ILessonService
     private readonly IStandardRepository _standardRepository;
     private readonly ILogger<LessonService> _logger;
     private readonly IMapper _mapper;
+    private readonly IScheduleService _scheduleService; // NEW DEPENDENCY
+    private readonly IScheduleConfigurationService _scheduleConfigurationService; // NEW DEPENDENCY
 
     public LessonService(
         ILessonRepository lessonRepository,
@@ -23,7 +26,9 @@ public class LessonService : ILessonService
         ISubTopicRepository subTopicRepository,
         IStandardRepository standardRepository,
         ILogger<LessonService> logger,
-        IMapper mapper)
+        IMapper mapper,
+        IScheduleService scheduleService, // NEW PARAMETER
+        IScheduleConfigurationService scheduleConfigurationService) // NEW PARAMETER
     {
         _lessonRepository = lessonRepository;
         _topicRepository = topicRepository;
@@ -31,6 +36,8 @@ public class LessonService : ILessonService
         _standardRepository = standardRepository;
         _logger = logger;
         _mapper = mapper;
+        _scheduleService = scheduleService; // NEW ASSIGNMENT
+        _scheduleConfigurationService = scheduleConfigurationService; // NEW ASSIGNMENT
     }
 
     // **PARTIAL FILE** - LessonService.cs - Logging Standardization (Key Methods)
@@ -80,6 +87,7 @@ public class LessonService : ILessonService
         return lessons;
     }
 
+    // **ENHANCED** - AddAsync with Schedule Regeneration Integration
     public async Task<int> AddAsync(LessonCreateResource lessonCreateResource, int userId)
     {
         _logger.LogInformation($"AddAsync: Creating lesson '{lessonCreateResource.Title}' for user {userId}");
@@ -111,12 +119,23 @@ public class LessonService : ILessonService
                 .MaxAsync(l => (int?)l.SortOrder) ?? -1) + 1;
         }
 
+        // ✅ CORE LESSON CREATION - This must succeed regardless of schedule operations
         var createdLessonId = await _lessonRepository.AddAsync(lesson);
-
         _logger.LogInformation($"AddAsync: Created lesson {createdLessonId} '{lesson.Title}' with sort order {lesson.SortOrder} for user {userId}");
+
+        // ✅ SCHEDULE REGENERATION INTEGRATION - NEW FUNCTIONALITY
+        try
+        {
+            await TriggerScheduleRegenerationForLessonAddAsync(lesson, userId);
+        }
+        catch (Exception ex)
+        {
+            // Log regeneration failure but don't fail the lesson creation
+            _logger.LogError(ex, $"AddAsync: Schedule regeneration failed for lesson {createdLessonId}, but lesson creation succeeded");
+        }
+
         return createdLessonId;
     }
-
 
     public async Task<LessonDetailResource> UpdateAsync(LessonUpdateResource lessonUpdateResource, int userId)
     {
@@ -167,7 +186,150 @@ public class LessonService : ILessonService
 
         _logger.LogInformation($"DeleteAsync: Deleted lesson {id} for user {userId}");
     }
-   
+
+    /// <summary>
+    /// Trigger schedule regeneration for all schedules affected by lesson addition
+    /// CORRECTED: Actually check if usable configurations exist before proceeding
+    /// </summary>
+    private async Task TriggerScheduleRegenerationForLessonAddAsync(Lesson lesson, int userId)
+    {
+        _logger.LogInformation($"TriggerScheduleRegenerationForLessonAddAsync: Starting regeneration check for lesson {lesson.Id}, user {userId}");
+
+        // Step 1: Check if any current or future configurations exist
+        var usableConfigurations = await GetCurrentAndFutureConfigurationsAsync(userId);
+
+        if (!usableConfigurations.Any())
+        {
+            _logger.LogInformation($"TriggerScheduleRegenerationForLessonAddAsync: No current or future schedule configurations found for user {userId} - lesson addition complete, no schedule regeneration needed");
+            return;
+        }
+
+        _logger.LogInformation($"TriggerScheduleRegenerationForLessonAddAsync: Found {usableConfigurations.Count} current/future configurations for user {userId}");
+
+        // Step 2: Determine which course this lesson belongs to
+        var courseId = await GetCourseIdForLessonAsync(lesson, userId);
+        if (!courseId.HasValue)
+        {
+            _logger.LogWarning($"TriggerScheduleRegenerationForLessonAddAsync: Could not determine course for lesson {lesson.Id}");
+            return;
+        }
+
+        _logger.LogInformation($"TriggerScheduleRegenerationForLessonAddAsync: Lesson {lesson.Id} belongs to course {courseId.Value}");
+
+        // Step 3: Find configurations that use this course
+        var affectedConfigurations = FilterConfigurationsUsingCourse(usableConfigurations, courseId.Value);
+
+        if (!affectedConfigurations.Any())
+        {
+            _logger.LogInformation($"TriggerScheduleRegenerationForLessonAddAsync: None of the {usableConfigurations.Count} configurations use course {courseId.Value} - no regeneration needed");
+            return;
+        }
+
+        _logger.LogInformation($"TriggerScheduleRegenerationForLessonAddAsync: {affectedConfigurations.Count} configurations use course {courseId.Value} and need regeneration");
+
+        // Step 4: Regenerate schedules for affected configurations
+        var successCount = 0;
+        var failureCount = 0;
+
+        foreach (var configuration in affectedConfigurations)
+        {
+            try
+            {
+                _logger.LogInformation($"TriggerScheduleRegenerationForLessonAddAsync: Regenerating schedule for configuration {configuration.Id} '{configuration.Title}'");
+
+                await _scheduleService.RegenerateScheduleFromConfigurationAsync(configuration.Id, userId);
+                successCount++;
+
+                _logger.LogInformation($"TriggerScheduleRegenerationForLessonAddAsync: Successfully regenerated schedule for configuration {configuration.Id}");
+            }
+            catch (Exception ex)
+            {
+                failureCount++;
+                _logger.LogError(ex, $"TriggerScheduleRegenerationForLessonAddAsync: Failed to regenerate schedule for configuration {configuration.Id} '{configuration.Title}'");
+            }
+        }
+
+        _logger.LogInformation($"TriggerScheduleRegenerationForLessonAddAsync: Regeneration complete - {successCount} successful, {failureCount} failed out of {affectedConfigurations.Count} configurations");
+    }
+
+    /// <summary>
+    /// Get all configurations that are current (include today) or future
+    /// Business Rule: Only current and future schedules need regeneration
+    /// </summary>
+    private async Task<List<ScheduleConfigurationResource>> GetCurrentAndFutureConfigurationsAsync(int userId)
+    {
+        var today = DateTime.Today;
+
+        // Get all configurations for the user
+        var allConfigurations = await _scheduleConfigurationService.GetAllAsync(userId);
+
+        // Filter to current or future configurations
+        var currentAndFutureConfigurations = allConfigurations
+            .Where(config => config.EndDate >= today) // EndDate >= TODAY means current or future
+            .ToList();
+
+        _logger.LogDebug($"GetCurrentAndFutureConfigurationsAsync: Found {currentAndFutureConfigurations.Count} current/future configurations out of {allConfigurations.Count} total for user {userId}");
+
+        foreach (var config in currentAndFutureConfigurations)
+        {
+            var status = config.StartDate <= today && config.EndDate >= today ? "CURRENT" : "FUTURE";
+            _logger.LogDebug($"  - Configuration {config.Id} '{config.Title}' ({config.StartDate:yyyy-MM-dd} to {config.EndDate:yyyy-MM-dd}) - {status}");
+        }
+
+        return currentAndFutureConfigurations;
+    }
+
+    /// <summary>
+    /// Filter configurations to only those that have period assignments using the specified course
+    /// </summary>
+    private List<ScheduleConfigurationResource> FilterConfigurationsUsingCourse(List<ScheduleConfigurationResource> configurations, int courseId)
+    {
+        var affectedConfigurations = configurations
+            .Where(config => config.PeriodAssignments.Any(pa => pa.CourseId == courseId))
+            .ToList();
+
+        _logger.LogDebug($"FilterConfigurationsUsingCourse: {affectedConfigurations.Count} out of {configurations.Count} configurations use course {courseId}");
+
+        foreach (var config in affectedConfigurations)
+        {
+            var periodsUsingCourse = config.PeriodAssignments
+                .Where(pa => pa.CourseId == courseId)
+                .Select(pa => pa.Period)
+                .ToList();
+
+            _logger.LogDebug($"  - Configuration {config.Id} '{config.Title}' uses course {courseId} in period(s): {string.Join(", ", periodsUsingCourse)}");
+        }
+
+        return affectedConfigurations;
+    }
+
+    /// <summary>
+    /// Determine which course a lesson belongs to through Topic hierarchy
+    /// </summary>
+    private async Task<int?> GetCourseIdForLessonAsync(Lesson lesson, int userId)
+    {
+        if (lesson.TopicId.HasValue)
+        {
+            // Direct topic assignment: Lesson → Topic → Course
+            var topic = await _topicRepository.GetByIdAsync(lesson.TopicId.Value);
+            if (topic?.UserId == userId)
+            {
+                return topic.CourseId;
+            }
+        }
+        else if (lesson.SubTopicId.HasValue)
+        {
+            // SubTopic assignment: Lesson → SubTopic → Topic → Course
+            var subTopic = await _subTopicRepository.GetByIdAsync(lesson.SubTopicId.Value, q => q.Include(st => st.Topic));
+            if (subTopic?.Topic?.UserId == userId)
+            {
+                return subTopic.Topic.CourseId;
+            }
+        }
+
+        return null;
+    }
+
     public async Task<List<LessonResource>> GetLessonsBySubtopic(int subTopicId, int userId, ArchiveFilter filter = ArchiveFilter.Active)
     {
         _logger.LogDebug("Fetching lessons by SubTopic ID: {SubTopicId} for User ID: {UserId}, Filter: {Filter}", subTopicId, userId, filter);
@@ -300,15 +462,17 @@ public class LessonService : ILessonService
     // **PARTIAL FILE** - LessonService.cs - Replace MoveLessonAsync method
     // INTEGRATION: Replace the existing MoveLessonAsync method with this enhanced version
 
+    // ✅ URGENT FIX: Replace the MoveLessonAsync method in LessonService
+
     public async Task MoveLessonAsync(LessonMoveResource moveResource, int userId)
     {
         _logger.LogInformation("=== LESSON MOVE DIAGNOSTICS START ===");
         _logger.LogInformation("MoveLessonAsync: LessonId={LessonId}, NewSubTopicId={NewSubTopicId}, NewTopicId={NewTopicId}, UserId={UserId}",
             moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId, userId);
 
-        // ✅ CRITICAL: Log positioning parameters to see why positional move isn't being called
-        _logger.LogInformation("MoveLessonAsync: RelativeToId={RelativeToId}, Position={Position}, RelativeToType={RelativeToType}",
-            moveResource.RelativeToId, moveResource.Position, moveResource.RelativeToType);
+        // ✅ UPDATED: Log new sibling-based positioning
+        _logger.LogInformation("MoveLessonAsync: AfterSiblingId={AfterSiblingId}",
+            moveResource.AfterSiblingId);
 
         // Validate input
         if (moveResource.NewSubTopicId.HasValue && moveResource.NewTopicId.HasValue)
@@ -320,30 +484,19 @@ public class LessonService : ILessonService
             throw new ArgumentException("Lesson must be moved to either SubTopic or Topic");
         }
 
-        // Check if this is a positional move
-        if (moveResource.RelativeToId.HasValue)
+        // ✅ UPDATED: Check if this is a positional move (has sibling)
+        if (moveResource.AfterSiblingId.HasValue)
         {
             _logger.LogInformation("MoveLessonAsync: POSITIONAL MOVE detected - calling MoveLessonToPositionAsync");
-
-            // Validate position parameters
-            if (moveResource.Position != "before" && moveResource.Position != "after")
-            {
-                throw new ArgumentException("Position must be 'before' or 'after'");
-            }
-            if (moveResource.RelativeToType != "Lesson" && moveResource.RelativeToType != "SubTopic")
-            {
-                throw new ArgumentException("RelativeToType must be 'Lesson' or 'SubTopic'");
-            }
-
             await _lessonRepository.MoveLessonToPositionAsync(moveResource, userId);
             _logger.LogInformation("MoveLessonAsync: POSITIONAL MOVE completed successfully");
             _logger.LogInformation("=== LESSON MOVE DIAGNOSTICS END ===");
             return;
         }
 
-        _logger.LogWarning("MoveLessonAsync: SIMPLE MOVE (append to end) - this might be wrong for drag operations!");
+        _logger.LogInformation("MoveLessonAsync: SIMPLE MOVE (first position in empty container)");
 
-        // Simple move (append to end) - FIXED: Consider all entities in Topic
+        // Simple move (first position in empty container)
         var lesson = await _lessonRepository.GetByIdAsync(moveResource.LessonId, q => q.Include(l => l.SubTopic).Include(l => l.Topic));
         if (lesson == null)
         {
@@ -360,7 +513,7 @@ public class LessonService : ILessonService
         _logger.LogInformation("MoveLessonAsync: Current lesson state - SubTopicId={CurrentSubTopicId}, TopicId={CurrentTopicId}, SortOrder={CurrentSortOrder}",
             lesson.SubTopicId, lesson.TopicId, lesson.SortOrder);
 
-        int sortOrder;
+        // ✅ SIMPLIFIED: No sibling = first position (SortOrder = 0)
         if (moveResource.NewSubTopicId.HasValue)
         {
             var newSubTopic = await _subTopicRepository.GetByIdAsync(moveResource.NewSubTopicId.Value);
@@ -371,12 +524,9 @@ public class LessonService : ILessonService
             }
             lesson.SubTopicId = moveResource.NewSubTopicId;
             lesson.TopicId = null;
+            lesson.SortOrder = 0; // ✅ First position
 
-            // Get max sort order within SubTopic
-            sortOrder = (await _lessonRepository.GetBySubTopicId(moveResource.NewSubTopicId.Value, true)
-                .MaxAsync(l => (int?)l.SortOrder) ?? -1) + 1;
-
-            _logger.LogInformation("MoveLessonAsync: Moving to SubTopic - calculated sortOrder={SortOrder}", sortOrder);
+            _logger.LogInformation("MoveLessonAsync: Moving to SubTopic - first position (SortOrder=0)");
         }
         else
         {
@@ -388,25 +538,14 @@ public class LessonService : ILessonService
             }
             lesson.TopicId = moveResource.NewTopicId;
             lesson.SubTopicId = null;
+            lesson.SortOrder = 0; // ✅ First position
 
-            // ✅ FIXED: Get max sort order across ALL entities in Topic (SubTopics + direct Lessons)
-            var maxSubTopicSort = await _subTopicRepository.GetAll()
-                .Where(st => st.TopicId == moveResource.NewTopicId.Value)
-                .MaxAsync(st => (int?)st.SortOrder) ?? -1;
-
-            var maxLessonSort = await _lessonRepository.GetByTopicId(moveResource.NewTopicId.Value, true)
-                .MaxAsync(l => (int?)l.SortOrder) ?? -1;
-
-            sortOrder = Math.Max(maxSubTopicSort, maxLessonSort) + 1;
-
-            _logger.LogInformation("MoveLessonAsync: Moving to Topic - maxSubTopicSort={MaxSubTopicSort}, maxLessonSort={MaxLessonSort}, calculated sortOrder={SortOrder}",
-                maxSubTopicSort, maxLessonSort, sortOrder);
+            _logger.LogInformation("MoveLessonAsync: Moving to Topic - first position (SortOrder=0)");
         }
 
-        lesson.SortOrder = sortOrder;
         await _lessonRepository.UpdateAsync(lesson);
 
-        _logger.LogInformation("MoveLessonAsync: SIMPLE MOVE completed - final SortOrder={FinalSortOrder}", sortOrder);
+        _logger.LogInformation("MoveLessonAsync: SIMPLE MOVE completed - final SortOrder=0");
         _logger.LogInformation("=== LESSON MOVE DIAGNOSTICS END ===");
     }
 

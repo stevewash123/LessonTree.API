@@ -96,9 +96,14 @@ namespace LessonTree.DAL.Repositories
             _logger.LogInformation($"DeleteAsync: Deleted subtopic {id}");
         }
 
-        public async Task<SubTopic> MoveSubTopicToPositionAsync(int subTopicId, int targetTopicId, int relativeToId, string position, string relativeToType)
+        // **UPDATED METHOD** - SubTopicRepository.cs - Replace MoveSubTopicToPositionAsync method
+        // RESPONSIBILITY: Sibling-based positioning with atomic database transactions
+        // DOES NOT: Handle business logic validation (that's in services)
+        // CALLED BY: SubTopicService.MoveSubTopicToPositionAsync
+
+        public async Task<SubTopic> MoveSubTopicToPositionAsync(int subTopicId, int targetTopicId, int afterSiblingId, string siblingType)
         {
-            _logger.LogInformation($"MoveSubTopicToPositionAsync: Moving subtopic {subTopicId} {position} {relativeToType} {relativeToId} in topic {targetTopicId}");
+            _logger.LogInformation($"MoveSubTopicToPositionAsync: Moving subtopic {subTopicId} after {siblingType} {afterSiblingId} in topic {targetTopicId}");
 
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -114,8 +119,8 @@ namespace LessonTree.DAL.Repositories
                 // Get all items in target topic (subtopics + direct lessons)
                 var topicItems = await GetTopicItemsAsync(targetTopicId);
 
-                // Calculate target position based on relative object
-                var targetSortOrder = CalculateTargetSortOrder(topicItems, relativeToId, position, relativeToType);
+                // Calculate target position based on sibling
+                var targetSortOrder = CalculateTargetSortOrderFromSibling(topicItems, afterSiblingId, siblingType);
 
                 _logger.LogInformation($"MoveSubTopicToPositionAsync: Calculated target sort order {targetSortOrder} for subtopic {subTopicId}");
 
@@ -140,6 +145,19 @@ namespace LessonTree.DAL.Repositories
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        private int CalculateTargetSortOrderFromSibling(List<TopicItem> topicItems, int afterSiblingId, string siblingType)
+        {
+            var siblingItem = topicItems.FirstOrDefault(i => i.Id == afterSiblingId && i.Type == siblingType);
+            if (siblingItem != null)
+            {
+                // Position after the sibling
+                return siblingItem.SortOrder + 1;
+            }
+
+            // Fallback: append to end
+            return topicItems.Any() ? topicItems.Max(i => i.SortOrder) + 1 : 0;
         }
 
         public async Task<int> GetMaxSortOrderInTopicAsync(int topicId)
@@ -189,9 +207,9 @@ namespace LessonTree.DAL.Repositories
             return items.OrderBy(i => i.SortOrder).ToList();
         }
 
-        private int CalculateTargetSortOrder(List<TopicItem> topicItems, int relativeToId, string position, string relativeToType)
+        private int CalculateTargetSortOrder(List<TopicItem> topicItems, int AfterSiblingId, string position, string relativeToType)
         {
-            var relativeItem = topicItems.FirstOrDefault(i => i.Id == relativeToId && i.Type == relativeToType);
+            var relativeItem = topicItems.FirstOrDefault(i => i.Id == AfterSiblingId && i.Type == relativeToType);
             if (relativeItem != null)
             {
                 return position == "before" ? relativeItem.SortOrder : relativeItem.SortOrder + 1;

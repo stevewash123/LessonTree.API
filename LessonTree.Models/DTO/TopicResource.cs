@@ -1,5 +1,7 @@
-﻿// File: TopicResource.cs
+﻿// ✅ COMPLETE UPDATE: TopicResource.cs - Simple sibling approach
+
 using LessonTree.Models.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace LessonTree.Models.DTO
 {
@@ -15,7 +17,7 @@ namespace LessonTree.Models.DTO
         public int UserId { get; set; }
         public int SortOrder { get; set; }
         public string Visibility { get; set; }
-        public string EntityType { get; set; } = "Topic"; 
+        public string EntityType { get; set; } = "Topic";
         public List<SubTopicResource> SubTopics { get; set; } = new List<SubTopicResource>();
         public List<LessonResource> Lessons { get; set; } = new List<LessonResource>();
         public List<NoteResource> Notes { get; set; } = new List<NoteResource>();
@@ -26,7 +28,7 @@ namespace LessonTree.Models.DTO
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public int CourseId { get; set; }
-        public string Visibility { get; set; } ="Private"; // Was string
+        public string Visibility { get; set; } = "Private";
         public int SortOrder { get; set; }
     }
 
@@ -35,19 +37,21 @@ namespace LessonTree.Models.DTO
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public string Visibility { get; set; }  
+        public string Visibility { get; set; }
         public bool Archived { get; set; }
         public int SortOrder { get; set; }
     }
 
+    // ✅ CLEAN: Simple sibling-based move resource
     public class TopicMoveResource
     {
+        [Required]
         public int TopicId { get; set; }
+
+        [Required]
         public int NewCourseId { get; set; }
 
-        // NEW: Optional positioning parameters (following Lesson pattern)
-        public int? RelativeToId { get; set; }
-        public string? Position { get; set; } // "before" | "after"  
-        public string? RelativeToType { get; set; } // "SubTopic" | "Lesson"
+        // ✅ SIMPLE: Which topic to position after (null = first position)
+        public int? AfterSiblingId { get; set; }
     }
 }

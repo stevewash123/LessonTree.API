@@ -1,4 +1,4 @@
-using LessonTree.API.Configuration;
+﻿using LessonTree.API.Configuration;
 using LessonTree.DAL;
 using LessonTree.DAL.Domain;
 using Microsoft.AspNetCore.Http.Json;
@@ -77,21 +77,20 @@ if (args.Contains("--seed"))
     {
         var context = scope.ServiceProvider.GetRequiredService<LessonTreeContext>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>(); // Added RoleManager
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
         var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+        var serviceProvider = scope.ServiceProvider; // ✅ Pass entire service provider
 
-        logger.LogInformation("Seeding database...");
+        logger.LogInformation("🌱 Starting database seeding with schedule generation...");
         try
         {
-            // Updated call: Added roleManager parameter
-            await DatabaseSeeder.SeedDatabaseAsync(context, userManager, roleManager, logger, env);
-            logger.LogInformation("Database seeding completed.");
+            // ✅ Updated call with service provider for schedule generation
+            await DatabaseSeeder.SeedDatabaseAsync(context, userManager, roleManager, logger, env, serviceProvider);
+            logger.LogInformation("🎉 Database seeding completed successfully.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to seed database: {Message}", ex.Message);
-            // Optionally, exit the application if seeding is critical
-            // Environment.Exit(1);
+            logger.LogError(ex, "❌ Failed to seed database: {Message}", ex.Message);
         }
     }
 }

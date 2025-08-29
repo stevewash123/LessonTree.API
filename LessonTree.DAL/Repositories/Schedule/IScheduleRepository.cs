@@ -32,5 +32,13 @@ namespace LessonTree.DAL.Repositories
         Task<SpecialDay> UpdateSpecialDayAsync(SpecialDayUpdateResource updateResource);
         Task DeleteSpecialDayAsync(int specialDayId);
 
+        /// <summary>
+        /// Find all schedules that contain a specific course through their configurations
+        /// </summary>
+        /// <param name="courseId">Course ID to search for</param>
+        /// <param name="userId">User ID for ownership filtering</param>
+        /// <returns>List of schedules containing the course</returns>
+        Task<List<Schedule>> FindAllSchedulesByCourseIdAsync(int courseId, int userId);
+
     }
 }

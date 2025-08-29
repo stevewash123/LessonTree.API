@@ -11,7 +11,7 @@ namespace LessonTree.Models.DTO
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public int UserId { get; set; }
-        public int ScheduleConfigurationId { get; set; } // Reference to configuration
+        public ScheduleConfigurationResource ScheduleConfiguration { get; set; } // Reference to configuration
         public bool IsLocked { get; set; }
         public DateTime CreatedDate { get; set; }
 

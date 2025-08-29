@@ -1,4 +1,7 @@
-﻿using LessonTree.Models.Enums;
+﻿// ✅ COMPLETE UPDATE: LessonResource.cs - Remove all complex validation, use simple sibling approach
+
+using LessonTree.Models.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace LessonTree.Models.DTO
 {
@@ -14,7 +17,7 @@ namespace LessonTree.Models.DTO
         public string Objective { get; set; }
         public bool Archived { get; set; }
         public string Visibility { get; set; } = "Private";
-        public int UserId { get; set; } 
+        public int UserId { get; set; }
         public string EntityType { get; set; } = "Lesson";
     }
 
@@ -48,18 +51,20 @@ namespace LessonTree.Models.DTO
         public string Visibility { get; set; }
         public bool Archived { get; set; }
         public int SortOrder { get; set; }
-        public string NodeType { get; set; } = "Lesson"; // Add nodeType
+        public string NodeType { get; set; } = "Lesson";
     }
 
+    // ✅ CLEAN: Simple sibling-based move resource
     public class LessonMoveResource
     {
+        [Required]
         public int LessonId { get; set; }
+
         public int? NewSubTopicId { get; set; }
         public int? NewTopicId { get; set; }
 
-        public int? RelativeToId { get; set; }
-        public string Position { get; set; } = string.Empty; // "before" | "after"  
-        public string RelativeToType { get; set; } = string.Empty; // "Lesson" | "SubTopic"
+        // ✅ SIMPLE: Which sibling to position after (null = first position)
+        public int? AfterSiblingId { get; set; }
     }
 
     public class LessonDetailResource
@@ -79,7 +84,7 @@ namespace LessonTree.Models.DTO
         public bool Archived { get; set; }
         public int SortOrder { get; set; }
         public string Visibility { get; set; }
-        public string EntityType { get; set; } = "Lesson"; 
+        public string EntityType { get; set; } = "Lesson";
         public List<StandardResource> Standards { get; set; } = new List<StandardResource>();
         public List<AttachmentResource> Attachments { get; set; }
         public List<NoteResource> Notes { get; set; } = new List<NoteResource>();

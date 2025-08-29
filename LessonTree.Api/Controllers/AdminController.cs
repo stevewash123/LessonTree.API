@@ -59,6 +59,11 @@ namespace LessonTree.API.Controllers
                 _logger.LogInformation("Resetting and reseeding database...");
 
                 // Clear all dependent tables in proper order
+                _context.ScheduleEvents.RemoveRange(_context.ScheduleEvents);
+                _context.Schedules.RemoveRange(_context.Schedules);
+                _context.PeriodAssignments.RemoveRange(_context.PeriodAssignments);
+                _context.ScheduleConfigurations.RemoveRange(_context.ScheduleConfigurations);
+                _context.UserConfigurations.RemoveRange(_context.UserConfigurations);
                 _context.LessonAttachments.RemoveRange(_context.LessonAttachments);
                 _context.LessonStandards.RemoveRange(_context.LessonStandards);
                 _context.Notes.RemoveRange(_context.Notes);
@@ -81,13 +86,20 @@ namespace LessonTree.API.Controllers
 
                 await _context.SaveChangesAsync();
 
-                // Reseed the database
-                await DatabaseSeeder.SeedDatabaseAsync(_context, _userManager, _roleManager, _logger, _hostEnvironment);
+                // ✅ FIXED: Get service provider and call updated SeedDatabaseAsync method
+                var serviceProvider = HttpContext.RequestServices;
+                await DatabaseSeeder.SeedDatabaseAsync(
+                    _context,
+                    _userManager,
+                    _roleManager,
+                    _logger,
+                    _hostEnvironment,
+                    serviceProvider); // ✅ ADD: Service provider parameter
 
                 _logger.LogInformation("Database reset and reseeded successfully by admin {AdminUser}", currentUser);
                 return Ok(new
                 {
-                    message = "Database reset and reseeded successfully",
+                    message = "Database reset and reseeded successfully with generated schedules",
                     timestamp = DateTime.UtcNow,
                     performedBy = currentUser
                 });

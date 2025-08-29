@@ -318,10 +318,10 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
-            .ForMember(dest => dest.ScheduleConfigurationId, opt => opt.MapFrom(src => src.ScheduleConfigurationId))
+            .ForMember(dest => dest.ScheduleConfiguration, opt => opt.MapFrom(src => src.ScheduleConfiguration))
             .ForMember(dest => dest.IsLocked, opt => opt.MapFrom(src => src.IsLocked))
             .ForMember(dest => dest.CreatedDate, opt => opt.MapFrom(src => src.CreatedDate))
-            .ForMember(dest => dest.ScheduleEvents, opt => opt.MapFrom(src => src.ScheduleEvents))
+            //.ForMember(dest => dest.ScheduleEvents, opt => opt.MapFrom(src => src.ScheduleEvents))
             .ForMember(dest => dest.SpecialDays, opt => opt.MapFrom(src => src.SpecialDays));
 
         CreateMap<ScheduleCreateResource, Schedule>()
@@ -331,7 +331,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.IsLocked, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedDate, opt => opt.Ignore()) // Set by repository
-            .ForMember(dest => dest.ScheduleEvents, opt => opt.MapFrom(src => src.ScheduleEvents ?? new List<ScheduleEventResource>()))
+            //.ForMember(dest => dest.ScheduleEvents, opt => opt.MapFrom(src => src.ScheduleEvents ?? new List<ScheduleEventResource>()))
             .ForMember(dest => dest.SpecialDays, opt => opt.MapFrom(src => src.SpecialDays ?? new List<SpecialDayResource>()));
 
         CreateMap<ScheduleEventResource, ScheduleEvent>()

@@ -4,6 +4,9 @@
 // CALLED BY: Entity Framework for all database operations
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Sqlite;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using LessonTree.DAL.Domain;
 using Microsoft.AspNetCore.Identity;
@@ -15,6 +18,7 @@ namespace LessonTree.DAL
         public LessonTreeContext(DbContextOptions<LessonTreeContext> options) : base(options)
         {
         }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -209,15 +213,17 @@ namespace LessonTree.DAL
                 .HasIndex(sd => new { sd.ScheduleId, sd.Date })
                 .HasDatabaseName("IX_SpecialDays_Schedule_Date");
 
+            // ✅ FIX: Clean ScheduleEvent configuration to eliminate LessonId1 shadow property
             modelBuilder.Entity<ScheduleEvent>(entity =>
             {
                 entity.HasKey(e => e.Id);
 
-                // CRITICAL: Explicitly configure the Lesson relationship
+                // ✅ CRITICAL: Explicit Lesson relationship configuration - this prevents LessonId1
                 entity.HasOne(e => e.Lesson)
-                      .WithMany()
+                      .WithMany() // Lesson doesn't have a ScheduleEvents collection navigation
                       .HasForeignKey(e => e.LessonId)
-                      .OnDelete(DeleteBehavior.SetNull);
+                      .OnDelete(DeleteBehavior.SetNull)
+                      .IsRequired(false);
 
                 // Schedule relationship
                 entity.HasOne(e => e.Schedule)
@@ -225,17 +231,18 @@ namespace LessonTree.DAL
                       .HasForeignKey(e => e.ScheduleId)
                       .OnDelete(DeleteBehavior.Cascade);
 
-                // CRITICAL: Tell EF that CourseId is NOT a foreign key to Course
+                // ✅ IMPORTANT: Explicitly state CourseId is NOT a foreign key
                 entity.Property(e => e.CourseId)
                       .IsRequired(false);
-                // Do NOT configure a Course navigation - CourseId is just a data field
+                // DO NOT add HasOne/WithMany for Course - CourseId is just a data field
 
-                // Properties
+                // Property configurations
                 entity.Property(e => e.LessonId).IsRequired(false);
                 entity.Property(e => e.ScheduleId).IsRequired(true);
                 entity.Property(e => e.EventType).HasMaxLength(50).IsRequired();
-                entity.Property(e => e.EventCategory).HasMaxLength(50);
-                entity.Property(e => e.Comment).HasMaxLength(1000);
+                entity.Property(e => e.EventCategory).HasMaxLength(50).IsRequired(false);
+                entity.Property(e => e.Comment).HasMaxLength(1000).IsRequired(false);
+                entity.Property(e => e.ScheduleSort).IsRequired(true);
 
                 // Indexes
                 entity.HasIndex(e => new { e.ScheduleId, e.Date, e.Period })
@@ -244,6 +251,33 @@ namespace LessonTree.DAL
 
                 entity.HasIndex(e => e.LessonId)
                       .HasDatabaseName("IX_ScheduleEvents_LessonId");
+
+                // ✅ ADD: Performance indexes for lesson queries
+                entity.HasIndex(e => new { e.ScheduleId, e.LessonId })
+                      .HasDatabaseName("IX_ScheduleEvents_Schedule_Lesson");
+            });
+
+            // ✅ ADD: Performance indexes for lesson hierarchy
+            modelBuilder.Entity<Lesson>(entity =>
+            {
+                // Existing lesson configuration...
+                entity.HasIndex(l => new { l.UserId, l.TopicId, l.SubTopicId })
+                      .HasDatabaseName("IX_Lessons_UserId_TopicId_SubTopicId");
+
+                entity.HasIndex(l => new { l.TopicId, l.SubTopicId, l.SortOrder })
+                      .HasDatabaseName("IX_Lessons_Container_SortOrder");
+            });
+
+            modelBuilder.Entity<Topic>(entity =>
+            {
+                entity.HasIndex(t => new { t.CourseId, t.SortOrder })
+                      .HasDatabaseName("IX_Topics_Course_SortOrder");
+            });
+
+            modelBuilder.Entity<SubTopic>(entity =>
+            {
+                entity.HasIndex(st => new { st.TopicId, st.SortOrder })
+                      .HasDatabaseName("IX_SubTopics_Topic_SortOrder");
             });
         }
 

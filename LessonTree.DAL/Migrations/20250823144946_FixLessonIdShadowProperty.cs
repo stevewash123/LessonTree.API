@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace LessonTree.DAL.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreateWithLessonAttachments : Migration
+    public partial class FixLessonIdShadowProperty : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -27,32 +27,6 @@ namespace LessonTree.DAL.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "AspNetUsers",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    UserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    NormalizedUserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    Email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    NormalizedEmail = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    EmailConfirmed = table.Column<bool>(type: "INTEGER", nullable: false),
-                    PasswordHash = table.Column<string>(type: "TEXT", nullable: true),
-                    SecurityStamp = table.Column<string>(type: "TEXT", nullable: true),
-                    ConcurrencyStamp = table.Column<string>(type: "TEXT", nullable: true),
-                    PhoneNumber = table.Column<string>(type: "TEXT", nullable: true),
-                    PhoneNumberConfirmed = table.Column<bool>(type: "INTEGER", nullable: false),
-                    TwoFactorEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
-                    LockoutEnd = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
-                    LockoutEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
-                    AccessFailedCount = table.Column<int>(type: "INTEGER", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_AspNetUsers", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Attachments",
                 columns: table => new
                 {
@@ -60,6 +34,7 @@ namespace LessonTree.DAL.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     Type = table.Column<int>(type: "INTEGER", nullable: false),
                     FileName = table.Column<string>(type: "TEXT", nullable: false),
+                    FileSize = table.Column<int>(type: "INTEGER", nullable: false),
                     ContentType = table.Column<string>(type: "TEXT", nullable: true),
                     Blob = table.Column<byte[]>(type: "BLOB", nullable: false),
                     GoogleDocUrl = table.Column<string>(type: "TEXT", nullable: true),
@@ -71,6 +46,20 @@ namespace LessonTree.DAL.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Attachments", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Districts",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Name = table.Column<string>(type: "TEXT", nullable: false),
+                    Description = table.Column<string>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Districts", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -90,6 +79,90 @@ namespace LessonTree.DAL.Migrations
                         name: "FK_AspNetRoleClaims_AspNetRoles_RoleId",
                         column: x => x.RoleId,
                         principalTable: "AspNetRoles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Schools",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Name = table.Column<string>(type: "TEXT", nullable: false),
+                    Description = table.Column<string>(type: "TEXT", nullable: true),
+                    DistrictId = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Schools", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Schools_Districts_DistrictId",
+                        column: x => x.DistrictId,
+                        principalTable: "Districts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AspNetUsers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    FirstName = table.Column<string>(type: "TEXT", nullable: false),
+                    LastName = table.Column<string>(type: "TEXT", nullable: false),
+                    DistrictId = table.Column<int>(type: "INTEGER", nullable: true),
+                    SchoolId = table.Column<int>(type: "INTEGER", nullable: true),
+                    UserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    NormalizedUserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    Email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    NormalizedEmail = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    EmailConfirmed = table.Column<bool>(type: "INTEGER", nullable: false),
+                    PasswordHash = table.Column<string>(type: "TEXT", nullable: true),
+                    SecurityStamp = table.Column<string>(type: "TEXT", nullable: true),
+                    ConcurrencyStamp = table.Column<string>(type: "TEXT", nullable: true),
+                    PhoneNumber = table.Column<string>(type: "TEXT", nullable: true),
+                    PhoneNumberConfirmed = table.Column<bool>(type: "INTEGER", nullable: false),
+                    TwoFactorEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
+                    LockoutEnd = table.Column<DateTimeOffset>(type: "TEXT", nullable: true),
+                    LockoutEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
+                    AccessFailedCount = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AspNetUsers_Districts_DistrictId",
+                        column: x => x.DistrictId,
+                        principalTable: "Districts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_AspNetUsers_Schools_SchoolId",
+                        column: x => x.SchoolId,
+                        principalTable: "Schools",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Departments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Name = table.Column<string>(type: "TEXT", nullable: false),
+                    Description = table.Column<string>(type: "TEXT", nullable: true),
+                    SchoolId = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Departments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Departments_Schools_SchoolId",
+                        column: x => x.SchoolId,
+                        principalTable: "Schools",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -180,48 +253,6 @@ namespace LessonTree.DAL.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Team",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", nullable: false),
-                    Description = table.Column<string>(type: "TEXT", nullable: true),
-                    OwnerId = table.Column<int>(type: "INTEGER", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Team", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Team_AspNetUsers_OwnerId",
-                        column: x => x.OwnerId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "UserConfiguration",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    UserId = table.Column<int>(type: "INTEGER", nullable: false),
-                    SettingsJson = table.Column<string>(type: "TEXT", nullable: true),
-                    LastUpdated = table.Column<DateTime>(type: "TEXT", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UserConfiguration", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_UserConfiguration_AspNetUsers_UserId",
-                        column: x => x.UserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Courses",
                 columns: table => new
                 {
@@ -230,9 +261,8 @@ namespace LessonTree.DAL.Migrations
                     Title = table.Column<string>(type: "TEXT", nullable: false),
                     Description = table.Column<string>(type: "TEXT", nullable: true),
                     UserId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Visibility = table.Column<int>(type: "INTEGER", nullable: false),
-                    TeamId = table.Column<int>(type: "INTEGER", nullable: true),
-                    Archived = table.Column<bool>(type: "INTEGER", nullable: false)
+                    Archived = table.Column<bool>(type: "INTEGER", nullable: false),
+                    Visibility = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -243,60 +273,78 @@ namespace LessonTree.DAL.Migrations
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Courses_Team_TeamId",
-                        column: x => x.TeamId,
-                        principalTable: "Team",
-                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "UserTeams",
-                columns: table => new
-                {
-                    UserId = table.Column<int>(type: "INTEGER", nullable: false),
-                    TeamId = table.Column<int>(type: "INTEGER", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UserTeams", x => new { x.UserId, x.TeamId });
-                    table.ForeignKey(
-                        name: "FK_UserTeams_AspNetUsers_UserId",
-                        column: x => x.UserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_UserTeams_Team_TeamId",
-                        column: x => x.TeamId,
-                        principalTable: "Team",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Schedule",
+                name: "ScheduleConfigurations",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Title = table.Column<string>(type: "TEXT", nullable: false),
-                    CourseId = table.Column<int>(type: "INTEGER", nullable: false),
-                    UserId = table.Column<int>(type: "INTEGER", nullable: false)
+                    UserId = table.Column<int>(type: "INTEGER", nullable: false),
+                    Title = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    SchoolYear = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
+                    StartDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    PeriodsPerDay = table.Column<int>(type: "INTEGER", nullable: false),
+                    TeachingDays = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    LastUpdated = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    IsActive = table.Column<bool>(type: "INTEGER", nullable: false),
+                    IsTemplate = table.Column<bool>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Schedule", x => x.Id);
+                    table.PrimaryKey("PK_ScheduleConfigurations", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Schedule_AspNetUsers_UserId",
+                        name: "FK_ScheduleConfigurations_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserConfigurations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    UserId = table.Column<int>(type: "INTEGER", nullable: false),
+                    LastUpdated = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    SettingsJson = table.Column<string>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserConfigurations", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Schedule_Courses_CourseId",
-                        column: x => x.CourseId,
-                        principalTable: "Courses",
+                        name: "FK_UserConfigurations_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserDepartments",
+                columns: table => new
+                {
+                    DepartmentsId = table.Column<int>(type: "INTEGER", nullable: false),
+                    MembersId = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserDepartments", x => new { x.DepartmentsId, x.MembersId });
+                    table.ForeignKey(
+                        name: "FK_UserDepartments_AspNetUsers_MembersId",
+                        column: x => x.MembersId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_UserDepartments_Departments_DepartmentsId",
+                        column: x => x.DepartmentsId,
+                        principalTable: "Departments",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -311,9 +359,9 @@ namespace LessonTree.DAL.Migrations
                     Description = table.Column<string>(type: "TEXT", nullable: true),
                     CourseId = table.Column<int>(type: "INTEGER", nullable: false),
                     UserId = table.Column<int>(type: "INTEGER", nullable: false),
+                    Archived = table.Column<bool>(type: "INTEGER", nullable: false),
                     Visibility = table.Column<int>(type: "INTEGER", nullable: false),
-                    TeamId = table.Column<int>(type: "INTEGER", nullable: true),
-                    Archived = table.Column<bool>(type: "INTEGER", nullable: false)
+                    SortOrder = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -330,11 +378,72 @@ namespace LessonTree.DAL.Migrations
                         principalTable: "Courses",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "PeriodAssignments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    ScheduleConfigurationId = table.Column<int>(type: "INTEGER", nullable: false),
+                    Period = table.Column<int>(type: "INTEGER", nullable: false),
+                    CourseId = table.Column<int>(type: "INTEGER", nullable: true),
+                    SpecialPeriodType = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
+                    TeachingDays = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                    Room = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
+                    Notes = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
+                    BackgroundColor = table.Column<string>(type: "TEXT", maxLength: 7, nullable: false),
+                    FontColor = table.Column<string>(type: "TEXT", maxLength: 7, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PeriodAssignments", x => x.Id);
+                    table.CheckConstraint("CK_PeriodAssignment_CourseId_Positive", "CourseId IS NULL OR CourseId > 0");
+                    table.CheckConstraint("CK_PeriodAssignment_ExclusiveAssignment", "(CourseId IS NOT NULL AND SpecialPeriodType IS NULL) OR (CourseId IS NULL AND SpecialPeriodType IS NOT NULL)");
+                    table.CheckConstraint("CK_PeriodAssignment_TeachingDays_NotEmpty", "TeachingDays IS NOT NULL AND LENGTH(TRIM(TeachingDays)) > 0");
+                    table.CheckConstraint("CK_PeriodAssignment_TeachingDays_ValidDays", "TeachingDays NOT LIKE '%[^MondayTueswdhFrig,]%' AND \r\n                        (TeachingDays LIKE '%Monday%' OR \r\n                        TeachingDays LIKE '%Tuesday%' OR \r\n                        TeachingDays LIKE '%Wednesday%' OR \r\n                        TeachingDays LIKE '%Thursday%' OR \r\n                        TeachingDays LIKE '%Friday%' OR\r\n                        TeachingDays LIKE '%Saturday%' OR\r\n                        TeachingDays LIKE '%Sunday%')");
                     table.ForeignKey(
-                        name: "FK_Topics_Team_TeamId",
-                        column: x => x.TeamId,
-                        principalTable: "Team",
+                        name: "FK_PeriodAssignments_ScheduleConfigurations_ScheduleConfigurationId",
+                        column: x => x.ScheduleConfigurationId,
+                        principalTable: "ScheduleConfigurations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Schedules",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    UserId = table.Column<int>(type: "INTEGER", nullable: false),
+                    ScheduleConfigurationId = table.Column<int>(type: "INTEGER", nullable: false),
+                    Title = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    IsLocked = table.Column<bool>(type: "INTEGER", nullable: false),
+                    CreatedDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    CourseId = table.Column<int>(type: "INTEGER", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Schedules", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Schedules_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Schedules_Courses_CourseId",
+                        column: x => x.CourseId,
+                        principalTable: "Courses",
                         principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Schedules_ScheduleConfigurations_ScheduleConfigurationId",
+                        column: x => x.ScheduleConfigurationId,
+                        principalTable: "ScheduleConfigurations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -344,7 +453,9 @@ namespace LessonTree.DAL.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     Title = table.Column<string>(type: "TEXT", nullable: false),
-                    TopicId = table.Column<int>(type: "INTEGER", nullable: false),
+                    CourseId = table.Column<int>(type: "INTEGER", nullable: false),
+                    TopicId = table.Column<int>(type: "INTEGER", nullable: true),
+                    DistrictId = table.Column<int>(type: "INTEGER", nullable: true),
                     Description = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
                     StandardType = table.Column<string>(type: "TEXT", maxLength: 20, nullable: true)
                 },
@@ -352,11 +463,23 @@ namespace LessonTree.DAL.Migrations
                 {
                     table.PrimaryKey("PK_Standards", x => x.Id);
                     table.ForeignKey(
+                        name: "FK_Standards_Courses_CourseId",
+                        column: x => x.CourseId,
+                        principalTable: "Courses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Standards_Districts_DistrictId",
+                        column: x => x.DistrictId,
+                        principalTable: "Districts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
                         name: "FK_Standards_Topics_TopicId",
                         column: x => x.TopicId,
                         principalTable: "Topics",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -370,9 +493,9 @@ namespace LessonTree.DAL.Migrations
                     TopicId = table.Column<int>(type: "INTEGER", nullable: false),
                     UserId = table.Column<int>(type: "INTEGER", nullable: false),
                     Visibility = table.Column<int>(type: "INTEGER", nullable: false),
-                    TeamId = table.Column<int>(type: "INTEGER", nullable: true),
                     IsDefault = table.Column<bool>(type: "INTEGER", nullable: false),
-                    Archived = table.Column<bool>(type: "INTEGER", nullable: false)
+                    Archived = table.Column<bool>(type: "INTEGER", nullable: false),
+                    SortOrder = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -384,14 +507,32 @@ namespace LessonTree.DAL.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_SubTopics_Team_TeamId",
-                        column: x => x.TeamId,
-                        principalTable: "Team",
-                        principalColumn: "Id");
-                    table.ForeignKey(
                         name: "FK_SubTopics_Topics_TopicId",
                         column: x => x.TopicId,
                         principalTable: "Topics",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "SpecialDays",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    ScheduleId = table.Column<int>(type: "INTEGER", nullable: false),
+                    Date = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Periods = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    EventType = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    Title = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SpecialDays", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_SpecialDays_Schedules_ScheduleId",
+                        column: x => x.ScheduleId,
+                        principalTable: "Schedules",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -411,11 +552,11 @@ namespace LessonTree.DAL.Migrations
                     SpecialNeeds = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
                     Assessment = table.Column<string>(type: "TEXT", maxLength: 250, nullable: true),
                     UserId = table.Column<int>(type: "INTEGER", nullable: false),
-                    Visibility = table.Column<int>(type: "INTEGER", nullable: false),
-                    TeamId = table.Column<int>(type: "INTEGER", nullable: true),
                     SubTopicId = table.Column<int>(type: "INTEGER", nullable: true),
                     TopicId = table.Column<int>(type: "INTEGER", nullable: true),
-                    Archived = table.Column<bool>(type: "INTEGER", nullable: false)
+                    Archived = table.Column<bool>(type: "INTEGER", nullable: false),
+                    Visibility = table.Column<int>(type: "INTEGER", nullable: false),
+                    SortOrder = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -432,11 +573,6 @@ namespace LessonTree.DAL.Migrations
                         principalTable: "SubTopics",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Lessons_Team_TeamId",
-                        column: x => x.TeamId,
-                        principalTable: "Team",
-                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Lessons_Topics_TopicId",
                         column: x => x.TopicId,
@@ -494,80 +630,86 @@ namespace LessonTree.DAL.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Note",
+                name: "Notes",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     Content = table.Column<string>(type: "TEXT", nullable: false),
-                    IsPublic = table.Column<bool>(type: "INTEGER", nullable: false),
                     UserId = table.Column<int>(type: "INTEGER", nullable: false),
                     CreatedDate = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    TeamId = table.Column<int>(type: "INTEGER", nullable: true),
                     CourseId = table.Column<int>(type: "INTEGER", nullable: true),
                     TopicId = table.Column<int>(type: "INTEGER", nullable: true),
                     SubTopicId = table.Column<int>(type: "INTEGER", nullable: true),
-                    LessonId = table.Column<int>(type: "INTEGER", nullable: true)
+                    LessonId = table.Column<int>(type: "INTEGER", nullable: true),
+                    Visibility = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Note", x => x.Id);
+                    table.PrimaryKey("PK_Notes", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Note_AspNetUsers_UserId",
+                        name: "FK_Notes_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_Note_Courses_CourseId",
+                        name: "FK_Notes_Courses_CourseId",
                         column: x => x.CourseId,
                         principalTable: "Courses",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Note_Lessons_LessonId",
+                        name: "FK_Notes_Lessons_LessonId",
                         column: x => x.LessonId,
                         principalTable: "Lessons",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Note_SubTopics_SubTopicId",
+                        name: "FK_Notes_SubTopics_SubTopicId",
                         column: x => x.SubTopicId,
                         principalTable: "SubTopics",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Note_Team_TeamId",
-                        column: x => x.TeamId,
-                        principalTable: "Team",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_Note_Topics_TopicId",
+                        name: "FK_Notes_Topics_TopicId",
                         column: x => x.TopicId,
                         principalTable: "Topics",
                         principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "ScheduleDay",
+                name: "ScheduleEvents",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     ScheduleId = table.Column<int>(type: "INTEGER", nullable: false),
+                    CourseId = table.Column<int>(type: "INTEGER", nullable: true),
                     Date = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Period = table.Column<int>(type: "INTEGER", nullable: false),
                     LessonId = table.Column<int>(type: "INTEGER", nullable: true),
-                    SpecialCode = table.Column<string>(type: "TEXT", nullable: true)
+                    EventType = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                    EventCategory = table.Column<string>(type: "TEXT", maxLength: 50, nullable: true),
+                    Comment = table.Column<string>(type: "TEXT", maxLength: 1000, nullable: true),
+                    ScheduleSort = table.Column<int>(type: "INTEGER", nullable: false),
+                    LessonId1 = table.Column<int>(type: "INTEGER", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ScheduleDay", x => x.Id);
+                    table.PrimaryKey("PK_ScheduleEvents", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ScheduleDay_Lessons_LessonId",
+                        name: "FK_ScheduleEvents_Lessons_LessonId",
                         column: x => x.LessonId,
+                        principalTable: "Lessons",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_ScheduleEvents_Lessons_LessonId1",
+                        column: x => x.LessonId1,
                         principalTable: "Lessons",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_ScheduleDay_Schedule_ScheduleId",
+                        name: "FK_ScheduleEvents_Schedules_ScheduleId",
                         column: x => x.ScheduleId,
-                        principalTable: "Schedule",
+                        principalTable: "Schedules",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -604,15 +746,20 @@ namespace LessonTree.DAL.Migrations
                 column: "NormalizedEmail");
 
             migrationBuilder.CreateIndex(
+                name: "IX_AspNetUsers_DistrictId",
+                table: "AspNetUsers",
+                column: "DistrictId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUsers_SchoolId",
+                table: "AspNetUsers",
+                column: "SchoolId");
+
+            migrationBuilder.CreateIndex(
                 name: "UserNameIndex",
                 table: "AspNetUsers",
                 column: "NormalizedUserName",
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Courses_TeamId",
-                table: "Courses",
-                column: "TeamId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Courses_UserId",
@@ -620,9 +767,19 @@ namespace LessonTree.DAL.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Departments_SchoolId",
+                table: "Departments",
+                column: "SchoolId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_LessonAttachments_AttachmentId",
                 table: "LessonAttachments",
                 column: "AttachmentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Lessons_Container_SortOrder",
+                table: "Lessons",
+                columns: new[] { "TopicId", "SubTopicId", "SortOrder" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Lessons_SubTopicId",
@@ -630,19 +787,9 @@ namespace LessonTree.DAL.Migrations
                 column: "SubTopicId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Lessons_TeamId",
+                name: "IX_Lessons_UserId_TopicId_SubTopicId",
                 table: "Lessons",
-                column: "TeamId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Lessons_TopicId",
-                table: "Lessons",
-                column: "TopicId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Lessons_UserId",
-                table: "Lessons",
-                column: "UserId");
+                columns: new[] { "UserId", "TopicId", "SubTopicId" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_LessonStandards_StandardId",
@@ -650,54 +797,101 @@ namespace LessonTree.DAL.Migrations
                 column: "StandardId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Note_CourseId",
-                table: "Note",
+                name: "IX_Notes_CourseId",
+                table: "Notes",
                 column: "CourseId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Note_LessonId",
-                table: "Note",
+                name: "IX_Notes_LessonId",
+                table: "Notes",
                 column: "LessonId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Note_SubTopicId",
-                table: "Note",
+                name: "IX_Notes_SubTopicId",
+                table: "Notes",
                 column: "SubTopicId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Note_TeamId",
-                table: "Note",
-                column: "TeamId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Note_TopicId",
-                table: "Note",
+                name: "IX_Notes_TopicId",
+                table: "Notes",
                 column: "TopicId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Note_UserId",
-                table: "Note",
+                name: "IX_Notes_UserId",
+                table: "Notes",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Schedule_CourseId",
-                table: "Schedule",
-                column: "CourseId");
+                name: "IX_PeriodAssignments_ScheduleConfigurationId_Period",
+                table: "PeriodAssignments",
+                columns: new[] { "ScheduleConfigurationId", "Period" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Schedule_UserId",
-                table: "Schedule",
-                column: "UserId");
+                name: "IX_ScheduleConfigurations_UserId_IsActive",
+                table: "ScheduleConfigurations",
+                columns: new[] { "UserId", "IsActive" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_ScheduleDay_LessonId",
-                table: "ScheduleDay",
+                name: "IX_ScheduleConfigurations_UserId_SchoolYear",
+                table: "ScheduleConfigurations",
+                columns: new[] { "UserId", "SchoolYear" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ScheduleEvents_LessonId",
+                table: "ScheduleEvents",
                 column: "LessonId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_ScheduleDay_ScheduleId",
-                table: "ScheduleDay",
-                column: "ScheduleId");
+                name: "IX_ScheduleEvents_LessonId1",
+                table: "ScheduleEvents",
+                column: "LessonId1");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ScheduleEvents_Schedule_Date_Period",
+                table: "ScheduleEvents",
+                columns: new[] { "ScheduleId", "Date", "Period" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ScheduleEvents_Schedule_Lesson",
+                table: "ScheduleEvents",
+                columns: new[] { "ScheduleId", "LessonId" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Schedules_CourseId",
+                table: "Schedules",
+                column: "CourseId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Schedules_ScheduleConfigurationId",
+                table: "Schedules",
+                column: "ScheduleConfigurationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Schedules_UserId",
+                table: "Schedules",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Schools_DistrictId",
+                table: "Schools",
+                column: "DistrictId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SpecialDays_Schedule_Date",
+                table: "SpecialDays",
+                columns: new[] { "ScheduleId", "Date" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Standards_CourseId",
+                table: "Standards",
+                column: "CourseId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Standards_DistrictId",
+                table: "Standards",
+                column: "DistrictId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Standards_TopicId",
@@ -705,14 +899,9 @@ namespace LessonTree.DAL.Migrations
                 column: "TopicId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_SubTopics_TeamId",
+                name: "IX_SubTopics_Topic_SortOrder",
                 table: "SubTopics",
-                column: "TeamId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_SubTopics_TopicId",
-                table: "SubTopics",
-                column: "TopicId");
+                columns: new[] { "TopicId", "SortOrder" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_SubTopics_UserId",
@@ -720,19 +909,9 @@ namespace LessonTree.DAL.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Team_OwnerId",
-                table: "Team",
-                column: "OwnerId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Topics_CourseId",
+                name: "IX_Topics_Course_SortOrder",
                 table: "Topics",
-                column: "CourseId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Topics_TeamId",
-                table: "Topics",
-                column: "TeamId");
+                columns: new[] { "CourseId", "SortOrder" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Topics_UserId",
@@ -740,15 +919,15 @@ namespace LessonTree.DAL.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserConfiguration_UserId",
-                table: "UserConfiguration",
+                name: "IX_UserConfigurations_UserId",
+                table: "UserConfigurations",
                 column: "UserId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserTeams_TeamId",
-                table: "UserTeams",
-                column: "TeamId");
+                name: "IX_UserDepartments_MembersId",
+                table: "UserDepartments",
+                column: "MembersId");
         }
 
         /// <inheritdoc />
@@ -776,16 +955,22 @@ namespace LessonTree.DAL.Migrations
                 name: "LessonStandards");
 
             migrationBuilder.DropTable(
-                name: "Note");
+                name: "Notes");
 
             migrationBuilder.DropTable(
-                name: "ScheduleDay");
+                name: "PeriodAssignments");
 
             migrationBuilder.DropTable(
-                name: "UserConfiguration");
+                name: "ScheduleEvents");
 
             migrationBuilder.DropTable(
-                name: "UserTeams");
+                name: "SpecialDays");
+
+            migrationBuilder.DropTable(
+                name: "UserConfigurations");
+
+            migrationBuilder.DropTable(
+                name: "UserDepartments");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
@@ -800,10 +985,16 @@ namespace LessonTree.DAL.Migrations
                 name: "Lessons");
 
             migrationBuilder.DropTable(
-                name: "Schedule");
+                name: "Schedules");
+
+            migrationBuilder.DropTable(
+                name: "Departments");
 
             migrationBuilder.DropTable(
                 name: "SubTopics");
+
+            migrationBuilder.DropTable(
+                name: "ScheduleConfigurations");
 
             migrationBuilder.DropTable(
                 name: "Topics");
@@ -812,10 +1003,13 @@ namespace LessonTree.DAL.Migrations
                 name: "Courses");
 
             migrationBuilder.DropTable(
-                name: "Team");
+                name: "AspNetUsers");
 
             migrationBuilder.DropTable(
-                name: "AspNetUsers");
+                name: "Schools");
+
+            migrationBuilder.DropTable(
+                name: "Districts");
         }
     }
 }

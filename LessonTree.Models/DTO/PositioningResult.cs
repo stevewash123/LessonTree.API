@@ -3,6 +3,33 @@
 
 namespace LessonTree.Models.DTO
 {
+
+    public class EntityPositionResult
+    {
+        public bool IsSuccess { get; set; }
+        public string ErrorMessage { get; set; } = string.Empty;
+        public List<EntityStateInfo> ModifiedEntities { get; set; } = new();
+
+        public static EntityPositionResult Success(List<EntityStateInfo> entities) =>
+            new() { IsSuccess = true, ModifiedEntities = entities };
+
+        public static EntityPositionResult Failure(string error) =>
+            new() { IsSuccess = false, ErrorMessage = error };
+    }
+
+
+    // ✅ ENTITY STATE: Complete state information for UI updates
+    public class EntityStateInfo
+    {
+        public int Id { get; set; }
+        public string Type { get; set; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public int SortOrder { get; set; }
+        public int? TopicId { get; set; }
+        public int? SubTopicId { get; set; }
+        public bool IsMovedEntity { get; set; }
+    }
+
     /// <summary>
     /// Information about an entity affected by positioning
     /// </summary>

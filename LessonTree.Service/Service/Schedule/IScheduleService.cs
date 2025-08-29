@@ -1,10 +1,11 @@
 ﻿using LessonTree.Models.DTO;
+using LessonTree.BLL.Services; // For the new result types
 
 namespace LessonTree.BLL.Services
 {
     /// <summary>
-    /// Service interface for schedule operations
-    /// Handles CRUD operations for user schedules and special days
+    /// Service interface for schedule operations with auto-generation capabilities
+    /// Handles CRUD operations for user schedules and special days + schedule generation
     /// </summary>
     public interface IScheduleService
     {
@@ -57,6 +58,69 @@ namespace LessonTree.BLL.Services
         /// <returns>Task completion</returns>
         Task DeleteUserScheduleAsync(int userId);
 
+        // === AUTO-GENERATION METHODS (NEW) ===
+
+        /// <summary>
+        /// Find all schedules that contain a specific course
+        /// Used by lesson addition workflow to trigger regeneration
+        /// </summary>
+        Task<List<ScheduleResource>> FindAllSchedulesByCourseIdAsync(int courseId, int userId);
+
+        /// <summary>
+        /// Create schedule automatically from configuration (Phase 1 auto-generation)
+        /// Replaces frontend generation workflow
+        /// </summary>
+        /// <param name="configurationId">Schedule configuration ID</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Generated schedule with events</returns>
+        Task<ScheduleResource> CreateScheduleFromConfigurationAsync(int configurationId, int userId);
+
+        /// <summary>
+        /// Regenerate schedule when configuration is updated
+        /// Handles configuration changes that affect schedule structure
+        /// </summary>
+        /// <param name="configurationId">Updated configuration ID</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Regenerated schedule</returns>
+        Task<ScheduleResource> RegenerateScheduleFromConfigurationAsync(int configurationId, int userId);
+
+        /// <summary>
+        /// Continue lesson sequences in existing schedule
+        /// Extends schedule with additional lesson sequence events
+        /// </summary>
+        /// <param name="scheduleId">Existing schedule ID</param>
+        /// <param name="continuationRequest">Continuation parameters</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Updated schedule with continuation events</returns>
+        Task<ScheduleResource> ContinueSequencesAsync(int scheduleId, SequenceContinuationRequest continuationRequest, int userId);
+
+        /// <summary>
+        /// Validate configuration for schedule generation
+        /// Provides detailed validation feedback without generating
+        /// </summary>
+        /// <param name="configurationId">Configuration to validate</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Validation result with detailed feedback</returns>
+        Task<ScheduleValidationResult> ValidateConfigurationAsync(int configurationId, int userId);
+
+        /// <summary>
+        /// Get schedule generation preview/summary
+        /// Shows what would be generated without creating schedule
+        /// </summary>
+        /// <param name="configurationId">Configuration to preview</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Generation preview information</returns>
+        Task<ScheduleGenerationPreview> GetGenerationPreviewAsync(int configurationId, int userId);
+
+        /// <summary>
+        /// Analyze sequence state for existing schedule
+        /// </summary>
+        /// <param name="scheduleId">Schedule ID</param>
+        /// <param name="afterDate">Date to analyze from</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Sequence analysis result</returns>
+        Task<SequenceAnalysisResult> AnalyzeSequenceStateAsync(int scheduleId, DateTime afterDate, int userId);
+
         // === SPECIAL DAY OPERATIONS ===
 
         /// <summary>
@@ -103,5 +167,7 @@ namespace LessonTree.BLL.Services
         /// <param name="userId">User ID for ownership validation</param>
         /// <returns>Task completion</returns>
         Task DeleteSpecialDayAsync(int scheduleId, int specialDayId, int userId);
+
+
     }
 }

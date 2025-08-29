@@ -238,7 +238,6 @@ public class SubTopicService : ISubTopicService
         {
             throw new ArgumentException($"SubTopic {moveResource.SubTopicId} not found");
         }
-
         if (subTopic.UserId != userId)
         {
             throw new UnauthorizedAccessException($"SubTopic {moveResource.SubTopicId} not owned by user {userId}");
@@ -250,23 +249,21 @@ public class SubTopicService : ISubTopicService
         {
             throw new ArgumentException($"Target topic {moveResource.NewTopicId} not found");
         }
-
         if (targetTopic.UserId != userId)
         {
             throw new UnauthorizedAccessException($"Target topic {moveResource.NewTopicId} not owned by user {userId}");
         }
 
-        // Route operation: positional move vs simple move
+        // ✅ UPDATED: Route operation based on sibling positioning
         SubTopicResource result;
-
-        if (moveResource.RelativeToId.HasValue)
+        if (moveResource.AfterSiblingId.HasValue)  // ✅ CHANGED: AfterSiblingId → AfterSiblingId
         {
             // Positional move - delegate to repository for atomic operation
             result = await MoveSubTopicToPositionAsync(moveResource, userId);
         }
         else
         {
-            // Simple move - update topic and append to end
+            // Simple move - update topic and append to end (first position in empty container)
             result = await MoveSubTopicSimpleAsync(moveResource, userId);
         }
 
@@ -274,30 +271,37 @@ public class SubTopicService : ISubTopicService
         return result;
     }
 
+    // **FIXED METHODS** - SubTopicService.cs - Replace the problematic move methods
+    // RESPONSIBILITY: Clean up duplicate methods and fix repository calls
+    // DOES NOT: Change business logic (just fixes compilation errors)
+    // CALLED BY: SubTopicController for move operations
+
+    // ✅ REPLACE: MoveSubTopicToPositionAsync method in SubTopicService
     private async Task<SubTopicResource> MoveSubTopicToPositionAsync(SubTopicMoveResource moveResource, int userId)
     {
-        // Validate relative object exists and is in target topic
-        if (moveResource.RelativeToType == "SubTopic")
+        // ✅ NEW: Discover what type of entity the sibling is
+        var siblingType = await DetermineSiblingTypeAsync(moveResource.AfterSiblingId.Value, userId);
+
+        // ✅ CONVERTED: Same validation logic, just using discovered type
+        if (siblingType == "SubTopic")
         {
-            var relativeSubTopic = await _subTopicRepository.GetByIdAsync(moveResource.RelativeToId.Value);
+            var relativeSubTopic = await _subTopicRepository.GetByIdAsync(moveResource.AfterSiblingId.Value);
             if (relativeSubTopic == null)
             {
-                throw new ArgumentException($"Relative subtopic {moveResource.RelativeToId.Value} not found");
+                throw new ArgumentException($"Relative subtopic {moveResource.AfterSiblingId.Value} not found");
             }
-
             if (relativeSubTopic.TopicId != moveResource.NewTopicId)
             {
                 throw new ArgumentException("Relative subtopic must be in the target topic");
             }
         }
-        else if (moveResource.RelativeToType == "Lesson")
+        else if (siblingType == "Lesson")
         {
-            var relativeLesson = await _lessonRepository.GetByIdAsync(moveResource.RelativeToId.Value);
+            var relativeLesson = await _lessonRepository.GetByIdAsync(moveResource.AfterSiblingId.Value);
             if (relativeLesson == null)
             {
-                throw new ArgumentException($"Relative lesson {moveResource.RelativeToId.Value} not found");
+                throw new ArgumentException($"Relative lesson {moveResource.AfterSiblingId.Value} not found");
             }
-
             // Check if lesson is in target topic (either direct or through subtopic)
             if (relativeLesson.TopicId != moveResource.NewTopicId &&
                 relativeLesson.SubTopic?.TopicId != moveResource.NewTopicId)
@@ -307,21 +311,22 @@ public class SubTopicService : ISubTopicService
         }
         else
         {
-            throw new ArgumentException("RelativeToType must be 'SubTopic' or 'Lesson' for subtopic positioning");
+            throw new ArgumentException($"Sibling type '{siblingType}' is not valid for subtopic positioning. Must be 'SubTopic' or 'Lesson'");
         }
 
-        // Delegate atomic positioning to repository
+        // ✅ FIXED: Updated call to match new repository signature
         var positionedSubTopic = await _subTopicRepository.MoveSubTopicToPositionAsync(
             moveResource.SubTopicId,
             moveResource.NewTopicId,
-            moveResource.RelativeToId.Value,
-            moveResource.Position ?? "after",
-            moveResource.RelativeToType ?? "SubTopic"
+            moveResource.AfterSiblingId.Value,
+            siblingType  // ✅ SIMPLIFIED: Just pass the discovered type
         );
 
         return _mapper.Map<SubTopicResource>(positionedSubTopic);
     }
 
+    // ✅ REPLACE: MoveSubTopicSimpleAsync method (REMOVE DUPLICATE)
+    // Only keep ONE version of this method
     private async Task<SubTopicResource> MoveSubTopicSimpleAsync(SubTopicMoveResource moveResource, int userId)
     {
         // Get subtopic and update topic
@@ -341,6 +346,31 @@ public class SubTopicService : ISubTopicService
         return _mapper.Map<SubTopicResource>(subTopic);
     }
 
+    private async Task<string> DetermineSiblingTypeAsync(int siblingId, int userId)
+    {
+        // Check if it's a Lesson
+        var lesson = await _lessonRepository.GetByIdAsync(siblingId);
+        if (lesson != null && lesson.UserId == userId && !lesson.Archived)
+        {
+            return "Lesson";
+        }
+
+        // Check if it's a SubTopic  
+        var subTopic = await _subTopicRepository.GetByIdAsync(siblingId);
+        if (subTopic != null && subTopic.UserId == userId && !subTopic.Archived)
+        {
+            return "SubTopic";
+        }
+
+        // Check if it's a Topic
+        var topic = await _topicRepository.GetByIdAsync(siblingId);
+        if (topic != null && topic.UserId == userId && !topic.Archived)
+        {
+            return "Topic";
+        }
+
+        throw new ArgumentException($"Sibling entity {siblingId} not found or not accessible to user {userId}");
+    }
 
     public async Task<SubTopicResource> CopySubTopicAsync(int subTopicId, int newTopicId, int userId)
     {

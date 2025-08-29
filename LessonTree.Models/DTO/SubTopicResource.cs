@@ -1,5 +1,7 @@
-﻿// File: SubTopicResource.cs
+﻿// ✅ COMPLETE UPDATE: SubTopicResource.cs - Simple sibling approach
+
 using LessonTree.Models.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace LessonTree.Models.DTO
 {
@@ -16,7 +18,7 @@ namespace LessonTree.Models.DTO
         public int UserId { get; set; }
         public int SortOrder { get; set; }
         public string Visibility { get; set; }
-        public string EntityType { get; set; } = "SubTopic"; 
+        public string EntityType { get; set; } = "SubTopic";
         public List<LessonResource> Lessons { get; set; } = new List<LessonResource>();
         public List<NoteResource> Notes { get; set; } = new List<NoteResource>();
     }
@@ -40,15 +42,16 @@ namespace LessonTree.Models.DTO
         public int SortOrder { get; set; }
     }
 
+    // ✅ CLEAN: Simple sibling-based move resource
     public class SubTopicMoveResource
     {
+        [Required]
         public int SubTopicId { get; set; }
+
+        [Required]
         public int NewTopicId { get; set; }
 
-        // NEW: Optional positioning parameters (following Lesson pattern)
-        public int? RelativeToId { get; set; }
-        public string? Position { get; set; } // "before" | "after"  
-        public string? RelativeToType { get; set; } // "SubTopic" | "Lesson"
+        // ✅ SIMPLE: Which sibling to position after (null = first position)
+        public int? AfterSiblingId { get; set; }
     }
-
 }

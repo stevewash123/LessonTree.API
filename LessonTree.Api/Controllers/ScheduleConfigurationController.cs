@@ -1,4 +1,7 @@
-﻿using LessonTree.Api.Controllers;
+﻿// **MODIFIED FILE** - Complete ScheduleConfigurationController.cs with Auto-Generation Endpoints
+// INTEGRATION: Add these endpoints to existing ScheduleConfigurationController.cs
+
+using LessonTree.Api.Controllers;
 using LessonTree.API.Controllers;
 using LessonTree.BLL.Services;
 using LessonTree.Models.DTO;
@@ -9,8 +12,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace LessonTree.Api.Controllers
 {
     /// <summary>
-    /// Controller for schedule configuration CRUD operations
-    /// Handles user schedule configuration templates and settings
+    /// Controller for schedule configuration CRUD operations with auto-generation
+    /// Handles user schedule configuration templates and settings + automatic schedule generation
     /// </summary>
     [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [ApiController]
@@ -19,14 +22,19 @@ namespace LessonTree.Api.Controllers
     {
         private readonly IScheduleConfigurationService _service;
         private readonly ILogger<ScheduleConfigurationController> _logger;
+        private readonly IScheduleService _scheduleService;
 
         public ScheduleConfigurationController(
             IScheduleConfigurationService service,
-            ILogger<ScheduleConfigurationController> logger)
+            ILogger<ScheduleConfigurationController> logger,
+            IScheduleService scheduleService)
         {
             _service = service;
             _logger = logger;
+            _scheduleService = scheduleService;
         }
+
+        // === EXISTING ENDPOINTS (unchanged) ===
 
         /// <summary>
         /// Get all schedule configurations for current user
@@ -183,8 +191,20 @@ namespace LessonTree.Api.Controllers
             try
             {
                 int userId = GetCurrentUserId();
+
+                // Create configuration
                 var configuration = await _service.CreateAsync(resource, userId);
-                return Ok(configuration);
+
+                // Automatically generate schedule
+                var schedule = await _scheduleService.CreateScheduleFromConfigurationAsync(configuration.Id, userId);
+
+                return Ok(new
+                {
+                    configuration = configuration,
+                    schedule = schedule,
+                    status = "success",
+                    message = $"Configuration and schedule created successfully with {schedule.ScheduleEvents.Count} events"
+                });
             }
             catch (ArgumentException ex)
             {
@@ -192,7 +212,7 @@ namespace LessonTree.Api.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating schedule configuration");
+                _logger.LogError(ex, "Error creating configuration with schedule");
                 return StatusCode(500, new { status = "error", message = "Internal server error" });
             }
         }
@@ -344,6 +364,152 @@ namespace LessonTree.Api.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error validating schedule configuration {ConfigId}", id);
+                return StatusCode(500, new { status = "error", message = "Internal server error" });
+            }
+        }
+
+        // === NEW AUTO-GENERATION ENDPOINTS ===
+
+        /// <summary>
+        /// Update configuration and automatically regenerate schedule
+        /// </summary>
+        /// <param name="id">Configuration ID</param>
+        /// <param name="resource">Configuration update data</param>
+        /// <returns>Updated configuration with regenerated schedule</returns>
+        [HttpPut("{id}/withSchedule")]
+        public async Task<IActionResult> UpdateWithSchedule(int id, [FromBody] ScheduleConfigurationUpdateResource resource)
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+
+                // Update configuration
+                var configuration = await _service.UpdateAsync(id, resource, userId);
+
+                // Automatically regenerate schedule
+                var schedule = await _scheduleService.RegenerateScheduleFromConfigurationAsync(id, userId);
+
+                return Ok(new
+                {
+                    configuration = configuration,
+                    schedule = schedule,
+                    status = "success",
+                    message = $"Configuration updated and schedule regenerated with {schedule.ScheduleEvents.Count} events"
+                });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { status = "error", message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating configuration {ConfigId} with schedule", id);
+                return StatusCode(500, new { status = "error", message = "Internal server error" });
+            }
+        }
+
+        /// <summary>
+        /// Generate schedule from existing configuration
+        /// </summary>
+        /// <param name="id">Configuration ID</param>
+        /// <returns>Generated schedule</returns>
+        [HttpPost("{id}/generateSchedule")]
+        public async Task<IActionResult> GenerateSchedule(int id)
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+
+                var schedule = await _scheduleService.CreateScheduleFromConfigurationAsync(id, userId);
+
+                return Ok(new
+                {
+                    schedule = schedule,
+                    status = "success",
+                    message = $"Schedule generated successfully with {schedule.ScheduleEvents.Count} events"
+                });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { status = "error", message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { status = "error", message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating schedule from configuration {ConfigId}", id);
+                return StatusCode(500, new { status = "error", message = "Internal server error" });
+            }
+        }
+
+        /// <summary>
+        /// Validate configuration for schedule generation
+        /// </summary>
+        /// <param name="id">Configuration ID</param>
+        /// <returns>Detailed validation result</returns>
+        [HttpGet("{id}/validateGeneration")]
+        public async Task<IActionResult> ValidateGeneration(int id)
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+
+                var validation = await _scheduleService.ValidateConfigurationAsync(id, userId);
+
+                return Ok(validation);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { status = "error", message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating configuration {ConfigId} for generation", id);
+                return StatusCode(500, new { status = "error", message = "Internal server error" });
+            }
+        }
+
+        /// <summary>
+        /// Get generation preview for configuration
+        /// </summary>
+        /// <param name="id">Configuration ID</param>
+        /// <returns>Generation preview with estimated counts</returns>
+        [HttpGet("{id}/generationPreview")]
+        public async Task<IActionResult> GetGenerationPreview(int id)
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+
+                var preview = await _scheduleService.GetGenerationPreviewAsync(id, userId);
+
+                return Ok(preview);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { status = "error", message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting generation preview for configuration {ConfigId}", id);
                 return StatusCode(500, new { status = "error", message = "Internal server error" });
             }
         }

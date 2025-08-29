@@ -1,4 +1,7 @@
-﻿using AutoMapper;
+﻿// **MODIFIED FILE** - Enhanced ScheduleService.cs - Complete Auto-Generation Integration
+// INTEGRATION: Complete ScheduleService.cs with all new auto-generation methods added
+
+using AutoMapper;
 using LessonTree.BLL.Services;
 using LessonTree.DAL.Domain;
 using LessonTree.DAL.Repositories;
@@ -8,20 +11,29 @@ using Microsoft.Extensions.Logging;
 namespace LessonTree.BLL.Services
 {
     /// <summary>
-    /// Service for schedule operations
-    /// Handles CRUD operations for user schedules and special days
+    /// Enhanced service for schedule operations with auto-generation capabilities
+    /// Handles CRUD operations for user schedules and special days + schedule generation
     /// </summary>
     public class ScheduleService : IScheduleService
     {
         private readonly IScheduleRepository _repository;
         private readonly IMapper _mapper;
         private readonly ILogger<ScheduleService> _logger;
+        private readonly IScheduleGenerationService _scheduleGenerationService;
+        private readonly IScheduleConfigurationService _scheduleConfigurationService;
 
-        public ScheduleService(IScheduleRepository repository, IMapper mapper, ILogger<ScheduleService> logger)
+        public ScheduleService(
+            IScheduleRepository repository,
+            IMapper mapper,
+            ILogger<ScheduleService> logger,
+            IScheduleGenerationService scheduleGenerationService,
+            IScheduleConfigurationService scheduleConfigurationService)
         {
             _repository = repository;
             _mapper = mapper;
             _logger = logger;
+            _scheduleGenerationService = scheduleGenerationService;
+            _scheduleConfigurationService = scheduleConfigurationService;
         }
 
         // === CORE SCHEDULE OPERATIONS ===
@@ -120,6 +132,256 @@ namespace LessonTree.BLL.Services
             await _repository.DeleteScheduleAsync(userId);
 
             _logger.LogInformation($"DeleteUserScheduleAsync: Deleted schedule for user {userId}");
+        }
+
+        // === AUTO-GENERATION METHODS (NEW) ===
+
+        /// <summary>
+        /// Find all schedules that contain a specific course through their configurations
+        /// Used by lesson addition workflow to determine which schedules need regeneration
+        /// </summary>
+        public async Task<List<ScheduleResource>> FindAllSchedulesByCourseIdAsync(int courseId, int userId)
+        {
+            _logger.LogInformation($"FindAllSchedulesByCourseIdAsync: Finding schedules containing course {courseId} for user {userId}");
+
+            var schedules = await _repository.FindAllSchedulesByCourseIdAsync(courseId, userId);
+
+            _logger.LogInformation($"FindAllSchedulesByCourseIdAsync: Found {schedules.Count} schedules containing course {courseId}");
+
+            return _mapper.Map<List<ScheduleResource>>(schedules);
+        }
+
+
+        /// <summary>
+        /// Create schedule automatically from configuration (Phase 1 auto-generation)
+        /// Replaces frontend generation workflow
+        /// </summary>
+        /// <param name="configurationId">Schedule configuration ID</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Generated schedule with events</returns>
+        public async Task<ScheduleResource> CreateScheduleFromConfigurationAsync(int configurationId, int userId)
+        {
+            _logger.LogInformation($"CreateScheduleFromConfigurationAsync: Auto-generating schedule from configuration {configurationId} for user {userId}");
+
+            // Validate configuration exists and is owned by user
+            var configuration = await _scheduleConfigurationService.GetByIdAsync(configurationId, userId);
+            if (configuration == null)
+            {
+                throw new ArgumentException($"ScheduleConfiguration {configurationId} not found or not owned by user {userId}");
+            }
+
+            // Validate configuration is ready for generation
+            var validation = await _scheduleGenerationService.ValidateConfigurationForGenerationAsync(configurationId, userId);
+            if (!validation.CanGenerateSchedule)
+            {
+                var errorMessage = $"Configuration {configurationId} is not ready for schedule generation: {string.Join(", ", validation.Errors)}";
+                _logger.LogWarning($"CreateScheduleFromConfigurationAsync: {errorMessage}");
+                throw new ArgumentException(errorMessage);
+            }
+
+            // Generate schedule using business logic service
+            var generationResult = await _scheduleGenerationService.GenerateScheduleFromConfigurationAsync(configurationId, userId);
+            if (!generationResult.Success || generationResult.Schedule == null)
+            {
+                var errorMessage = $"Schedule generation failed: {string.Join(", ", generationResult.Errors)}";
+                _logger.LogError($"CreateScheduleFromConfigurationAsync: {errorMessage}");
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            // Save generated schedule to database
+            var scheduleCreateResource = new ScheduleCreateResource
+            {
+                Title = generationResult.Schedule.Title,
+                ScheduleConfigurationId = configurationId,
+                ScheduleEvents = generationResult.Schedule.ScheduleEvents
+            };
+
+            var savedSchedule = await CreateScheduleAsync(scheduleCreateResource, userId);
+
+            _logger.LogInformation($"CreateScheduleFromConfigurationAsync: Generated and saved schedule {savedSchedule.Id} with {generationResult.TotalEventsGenerated} events for user {userId}");
+
+            // Log generation summary
+            foreach (var periodCount in generationResult.EventsByPeriod)
+            {
+                _logger.LogDebug($"  Period {periodCount.Key}: {periodCount.Value} events");
+            }
+
+            if (generationResult.Warnings.Any())
+            {
+                _logger.LogWarning($"CreateScheduleFromConfigurationAsync: Generation warnings: {string.Join(", ", generationResult.Warnings)}");
+            }
+
+            return savedSchedule;
+        }
+
+        /// <summary>
+        /// Regenerate schedule when configuration is updated
+        /// Handles configuration changes that affect schedule structure
+        /// </summary>
+        /// <param name="configurationId">Updated configuration ID</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Regenerated schedule</returns>
+        public async Task<ScheduleResource> RegenerateScheduleFromConfigurationAsync(int configurationId, int userId)
+        {
+            _logger.LogInformation($"RegenerateScheduleFromConfigurationAsync: Regenerating schedule for configuration {configurationId}, user {userId}");
+
+            // Find existing schedule for this configuration
+            var existingSchedule = await GetByConfigurationIdAsync(configurationId, userId);
+
+            if (existingSchedule != null)
+            {
+                _logger.LogInformation($"RegenerateScheduleFromConfigurationAsync: Updating existing schedule {existingSchedule.Id}");
+
+                // ✅ CORRECT: Generate new events and UPDATE existing schedule
+                var generationResult = await _scheduleGenerationService.GenerateScheduleFromConfigurationAsync(configurationId, userId);
+
+                if (generationResult.Success && generationResult.Schedule != null)
+                {
+                    // ✅ CORRECT: Update events on EXISTING schedule (preserve Schedule ID)
+                    return await UpdateScheduleEventsAsync(existingSchedule.Id, generationResult.Schedule.ScheduleEvents, userId);
+                }
+            }
+
+            // Only create new schedule if none exists
+            return await CreateScheduleFromConfigurationAsync(configurationId, userId);
+        }
+
+        /// <summary>
+        /// Continue lesson sequences in existing schedule
+        /// Extends schedule with additional lesson sequence events
+        /// </summary>
+        /// <param name="scheduleId">Existing schedule ID</param>
+        /// <param name="continuationRequest">Continuation parameters</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Updated schedule with continuation events</returns>
+        public async Task<ScheduleResource> ContinueSequencesAsync(int scheduleId, SequenceContinuationRequest continuationRequest, int userId)
+        {
+            _logger.LogInformation($"ContinueSequencesAsync: Continuing sequences for schedule {scheduleId} after {continuationRequest.AfterDate:yyyy-MM-dd}");
+
+            // Validate schedule ownership
+            var existingSchedule = await GetByIdAsync(scheduleId, userId);
+            if (existingSchedule == null)
+            {
+                throw new ArgumentException($"Schedule {scheduleId} not found or not owned by user {userId}");
+            }
+
+            // Analyze current sequence state
+            var analysis = await _scheduleGenerationService.AnalyzeSequenceStateAsync(scheduleId, continuationRequest.AfterDate, userId);
+
+            if (!analysis.ContinuationPoints.Any())
+            {
+                _logger.LogInformation($"ContinueSequencesAsync: No continuation points found for schedule {scheduleId}");
+                return existingSchedule; // No changes needed
+            }
+
+            // Generate continuation events
+            var continuationEvents = await _scheduleGenerationService.GenerateSequenceContinuationAsync(scheduleId, continuationRequest, userId);
+
+            if (!continuationEvents.Any())
+            {
+                _logger.LogInformation($"ContinueSequencesAsync: No continuation events generated for schedule {scheduleId}");
+                return existingSchedule;
+            }
+
+            // Add continuation events to existing schedule
+            var allEvents = existingSchedule.ScheduleEvents.ToList();
+            allEvents.AddRange(continuationEvents);
+
+            var updatedSchedule = await UpdateScheduleEventsAsync(scheduleId, allEvents, userId);
+
+            _logger.LogInformation($"ContinueSequencesAsync: Added {continuationEvents.Count} continuation events to schedule {scheduleId}");
+
+            return updatedSchedule;
+        }
+
+        /// <summary>
+        /// Validate configuration for schedule generation
+        /// Provides detailed validation feedback without generating
+        /// </summary>
+        /// <param name="configurationId">Configuration to validate</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Validation result with detailed feedback</returns>
+        public async Task<ScheduleValidationResult> ValidateConfigurationAsync(int configurationId, int userId)
+        {
+            _logger.LogInformation($"ValidateConfigurationAsync: Validating configuration {configurationId} for user {userId}");
+
+            return await _scheduleGenerationService.ValidateConfigurationForGenerationAsync(configurationId, userId);
+        }
+
+        /// <summary>
+        /// Get schedule generation preview/summary
+        /// Shows what would be generated without creating schedule
+        /// </summary>
+        /// <param name="configurationId">Configuration to preview</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Generation preview information</returns>
+        public async Task<ScheduleGenerationPreview> GetGenerationPreviewAsync(int configurationId, int userId)
+        {
+            _logger.LogInformation($"GetGenerationPreviewAsync: Generating preview for configuration {configurationId}, user {userId}");
+
+            // Validate configuration
+            var validation = await _scheduleGenerationService.ValidateConfigurationForGenerationAsync(configurationId, userId);
+
+            if (!validation.CanGenerateSchedule)
+            {
+                return new ScheduleGenerationPreview
+                {
+                    CanGenerate = false,
+                    ValidationResult = validation,
+                    EstimatedEventCount = 0,
+                    EstimatedEventsByPeriod = new Dictionary<int, int>()
+                };
+            }
+
+            // Get configuration details
+            var configuration = await _scheduleConfigurationService.GetByIdAsync(configurationId, userId);
+            if (configuration == null)
+            {
+                throw new ArgumentException($"Configuration {configurationId} not found");
+            }
+
+            // Calculate estimated event counts
+            var teachingDaysCount = CalculateTeachingDaysCount(configuration.StartDate, configuration.EndDate, configuration.TeachingDays);
+            var estimatedEventsByPeriod = new Dictionary<int, int>();
+            var totalEstimatedEvents = 0;
+
+            for (int period = 1; period <= configuration.PeriodsPerDay; period++)
+            {
+                var assignment = configuration.PeriodAssignments.FirstOrDefault(pa => pa.Period == period);
+                if (assignment != null)
+                {
+                    estimatedEventsByPeriod[period] = teachingDaysCount;
+                    totalEstimatedEvents += teachingDaysCount;
+                }
+            }
+
+            return new ScheduleGenerationPreview
+            {
+                CanGenerate = true,
+                ValidationResult = validation,
+                EstimatedEventCount = totalEstimatedEvents,
+                EstimatedEventsByPeriod = estimatedEventsByPeriod,
+                DateRange = new DateRange
+                {
+                    StartDate = configuration.StartDate,
+                    EndDate = configuration.EndDate,
+                    TeachingDaysCount = teachingDaysCount
+                }
+            };
+        }
+
+        /// <summary>
+        /// Analyze sequence state for existing schedule
+        /// </summary>
+        /// <param name="scheduleId">Schedule ID</param>
+        /// <param name="afterDate">Date to analyze from</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Sequence analysis result</returns>
+        public async Task<SequenceAnalysisResult> AnalyzeSequenceStateAsync(int scheduleId, DateTime afterDate, int userId)
+        {
+            _logger.LogInformation($"AnalyzeSequenceStateAsync: Analyzing sequences for schedule {scheduleId} after {afterDate:yyyy-MM-dd}");
+
+            return await _scheduleGenerationService.AnalyzeSequenceStateAsync(scheduleId, afterDate, userId);
         }
 
         // === SPECIAL DAY OPERATIONS ===
@@ -250,5 +512,42 @@ namespace LessonTree.BLL.Services
 
             return schedule;
         }
+
+        private int CalculateTeachingDaysCount(DateTime startDate, DateTime endDate, string[] teachingDays)
+        {
+            var count = 0;
+            var current = startDate;
+            var teachingDayNames = teachingDays.Select(d => d.ToLower()).ToHashSet();
+
+            while (current <= endDate)
+            {
+                var dayName = current.DayOfWeek.ToString().ToLower();
+                if (teachingDayNames.Contains(dayName))
+                {
+                    count++;
+                }
+                current = current.AddDays(1);
+            }
+
+            return count;
+        }
+    }
+
+    // === SUPPORTING CLASSES ===
+
+    public class ScheduleGenerationPreview
+    {
+        public bool CanGenerate { get; set; }
+        public ScheduleValidationResult ValidationResult { get; set; } = new();
+        public int EstimatedEventCount { get; set; }
+        public Dictionary<int, int> EstimatedEventsByPeriod { get; set; } = new();
+        public DateRange? DateRange { get; set; }
+    }
+
+    public class DateRange
+    {
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public int TeachingDaysCount { get; set; }
     }
 }

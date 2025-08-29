@@ -1,0 +1,891 @@
+﻿// **NEW FILE** - BLL/Services/ScheduleGenerationService.cs
+// RESPONSIBILITY: Complete schedule generation business logic migrated from frontend
+// DOES NOT: Handle HTTP concerns, UI coordination, or direct persistence
+// CALLED BY: ScheduleService for schedule generation operations
+
+using AutoMapper;
+using LessonTree.BLL.Services;
+using LessonTree.DAL.Domain;
+using LessonTree.DAL.Repositories;
+using LessonTree.Models.DTO;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+
+namespace LessonTree.BLL.Services
+{
+    /// <summary>
+    /// Schedule generation business logic service
+    /// Migrated from frontend ScheduleGenerationService, LessonSequenceAnalysisService, and ScheduleEventFactoryService
+    /// </summary>
+    public class ScheduleGenerationService : IScheduleGenerationService
+    {
+        private readonly IScheduleConfigurationRepository _configRepository;
+        private readonly ILessonRepository _lessonRepository;
+        private readonly IScheduleRepository _scheduleRepository;
+        private readonly IMapper _mapper;
+        private readonly ILogger<ScheduleGenerationService> _logger;
+
+        public ScheduleGenerationService(
+            IScheduleConfigurationRepository configRepository,
+            ILessonRepository lessonRepository,
+            IScheduleRepository scheduleRepository,
+            IMapper mapper,
+            ILogger<ScheduleGenerationService> logger)
+        {
+            _configRepository = configRepository;
+            _lessonRepository = lessonRepository;
+            _scheduleRepository = scheduleRepository;
+            _mapper = mapper;
+            _logger = logger;
+        }
+
+        // === CORE GENERATION ===
+
+        public async Task<ScheduleGenerationResult> GenerateScheduleFromConfigurationAsync(int configurationId, int userId)
+        {
+            _logger.LogInformation($"GenerateScheduleFromConfigurationAsync: Starting generation for configuration {configurationId}, user {userId}");
+
+            var errors = new List<string>();
+            var warnings = new List<string>();
+
+            try
+            {
+                // Get and validate configuration
+                var configuration = await _configRepository.GetByIdAsync(configurationId);
+                if (configuration == null || configuration.UserId != userId)
+                {
+                    errors.Add($"Configuration {configurationId} not found or not owned by user {userId}");
+                    return new ScheduleGenerationResult { Success = false, Errors = errors, Warnings = warnings };
+                }
+
+                // Validate configuration readiness
+                var validation = await ValidateConfigurationForGenerationAsync(configurationId, userId);
+                if (!validation.CanGenerateSchedule)
+                {
+                    errors.AddRange(validation.Errors);
+                    return new ScheduleGenerationResult { Success = false, Errors = errors, Warnings = warnings };
+                }
+
+                _logger.LogInformation($"Configuration validation passed - generating events for {validation.CourseAssignments} course assignments");
+
+                // Generate schedule events
+                var scheduleEvents = await GenerateScheduleEventsFromConfiguration(configuration, userId);
+
+                if (!scheduleEvents.Any())
+                {
+                    warnings.Add("No schedule events generated");
+                }
+
+                // === ADD PERSISTENCE USING EXISTING REPOSITORY METHOD ===
+                // Convert ScheduleEventResource to domain entities (only actual entity properties)
+                var scheduleEventEntities = scheduleEvents.Select(eventResource => new ScheduleEvent
+                {
+                    CourseId = eventResource.CourseId,
+                    Date = eventResource.Date,
+                    Period = eventResource.Period,
+                    LessonId = eventResource.LessonId,
+                    EventType = eventResource.EventType,
+                    EventCategory = eventResource.EventCategory,
+                    Comment = eventResource.Comment,
+                    ScheduleSort = eventResource.ScheduleSort
+                }).ToList();
+
+                // Save using existing repository method (handles Schedule + ScheduleEvents + transaction)
+                var savedSchedule = await _scheduleRepository.CreateOrReplaceScheduleAsync(
+                    userId,
+                    scheduleEventEntities,
+                    configurationId // Link to the configuration
+                );
+
+                _logger.LogInformation($"Persisted Schedule {savedSchedule.Id} with {savedSchedule.ScheduleEvents.Count} events");
+
+                // Create resource objects with real database IDs for return
+                var configurationResource = _mapper.Map<ScheduleConfigurationResource>(configuration);
+
+                var scheduleResource = new ScheduleResource
+                {
+                    Id = savedSchedule.Id, // ✅ Real database ID
+                    Title = savedSchedule.Title ?? configuration.Title ?? $"{configuration.SchoolYear} Schedule",
+                    UserId = userId,
+                    ScheduleConfiguration = configurationResource,
+                    IsLocked = false,
+                    CreatedDate = savedSchedule.CreatedDate,
+                    ScheduleEvents = scheduleEvents.Select(e => { e.ScheduleId = savedSchedule.Id; return e; }).ToList(), // Update with real schedule ID
+                    SpecialDays = new List<SpecialDayResource>() // Empty for newly generated schedules
+                };
+
+                // Calculate statistics
+                var eventsByPeriod = scheduleEvents
+                    .GroupBy(e => e.Period)
+                    .ToDictionary(g => g.Key, g => g.Count());
+
+                _logger.LogInformation($"Generated and saved schedule with {scheduleEvents.Count} events across {eventsByPeriod.Count} periods");
+
+                return new ScheduleGenerationResult
+                {
+                    Success = true,
+                    Schedule = scheduleResource, // Now contains real persisted data
+                    Errors = errors,
+                    Warnings = warnings,
+                    TotalEventsGenerated = scheduleEvents.Count,
+                    EventsByPeriod = eventsByPeriod
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error generating schedule from configuration {configurationId}");
+                errors.Add($"Schedule generation failed: {ex.Message}");
+                return new ScheduleGenerationResult { Success = false, Errors = errors, Warnings = warnings };
+            }
+        }
+
+        public async Task<ScheduleValidationResult> ValidateConfigurationForGenerationAsync(int configurationId, int userId)
+        {
+            _logger.LogInformation($"ValidateConfigurationForGenerationAsync: Validating configuration {configurationId} for user {userId}");
+
+            var errors = new List<string>();
+            var warnings = new List<string>();
+
+            var configuration = await _configRepository.GetByIdAsync(configurationId);
+            if (configuration == null)
+            {
+                errors.Add($"Configuration {configurationId} not found");
+                return new ScheduleValidationResult { IsValid = false, CanGenerateSchedule = false, Errors = errors };
+            }
+
+            if (configuration.UserId != userId)
+            {
+                errors.Add($"Configuration {configurationId} not owned by user {userId}");
+                return new ScheduleValidationResult { IsValid = false, CanGenerateSchedule = false, Errors = errors };
+            }
+
+            // Basic validation
+            if (configuration.StartDate >= configuration.EndDate)
+            {
+                errors.Add("Start date must be before end date");
+            }
+
+            if (configuration.PeriodsPerDay < 1 || configuration.PeriodsPerDay > 10)
+            {
+                errors.Add("Periods per day must be between 1 and 10");
+            }
+
+            if (configuration.TeachingDays.Length == 0)
+            {
+                errors.Add("At least one teaching day must be specified");
+            }
+
+            if (!configuration.PeriodAssignments.Any())
+            {
+                errors.Add("No period assignments configured");
+            }
+
+            // Analyze period assignments
+            var courseAssignments = configuration.PeriodAssignments.Where(pa => pa.CourseId.HasValue).ToList();
+            var specialPeriodAssignments = configuration.PeriodAssignments.Where(pa => !string.IsNullOrEmpty(pa.SpecialPeriodType)).ToList();
+            var unassignedPeriods = configuration.PeriodAssignments.Where(pa => !pa.CourseId.HasValue && string.IsNullOrEmpty(pa.SpecialPeriodType)).ToList();
+
+            if (!courseAssignments.Any())
+            {
+                errors.Add("No periods assigned to courses");
+            }
+
+            // Validate course assignments have lessons
+            foreach (var assignment in courseAssignments)
+            {
+                var lessonCount = await GetLessonCountForCourse(assignment.CourseId!.Value, userId);
+                if (lessonCount == 0)
+                {
+                    warnings.Add($"Course {assignment.CourseId} (Period {assignment.Period}) has no lessons");
+                }
+            }
+
+            if (unassignedPeriods.Any())
+            {
+                var periods = string.Join(", ", unassignedPeriods.Select(up => up.Period));
+                warnings.Add($"Periods {periods} are unassigned and will generate error events");
+            }
+
+            var isValid = !errors.Any();
+            var canGenerate = isValid && courseAssignments.Any();
+
+            return new ScheduleValidationResult
+            {
+                IsValid = isValid,
+                CanGenerateSchedule = canGenerate,
+                Errors = errors,
+                Warnings = warnings,
+                TotalPeriodsConfigured = configuration.PeriodAssignments.Count,
+                CourseAssignments = courseAssignments.Count,
+                SpecialPeriodAssignments = specialPeriodAssignments.Count,
+                UnassignedPeriods = unassignedPeriods.Count
+            };
+        }
+
+        // === SEQUENCE ANALYSIS ===
+
+        public async Task<SequenceAnalysisResult> AnalyzeSequenceStateAsync(int scheduleId, DateTime afterDate, int userId)
+        {
+            _logger.LogInformation($"AnalyzeSequenceStateAsync: Analyzing sequence state for schedule {scheduleId} after {afterDate:yyyy-MM-dd}");
+
+            var schedule = await _scheduleRepository.GetByIdAsync(scheduleId);
+            if (schedule == null || schedule.UserId != userId)
+            {
+                throw new ArgumentException($"Schedule {scheduleId} not found or not owned by user {userId}");
+            }
+
+            var configuration = await _configRepository.GetByIdAsync(schedule.ScheduleConfigurationId);
+            if (configuration == null)
+            {
+                throw new ArgumentException($"Configuration {schedule.ScheduleConfigurationId} not found");
+            }
+
+            // Get course assignments from configuration
+            var courseAssignments = configuration.PeriodAssignments
+                .Where(pa => pa.CourseId.HasValue)
+                .ToList();
+
+            var continuationPoints = new List<ContinuationPoint>();
+            var coursePeriodDetails = new List<CoursePeriodDetail>();
+            var totalLessonsInScope = 0;
+
+            foreach (var assignment in courseAssignments)
+            {
+                var courseId = assignment.CourseId!.Value;
+                var period = assignment.Period;
+
+                // Get lesson count for this course
+                var allLessons = await GetLessonsForCourse(courseId, userId);
+                totalLessonsInScope += allLessons.Count;
+
+                // Find highest assigned lesson index for this period/course
+                var periodLessonEvents = schedule.ScheduleEvents
+                    .Where(e => e.Period == period && e.CourseId == courseId && e.LessonId.HasValue)
+                    .OrderBy(e => e.Date)
+                    .ToList();
+
+                var highestLessonIndex = -1;
+                var lastAssignedDate = (DateTime?)null;
+
+                foreach (var eventDto in periodLessonEvents)
+                {
+                    var lessonIndex = allLessons.FindIndex(l => l.Id == eventDto.LessonId);
+                    if (lessonIndex > highestLessonIndex)
+                    {
+                        highestLessonIndex = lessonIndex;
+                        lastAssignedDate = eventDto.Date;
+                    }
+                }
+
+                var assignedLessons = highestLessonIndex + 1;
+                var needsContinuation = highestLessonIndex < allLessons.Count - 1;
+
+                // Add to results
+                coursePeriodDetails.Add(new CoursePeriodDetail
+                {
+                    CourseId = courseId,
+                    CourseTitle = $"Course {courseId}", // Will be enhanced with actual course title if needed
+                    Period = period,
+                    TotalLessons = allLessons.Count,
+                    AssignedLessons = assignedLessons,
+                    NeedsContinuation = needsContinuation,
+                    LastAssignedDate = lastAssignedDate
+                });
+
+                if (needsContinuation)
+                {
+                    continuationPoints.Add(new ContinuationPoint
+                    {
+                        Period = period,
+                        CourseId = courseId,
+                        CourseTitle = $"Course {courseId}", // Will be enhanced with actual course title if needed
+                        LastAssignedLessonIndex = highestLessonIndex,
+                        ContinuationDate = afterDate.AddDays(1),
+                        TotalLessons = allLessons.Count,
+                        RemainingLessons = allLessons.Count - assignedLessons,
+                        PeriodAssignment = ConvertToResource(assignment)
+                    });
+                }
+            }
+
+            _logger.LogInformation($"Found {continuationPoints.Count} periods needing continuation out of {courseAssignments.Count} course assignments");
+
+            return new SequenceAnalysisResult
+            {
+                TotalCoursesInScope = courseAssignments.Count,
+                TotalLessonsInScope = totalLessonsInScope,
+                ContinuationPoints = continuationPoints,
+                CoursePeriodDetails = coursePeriodDetails
+            };
+        }
+
+        public async Task<List<ScheduleEventResource>> GenerateSequenceContinuationAsync(int scheduleId, SequenceContinuationRequest continuationRequest, int userId)
+        {
+            _logger.LogInformation($"GenerateSequenceContinuationAsync: Generating continuation for schedule {scheduleId} from {continuationRequest.AfterDate:yyyy-MM-dd}");
+
+            // Analyze current state
+            var analysis = await AnalyzeSequenceStateAsync(scheduleId, continuationRequest.AfterDate, userId);
+
+            if (!analysis.ContinuationPoints.Any())
+            {
+                _logger.LogInformation("No continuation points found");
+                return new List<ScheduleEventResource>();
+            }
+
+            var schedule = await _scheduleRepository.GetByIdAsync(scheduleId);
+            var configuration = await _configRepository.GetByIdAsync(schedule!.ScheduleConfigurationId);
+
+            var continuationEvents = new List<ScheduleEventResource>();
+            var eventIdCounter = -50000; // Use distinct negative range for continuation events
+
+            foreach (var continuationPoint in analysis.ContinuationPoints)
+            {
+                // Skip if specific periods requested and this isn't one of them
+                if (continuationRequest.SpecificPeriods?.Any() == true &&
+                    !continuationRequest.SpecificPeriods.Contains(continuationPoint.Period))
+                {
+                    continue;
+                }
+
+                var courseEvents = await GenerateContinuationEventsForPeriodCourse(
+                    continuationPoint,
+                    continuationRequest.AfterDate,
+                    continuationRequest.EndDate ?? configuration!.EndDate,
+                    configuration.TeachingDays.Split(',', StringSplitOptions.RemoveEmptyEntries),
+                    eventIdCounter,
+                    userId
+                );
+
+                continuationEvents.AddRange(courseEvents);
+                eventIdCounter = eventIdCounter - courseEvents.Count;
+            }
+
+            _logger.LogInformation($"Generated {continuationEvents.Count} continuation events");
+            return continuationEvents;
+        }
+
+        // === SPECIAL DAY INTEGRATION ===
+
+        public async Task<List<ScheduleEventResource>> ApplySpecialDayIntegrationAsync(List<ScheduleEventResource> baseEvents, List<SpecialDayResource> specialDays)
+        {
+            _logger.LogInformation($"ApplySpecialDayIntegrationAsync: Integrating {specialDays.Count} special days with {baseEvents.Count} base events");
+
+            if (!specialDays.Any())
+            {
+                return baseEvents;
+            }
+
+            var integratedEvents = new List<ScheduleEventResource>(baseEvents);
+
+            // Add special day events
+            foreach (var specialDay in specialDays)
+            {
+                foreach (var period in specialDay.Periods)
+                {
+                    // Remove conflicting base events (special days win)
+                    integratedEvents.RemoveAll(e =>
+                        e.Date.Date == specialDay.Date.Date &&
+                        e.Period == period);
+
+                    // Add special day event
+                    var specialDayEvent = new ScheduleEventResource
+                    {
+                        Id = specialDay.Id, // Use special day ID
+                        ScheduleId = specialDay.ScheduleId,
+                        CourseId = null,
+                        Date = specialDay.Date,
+                        Period = period,
+                        LessonId = null,
+                        EventType = specialDay.EventType,
+                        EventCategory = "SpecialDay",
+                        Comment = specialDay.Title
+                    };
+
+                    integratedEvents.Add(specialDayEvent);
+                }
+            }
+
+            _logger.LogInformation($"Integration complete: {integratedEvents.Count} total events after special day integration");
+            return integratedEvents.OrderBy(e => e.Date).ThenBy(e => e.Period).ToList();
+        }
+
+        // === PRIVATE HELPER METHODS ===
+
+        private async Task<List<ScheduleEventResource>> GenerateScheduleEventsFromConfiguration(ScheduleConfiguration configuration, int userId)
+        {
+            _logger.LogInformation($"GenerateScheduleEventsFromConfiguration: Processing {configuration.PeriodAssignments.Count} period assignments");
+
+            var allScheduleEvents = new List<ScheduleEventResource>();
+            var eventIdCounter = -1; // Negative for in-memory events
+
+            // Parse period assignments by type
+            var courseAssignments = configuration.PeriodAssignments
+                 .Where(pa => pa.CourseId.HasValue)
+                 .Select(pa => ConvertToResource(pa))
+                 .ToList();
+
+            var specialPeriodAssignments = configuration.PeriodAssignments
+                .Where(pa => !string.IsNullOrEmpty(pa.SpecialPeriodType))
+                .Select(pa => ConvertToResource(pa))
+                .ToList();
+
+            var unassignedPeriods = configuration.PeriodAssignments
+                .Where(pa => !pa.CourseId.HasValue && string.IsNullOrEmpty(pa.SpecialPeriodType))
+                .Select(pa => ConvertToResource(pa))
+                .ToList();
+
+            // Convert teaching days string to string array once
+            var teachingDaysArray = configuration.TeachingDays.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+            // Generate events for course assignments
+            foreach (var assignment in courseAssignments)
+            {
+                var courseEvents = await GenerateEventsForPeriodCourse(
+                    assignment,
+                    configuration.StartDate,
+                    configuration.EndDate,
+                    teachingDaysArray,  // FIXED: Now using string[]
+                    eventIdCounter,
+                    userId
+                );
+
+                allScheduleEvents.AddRange(courseEvents);
+                eventIdCounter = eventIdCounter - courseEvents.Count;  // FIXED: Explicit subtraction
+            }
+
+            // Generate events for special periods
+            foreach (var assignment in specialPeriodAssignments)
+            {
+                var specialEvents = GenerateEventsForSpecialPeriod(
+                    assignment,
+                    configuration.StartDate,
+                    configuration.EndDate,
+                    teachingDaysArray,  // FIXED: Now using string[]
+                    eventIdCounter
+                );
+
+                allScheduleEvents.AddRange(specialEvents);
+                eventIdCounter = eventIdCounter - specialEvents.Count;  // FIXED: Explicit subtraction
+            }
+
+            // Generate placeholder events for unassigned periods
+            foreach (var assignment in unassignedPeriods)
+            {
+                var placeholderEvents = GenerateEventsForUnassignedPeriod(
+                    assignment,
+                    configuration.StartDate,
+                    configuration.EndDate,
+                    teachingDaysArray,  // FIXED: Now using string[]
+                    eventIdCounter
+                );
+
+                allScheduleEvents.AddRange(placeholderEvents);
+                eventIdCounter = eventIdCounter - placeholderEvents.Count;  // FIXED: Explicit subtraction
+            }
+
+            return allScheduleEvents.OrderBy(e => e.Date).ThenBy(e => e.Period).ToList();
+        }
+
+        private PeriodAssignmentResource ConvertToResource(PeriodAssignment domainAssignment)
+        {
+            return new PeriodAssignmentResource
+            {
+                Id = domainAssignment.Id,
+                Period = domainAssignment.Period,
+                CourseId = domainAssignment.CourseId,
+                SpecialPeriodType = domainAssignment.SpecialPeriodType,
+                TeachingDays = domainAssignment.TeachingDays
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(d => d.Trim())
+                    .ToArray(),
+                Room = domainAssignment.Room,
+                Notes = domainAssignment.Notes,
+                BackgroundColor = domainAssignment.BackgroundColor,
+                FontColor = domainAssignment.FontColor
+            };
+        }
+
+        private async Task<List<ScheduleEventResource>> GenerateEventsForPeriodCourse(
+            PeriodAssignmentResource assignment,
+            DateTime startDate,
+            DateTime endDate,
+            string[] teachingDays,
+            int startingEventId,
+            int userId)
+        {
+            var events = new List<ScheduleEventResource>();
+            var eventId = startingEventId;
+            var lessonIndex = 0;
+
+            // Get course lessons with detailed logging
+            var lessons = await GetLessonsForCourse(assignment.CourseId!.Value, userId);
+
+            _logger.LogInformation($"🔍 [GenerateEventsForPeriodCourse] Period {assignment.Period}, Course {assignment.CourseId} - {lessons.Count} lessons available");
+
+            // Log first few lessons for debugging
+            if (lessons.Any())
+            {
+                var firstLessons = lessons.Take(3).Select(l => new { l.Id, l.Title, TopicId = l.TopicId, SubTopicId = l.SubTopicId }).ToList();
+                _logger.LogInformation($"🔍 [GenerateEventsForPeriodCourse] First lessons: {System.Text.Json.JsonSerializer.Serialize(firstLessons)}");
+            }
+            else
+            {
+                _logger.LogWarning($"⚠️ [GenerateEventsForPeriodCourse] NO LESSONS FOUND for Course {assignment.CourseId}, User {userId}");
+            }
+
+            // Generate events for each teaching day
+            var currentDate = startDate;
+            var teachingDayNames = teachingDays.Select(d => d.ToLower()).ToHashSet();
+
+            _logger.LogInformation($"🔍 [GenerateEventsForPeriodCourse] Teaching days: {string.Join(", ", teachingDayNames)}");
+            _logger.LogInformation($"🔍 [GenerateEventsForPeriodCourse] Date range: {startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd}");
+
+            var dayCount = 0;
+            while (currentDate <= endDate)
+            {
+                var dayName = currentDate.DayOfWeek.ToString().ToLower();
+
+                if (teachingDayNames.Contains(dayName))
+                {
+                    dayCount++;
+
+                    _logger.LogDebug($"🔍 [GenerateEventsForPeriodCourse] Teaching day {dayCount}: {currentDate:yyyy-MM-dd} ({dayName}), LessonIndex: {lessonIndex}, LessonsCount: {lessons.Count}");
+
+                    var scheduleEvent = CreatePeriodCourseEvent(
+                        eventId--,
+                        currentDate,
+                        assignment,
+                        lessons,
+                        lessonIndex
+                    );
+
+                    events.Add(scheduleEvent);
+
+                    // Log what was created
+                    _logger.LogDebug($"🔍 [GenerateEventsForPeriodCourse] Created event: EventType={scheduleEvent.EventType}, LessonId={scheduleEvent.LessonId}, Comment={scheduleEvent.Comment}");
+
+                    // Only increment lesson index if we assigned a lesson (not error)
+                    if (scheduleEvent.LessonId.HasValue)
+                    {
+                        lessonIndex++;
+                        _logger.LogDebug($"🔍 [GenerateEventsForPeriodCourse] Lesson assigned, incrementing index to {lessonIndex}");
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"⚠️ [GenerateEventsForPeriodCourse] ERROR EVENT created for {currentDate:yyyy-MM-dd}, Period {assignment.Period}");
+                    }
+                }
+
+                currentDate = currentDate.AddDays(1);
+            }
+
+            _logger.LogInformation($"🔍 [GenerateEventsForPeriodCourse] Final result: {events.Count} events created, {events.Count(e => e.EventType == "Lesson")} lessons, {events.Count(e => e.EventType == "Error")} errors");
+
+            return events;
+        }
+
+
+        private List<ScheduleEventResource> GenerateEventsForSpecialPeriod(
+            PeriodAssignmentResource assignment,
+            DateTime startDate,
+            DateTime endDate,
+            string[] teachingDays,
+            int startingEventId)
+        {
+            var events = new List<ScheduleEventResource>();
+            var eventId = startingEventId;
+
+            if (string.IsNullOrEmpty(assignment.SpecialPeriodType))
+            {
+                return events;
+            }
+
+            // Generate recurring events for each teaching day
+            var currentDate = startDate;
+            var teachingDayNames = teachingDays.Select(d => d.ToLower()).ToHashSet();
+
+            while (currentDate <= endDate)
+            {
+                var dayName = currentDate.DayOfWeek.ToString().ToLower();
+
+                if (teachingDayNames.Contains(dayName))
+                {
+                    var scheduleEvent = new ScheduleEventResource
+                    {
+                        Id = eventId--,
+                        ScheduleId = 0,
+                        CourseId = null,
+                        Date = currentDate,
+                        Period = assignment.Period,
+                        LessonId = null,
+                        EventType = assignment.SpecialPeriodType,
+                        EventCategory = "SpecialPeriod",
+                        Comment = assignment.Notes
+                    };
+
+                    events.Add(scheduleEvent);
+                }
+
+                currentDate = currentDate.AddDays(1);
+            }
+
+            return events;
+        }
+
+        private List<ScheduleEventResource> GenerateEventsForUnassignedPeriod(
+            PeriodAssignmentResource assignment,
+            DateTime startDate,
+            DateTime endDate,
+            string[] teachingDays,
+            int startingEventId)
+        {
+            var events = new List<ScheduleEventResource>();
+            var eventId = startingEventId;
+
+            // Generate error events for unassigned periods
+            var currentDate = startDate;
+            var teachingDayNames = teachingDays.Select(d => d.ToLower()).ToHashSet();
+
+            while (currentDate <= endDate)
+            {
+                var dayName = currentDate.DayOfWeek.ToString().ToLower();
+
+                if (teachingDayNames.Contains(dayName))
+                {
+                    var scheduleEvent = new ScheduleEventResource
+                    {
+                        Id = eventId--,
+                        ScheduleId = 0,
+                        CourseId = null,
+                        Date = currentDate,
+                        Period = assignment.Period,
+                        LessonId = null,
+                        EventType = "Error",
+                        EventCategory = null, // Error events have null category
+                        Comment = "Period not configured - assign a course or special period type"
+                    };
+
+                    events.Add(scheduleEvent);
+                }
+
+                currentDate = currentDate.AddDays(1);
+            }
+
+            return events;
+        }
+
+        private async Task<List<ScheduleEventResource>> GenerateContinuationEventsForPeriodCourse(
+            ContinuationPoint continuationPoint,
+            DateTime startDate,
+            DateTime endDate,
+            string[] teachingDays,
+            int startingEventId,
+            int userId)
+        {
+            var events = new List<ScheduleEventResource>();
+            var eventId = startingEventId;
+
+            // Get course lessons
+            var lessons = await GetLessonsForCourse(continuationPoint.CourseId, userId);
+            var lessonIndex = continuationPoint.LastAssignedLessonIndex + 1; // Start from next lesson
+
+            if (lessonIndex >= lessons.Count)
+            {
+                return events; // No more lessons to assign
+            }
+
+            // Generate events for each teaching day
+            var currentDate = startDate;
+            var teachingDayNames = teachingDays.Select(d => d.ToLower()).ToHashSet();
+
+            while (currentDate <= endDate && lessonIndex < lessons.Count)
+            {
+                var dayName = currentDate.DayOfWeek.ToString().ToLower();
+
+                if (teachingDayNames.Contains(dayName))
+                {
+                    var scheduleEvent = new ScheduleEventResource
+                    {
+                        Id = eventId--,
+                        ScheduleId = 0, // Will be set when added to schedule
+                        CourseId = continuationPoint.CourseId,
+                        Date = currentDate,
+                        Period = continuationPoint.Period,
+                        LessonId = lessons[lessonIndex].Id,
+                        EventType = "Lesson",
+                        EventCategory = "Lesson",
+                        Comment = null
+                    };
+
+                    events.Add(scheduleEvent);
+                    lessonIndex++;
+                }
+
+                currentDate = currentDate.AddDays(1);
+            }
+
+            return events;
+        }
+
+        private ScheduleEventResource CreatePeriodCourseEvent(
+            int eventId,
+            DateTime date,
+            PeriodAssignmentResource assignment,
+            List<Lesson> lessons,
+            int lessonIndex)
+        {
+            int? lessonId = null;
+            string eventType = "Error";
+            string? eventCategory = null;
+            string? comment = null;
+            string? lessonTitle = null; // ✅ ADD: For lesson display
+            string? lessonObjective = null; // ✅ ADD: For lesson details
+            string? lessonMethods = null; // ✅ ADD: Additional lesson data
+            string? lessonMaterials = null; // ✅ ADD: Additional lesson data
+            string? lessonAssessment = null; // ✅ ADD: Additional lesson data
+            int? lessonSort = null; // ✅ ADD: Lesson sort order within course
+            int scheduleSort = lessonIndex;
+
+            _logger.LogDebug($"🔍 [CreatePeriodCourseEvent] Input - EventId: {eventId}, Date: {date:yyyy-MM-dd}, Period: {assignment.Period}, CourseId: {assignment.CourseId}, LessonIndex: {lessonIndex}, LessonsCount: {lessons.Count}");
+
+            if (lessonIndex < lessons.Count)
+            {
+                // Assign lesson with rich data
+                var lesson = lessons[lessonIndex];
+                lessonId = lesson.Id;
+                eventType = "Lesson";
+                eventCategory = "Lesson";
+                comment = null;
+                lessonTitle = lesson.Title; // ✅ Use actual lesson title
+                lessonObjective = lesson.Objective; // ✅ Use lesson objective
+                lessonMethods = lesson.Methods; // ✅ Additional lesson data
+                lessonMaterials = lesson.Materials; // ✅ Additional lesson data
+                lessonAssessment = lesson.Assessment; // ✅ Additional lesson data
+                lessonSort = lesson.SortOrder; // ✅ Lesson sort within its container
+
+                _logger.LogDebug($"✅ [CreatePeriodCourseEvent] LESSON ASSIGNED - LessonId: {lessonId}, Title: '{lessonTitle}', Objective: '{lessonObjective}'");
+            }
+            else
+            {
+                // No more lessons available - error day
+                lessonId = null;
+                eventType = "Error";
+                eventCategory = null;
+                comment = "No lesson assigned - schedule needs more content";
+                lessonTitle = null; // ✅ No lesson data for errors
+                lessonObjective = null;
+                lessonMethods = null;
+                lessonMaterials = null;
+                lessonAssessment = null;
+                lessonSort = null;
+                scheduleSort = lessonIndex;
+
+                _logger.LogWarning($"⚠️ [CreatePeriodCourseEvent] ERROR EVENT - LessonIndex {lessonIndex} >= LessonsCount {lessons.Count}");
+            }
+
+            var result = new ScheduleEventResource
+            {
+                Id = eventId,
+                ScheduleId = 0,
+                CourseId = assignment.CourseId,
+                Date = date,
+                Period = assignment.Period,
+                LessonId = lessonId,
+                EventType = eventType,
+                EventCategory = eventCategory,
+                Comment = comment,
+                LessonTitle = lessonTitle, // ✅ POPULATE: Lesson title for calendar display
+                LessonObjective = lessonObjective, // ✅ POPULATE: Lesson objective for details
+                LessonMethods = lessonMethods, // ✅ POPULATE: Additional lesson data
+                LessonMaterials = lessonMaterials, // ✅ POPULATE: Additional lesson data
+                LessonAssessment = lessonAssessment, // ✅ POPULATE: Additional lesson data
+                LessonSort = lessonSort, // ✅ POPULATE: Lesson sort order
+                ScheduleSort = scheduleSort
+            };
+
+            _logger.LogDebug($"🔍 [CreatePeriodCourseEvent] OUTPUT - EventType: {result.EventType}, LessonId: {result.LessonId}, LessonTitle: '{result.LessonTitle}', Comment: {result.Comment}");
+
+            return result;
+        }
+
+        // === DATA ACCESS HELPERS ===
+
+        private async Task<List<Lesson>> GetLessonsForCourse(int courseId, int userId)
+        {
+            _logger.LogInformation($"🔍 [GetLessonsForCourse] Starting - CourseId: {courseId}, UserId: {userId}");
+
+            // Get all lessons for this course with necessary navigation properties
+            var courseLessons = await _lessonRepository.GetByUserId(userId, includeArchived: false)
+                .Where(l =>
+                    // Direct topic lessons
+                    (l.TopicId.HasValue && l.Topic.CourseId == courseId) ||
+                    // SubTopic lessons where parent topic is in course
+                    (l.SubTopicId.HasValue && l.SubTopic.Topic.CourseId == courseId)
+                )
+                .Include(l => l.Topic)
+                .Include(l => l.SubTopic).ThenInclude(st => st.Topic)
+                .ToListAsync();
+
+            // ✅ FIX: Manual sorting to handle mixed entity ordering correctly
+            var sortedLessons = courseLessons
+                .OrderBy(l => GetTopicSortOrder(l))        // Primary: Topic sort order
+                .ThenBy(l => GetEntitySortOrderInTopic(l)) // Secondary: Mixed entity position within topic  
+                .ThenBy(l => l.SortOrder)                  // Tertiary: Lesson position within container
+                .ToList();
+
+            _logger.LogInformation($"🔍 [GetLessonsForCourse] Found {sortedLessons.Count} lessons for Course {courseId}");
+
+            // ✅ Debug logging to verify correct order
+            _logger.LogInformation("🔍 [GetLessonsForCourse] Final lesson sequence:");
+            for (int i = 0; i < Math.Min(10, sortedLessons.Count); i++) // Log first 10 lessons
+            {
+                var lesson = sortedLessons[i];
+                var container = lesson.TopicId.HasValue ? "Direct" : $"SubTopic-{lesson.SubTopic?.SortOrder}";
+                var topicSort = GetTopicSortOrder(lesson);
+                var entitySort = GetEntitySortOrderInTopic(lesson);
+
+                _logger.LogInformation($"  [{i}] Lesson {lesson.Id} '{lesson.Title}' - Topic:{topicSort}, Entity:{entitySort}, Lesson:{lesson.SortOrder} [{container}]");
+            }
+
+            return sortedLessons;
+        }
+
+
+        // ✅ Helper: Get the topic sort order for any lesson
+        private int GetTopicSortOrder(Lesson lesson)
+        {
+            if (lesson.TopicId.HasValue)
+            {
+                return lesson.Topic?.SortOrder ?? 999;
+            }
+            else if (lesson.SubTopicId.HasValue)
+            {
+                return lesson.SubTopic?.Topic?.SortOrder ?? 999;
+            }
+            return 999;
+        }
+
+        // ✅ Helper: Get the entity sort order within the topic (mixed space)
+        private int GetEntitySortOrderInTopic(Lesson lesson)
+        {
+            if (lesson.TopicId.HasValue)
+            {
+                // Direct topic lesson: use lesson's own sort order within topic
+                return lesson.SortOrder;
+            }
+            else if (lesson.SubTopicId.HasValue)
+            {
+                // SubTopic lesson: use subtopic's sort order within topic
+                // This puts all lessons from a subtopic at the subtopic's position
+                return lesson.SubTopic?.SortOrder ?? 999;
+            }
+            return 999;
+        }
+
+        private async Task<int> GetLessonCountForCourse(int courseId, int userId)
+        {
+            var lessons = await GetLessonsForCourse(courseId, userId);
+            return lessons.Count;
+        }
+    }
+}

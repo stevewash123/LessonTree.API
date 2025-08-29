@@ -207,7 +207,6 @@ public class TopicService : ITopicService
         {
             throw new ArgumentException($"Topic {moveResource.TopicId} not found");
         }
-
         if (topic.UserId != userId)
         {
             throw new UnauthorizedAccessException($"Topic {moveResource.TopicId} not owned by user {userId}");
@@ -219,23 +218,21 @@ public class TopicService : ITopicService
         {
             throw new ArgumentException($"Target course {moveResource.NewCourseId} not found");
         }
-
         if (targetCourse.UserId != userId)
         {
             throw new UnauthorizedAccessException($"Target course {moveResource.NewCourseId} not owned by user {userId}");
         }
 
-        // Route operation: positional move vs simple move
+        // ✅ UPDATED: Route operation based on sibling positioning
         TopicResource result;
-
-        if (moveResource.RelativeToId.HasValue)
+        if (moveResource.AfterSiblingId.HasValue)  // ✅ CHANGED: RelativeToId → AfterSiblingId
         {
             // Positional move - delegate to repository for atomic operation
             result = await MoveTopicToPositionAsync(moveResource, userId);
         }
         else
         {
-            // Simple move - update course and append to end
+            // Simple move - update course and append to end (first position in empty course)
             result = await MoveTopicSimpleAsync(moveResource, userId);
         }
 
@@ -243,53 +240,48 @@ public class TopicService : ITopicService
         return result;
     }
 
-    private async Task<TopicResource> MoveTopicToPositionAsync(TopicMoveResource moveResource, int userId)
-    {
-        // Validate relative topic exists and is in target course
-        if (moveResource.RelativeToType != "Topic")
-        {
-            throw new ArgumentException("RelativeToType must be 'Topic' for topic positioning");
-        }
-
-        var relativeTopic = await _topicRepository.GetByIdAsync(moveResource.RelativeToId.Value);
-        if (relativeTopic == null)
-        {
-            throw new ArgumentException($"Relative topic {moveResource.RelativeToId.Value} not found");
-        }
-
-        if (relativeTopic.CourseId != moveResource.NewCourseId)
-        {
-            throw new ArgumentException("Relative topic must be in the target course");
-        }
-
-        // Delegate atomic positioning to repository
-        var positionedTopic = await _topicRepository.MoveTopicToPositionAsync(
-            moveResource.TopicId,
-            moveResource.NewCourseId,
-            moveResource.RelativeToId.Value,
-            moveResource.Position ?? "after"
-        );
-
-        return _mapper.Map<TopicResource>(positionedTopic);
-    }
-
     private async Task<TopicResource> MoveTopicSimpleAsync(TopicMoveResource moveResource, int userId)
     {
-        // Get topic and update course
+        // Simple move - update course and position at start (SortOrder = 0)
         var topic = await _topicRepository.GetByIdAsync(moveResource.TopicId);
-
-        // If moving to different course, get next sort order
-        if (topic.CourseId != moveResource.NewCourseId)
+        if (topic == null)
         {
-            var maxSortOrder = await _topicRepository.GetMaxSortOrderInCourseAsync(moveResource.NewCourseId);
-            topic.SortOrder = maxSortOrder + 1;
+            throw new ArgumentException($"Topic {moveResource.TopicId} not found");
         }
 
+        // Update topic to new course, first position
         topic.CourseId = moveResource.NewCourseId;
+        topic.SortOrder = 0; // ✅ First position in empty course
 
         await _topicRepository.UpdateAsync(topic);
 
+        _logger.LogInformation($"MoveTopicSimpleAsync: Moved topic {moveResource.TopicId} to course {moveResource.NewCourseId} at first position");
+
         return _mapper.Map<TopicResource>(topic);
+    }
+
+
+    private async Task<TopicResource> MoveTopicToPositionAsync(TopicMoveResource moveResource, int userId)
+    {
+        // ✅ SIMPLIFIED: Validate sibling topic exists and is in target course
+        var siblingTopic = await _topicRepository.GetByIdAsync(moveResource.AfterSiblingId.Value);
+        if (siblingTopic == null)
+        {
+            throw new ArgumentException($"Sibling topic {moveResource.AfterSiblingId.Value} not found");
+        }
+        if (siblingTopic.CourseId != moveResource.NewCourseId)
+        {
+            throw new ArgumentException("Sibling topic must be in the target course");
+        }
+
+        // ✅ UPDATED: Delegate atomic positioning to repository with sibling approach
+        var positionedTopic = await _topicRepository.MoveTopicToPositionAsync(
+            moveResource.TopicId,
+            moveResource.NewCourseId,
+            moveResource.AfterSiblingId.Value  // ✅ SIMPLIFIED: Just pass sibling ID
+        );
+
+        return _mapper.Map<TopicResource>(positionedTopic);
     }
 
     public async Task<TopicResource> CopyTopicAsync(int topicId, int newCourseId, int userId)

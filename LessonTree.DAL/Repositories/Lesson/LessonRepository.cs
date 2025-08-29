@@ -254,8 +254,8 @@ public class LessonRepository : ILessonRepository
         _logger.LogInformation("=== REPOSITORY POSITION MOVE DIAGNOSTICS START ===");
         _logger.LogInformation("MoveLessonToPositionAsync: LessonId={LessonId}, NewSubTopicId={NewSubTopicId}, NewTopicId={NewTopicId}",
             moveResource.LessonId, moveResource.NewSubTopicId, moveResource.NewTopicId);
-        _logger.LogInformation("MoveLessonToPositionAsync: RelativeToId={RelativeToId}, Position={Position}, RelativeToType={RelativeToType}",
-            moveResource.RelativeToId, moveResource.Position, moveResource.RelativeToType);
+        _logger.LogInformation("MoveLessonToPositionAsync: AfterSiblingId={AfterSiblingId}", moveResource.AfterSiblingId);
+
 
         using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -284,9 +284,7 @@ public class LessonRepository : ILessonRepository
 
                 targetSortOrder = CalculateTargetSortOrder(
                     containerLessons,
-                    moveResource.RelativeToId.Value,
-                    moveResource.Position,
-                    moveResource.RelativeToType
+                    moveResource.AfterSiblingId
                 );
 
                 // Update lesson container and position
@@ -306,9 +304,7 @@ public class LessonRepository : ILessonRepository
                 // ✅ ENHANCED: Moving to direct Topic - use new logic that considers ALL Topic entities
                 targetSortOrder = await CalculateTargetSortOrderForTopicAsync(
                     moveResource.NewTopicId.Value,
-                    moveResource.RelativeToId.Value,
-                    moveResource.Position,
-                    moveResource.RelativeToType,
+                    moveResource.AfterSiblingId,
                     userId
                 );
 
@@ -352,99 +348,38 @@ public class LessonRepository : ILessonRepository
 
     private int CalculateTargetSortOrder(
     List<Lesson> containerLessons,
-    int relativeToId,
-    string position,
-    string relativeToType)
+    int? afterSiblingId)
     {
-        _logger.LogInformation("CalculateTargetSortOrder: RelativeToId={RelativeToId}, Position={Position}, RelativeToType={RelativeToType}",
-            relativeToId, position, relativeToType);
-
-        if (relativeToType == "Lesson")
+        if (afterSiblingId.HasValue)
         {
-            var relativeLesson = containerLessons.FirstOrDefault(l => l.Id == relativeToId);
-            if (relativeLesson != null)
+            var sibling = containerLessons.FirstOrDefault(l => l.Id == afterSiblingId.Value);
+            if (sibling != null)
             {
-                var targetSort = position == "before" ? relativeLesson.SortOrder : relativeLesson.SortOrder + 1;
-                _logger.LogInformation("CalculateTargetSortOrder: Found relative lesson Id={RelativeLessonId}, SortOrder={RelativeSortOrder}, calculated target={TargetSort}",
-                    relativeLesson.Id, relativeLesson.SortOrder, targetSort);
-                return targetSort;
-            }
-            else
-            {
-                _logger.LogWarning("CalculateTargetSortOrder: Relative lesson Id={RelativeToId} not found in container", relativeToId);
+                return sibling.SortOrder + 1; // Position after sibling
             }
         }
-        else if (relativeToType == "SubTopic")
-        {
-            var subtopicLessons = containerLessons.Where(l => l.SubTopicId == relativeToId).ToList();
-            _logger.LogInformation("CalculateTargetSortOrder: Found {SubTopicLessonCount} lessons in relative SubTopic Id={RelativeToId}",
-                subtopicLessons.Count, relativeToId);
-
-            if (subtopicLessons.Any())
-            {
-                var sortedSubtopicLessons = subtopicLessons.OrderBy(l => l.SortOrder).ToList();
-                int targetSort;
-                if (position == "before")
-                {
-                    targetSort = sortedSubtopicLessons.First().SortOrder;
-                }
-                else
-                {
-                    targetSort = sortedSubtopicLessons.Last().SortOrder + 1;
-                }
-                _logger.LogInformation("CalculateTargetSortOrder: SubTopic position calculation - first={FirstSort}, last={LastSort}, target={TargetSort}",
-                    sortedSubtopicLessons.First().SortOrder, sortedSubtopicLessons.Last().SortOrder, targetSort);
-                return targetSort;
-            }
-        }
-
-        // Fallback: append to end
-        var fallbackSort = containerLessons.Any() ? containerLessons.Max(l => l.SortOrder) + 1 : 0;
-        _logger.LogWarning("CalculateTargetSortOrder: Using fallback sort order {FallbackSort}", fallbackSort);
-        return fallbackSort;
+        // Empty container or sibling not found - position at start
+        return 0;
     }
+
 
     // ✅ UPDATED: Enhanced position calculation using ALL Topic entities
     private async Task<int> CalculateTargetSortOrderForTopicAsync(
-        int topicId,
-        int relativeToId,
-        string position,
-        string relativeToType,
-        int userId)
+    int topicId,
+    int? afterSiblingId,
+    int userId)
     {
-        _logger.LogInformation("CalculateTargetSortOrderForTopic: TopicId={TopicId}, RelativeToId={RelativeToId}, Position={Position}, RelativeToType={RelativeToType}",
-            topicId, relativeToId, position, relativeToType);
-
-        // Get all entities in Topic to understand the complete sort order space
-        var allEntities = await GetAllTopicEntitiesAsync(topicId, userId);
-
-        if (relativeToType == "Lesson")
+        if (afterSiblingId.HasValue)
         {
-            var relativeEntity = allEntities.FirstOrDefault(e => e.Id == relativeToId && e.Type == "Lesson");
-            if (relativeEntity != default)
+            var entities = await GetAllTopicEntitiesAsync(topicId, userId);
+            var sibling = entities.FirstOrDefault(e => e.Id == afterSiblingId.Value);
+            if (sibling != default)
             {
-                var targetSort = position == "before" ? relativeEntity.SortOrder : relativeEntity.SortOrder + 1;
-                _logger.LogInformation("CalculateTargetSortOrderForTopic: Found relative lesson Id={RelativeLessonId}, SortOrder={RelativeSortOrder}, calculated target={TargetSort}",
-                    relativeEntity.Id, relativeEntity.SortOrder, targetSort);
-                return targetSort;
+                return sibling.SortOrder + 1; // Position after sibling
             }
         }
-        else if (relativeToType == "SubTopic")
-        {
-            var relativeEntity = allEntities.FirstOrDefault(e => e.Id == relativeToId && e.Type == "SubTopic");
-            if (relativeEntity != default)
-            {
-                var targetSort = position == "before" ? relativeEntity.SortOrder : relativeEntity.SortOrder + 1;
-                _logger.LogInformation("CalculateTargetSortOrderForTopic: Found relative SubTopic Id={RelativeSubTopicId}, SortOrder={RelativeSortOrder}, calculated target={TargetSort}",
-                    relativeEntity.Id, relativeEntity.SortOrder, targetSort);
-                return targetSort;
-            }
-        }
-
-        // Fallback: append to end
-        var fallbackSort = allEntities.Any() ? allEntities.Max(e => e.SortOrder) + 1 : 0;
-        _logger.LogWarning("CalculateTargetSortOrderForTopic: Using fallback sort order {FallbackSort}", fallbackSort);
-        return fallbackSort;
+        // Empty container or sibling not found - position at start
+        return 0;
     }
 
     private async Task<List<Lesson>> GetContainerLessonsAsync(int? subTopicId, int? topicId, int userId)
