@@ -67,7 +67,6 @@ namespace LessonTree.API.Configuration
             builder.Services.AddTransient<IScheduleService, ScheduleService>();
             builder.Services.AddTransient<IScheduleConfigurationService, ScheduleConfigurationService>();
             builder.Services.AddTransient<INoteService, NoteService>();
-            builder.Services.AddTransient<IEntityPositioningService, EntityPositioningService>();
 
             // === NEW SERVICE REGISTRATION FOR SCHEDULE GENERATION MIGRATION ===
             builder.Services.AddTransient<IScheduleGenerationService, ScheduleGenerationService>();

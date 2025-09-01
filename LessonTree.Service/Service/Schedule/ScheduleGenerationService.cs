@@ -364,6 +364,215 @@ namespace LessonTree.BLL.Services
             return continuationEvents;
         }
 
+        // === SMART UPDATE FUNCTIONALITY ===
+
+        public async Task<ScheduleUpdateResult> UpdateScheduleAfterLessonAddedAsync(int scheduleId, int lessonId, int userId)
+        {
+            _logger.LogInformation($"UpdateScheduleAfterLessonAddedAsync: Updating schedule {scheduleId} after lesson {lessonId} added by user {userId}");
+
+            var schedule = await _scheduleRepository.GetByIdAsync(scheduleId);
+            if (schedule == null || schedule.UserId != userId)
+            {
+                throw new ArgumentException($"Schedule {scheduleId} not found or not owned by user {userId}");
+            }
+
+            var lesson = await _lessonRepository.GetByIdAsync(lessonId);
+            if (lesson == null)
+            {
+                throw new ArgumentException($"Lesson {lessonId} not found");
+            }
+
+            // Find which course this lesson belongs to
+            int courseId = GetCourseIdFromLesson(lesson);
+
+            // Find the periods assigned to this course
+            var configuration = await _configRepository.GetByIdAsync(schedule.ScheduleConfigurationId);
+            var coursePeriods = configuration.PeriodAssignments
+                .Where(pa => pa.CourseId == courseId)
+                .Select(pa => pa.Period)
+                .ToList();
+
+            if (!coursePeriods.Any())
+            {
+                _logger.LogWarning($"No periods assigned to course {courseId}, no schedule updates needed");
+                return new ScheduleUpdateResult { Success = true, EventsUpdated = 0, Message = "No periods assigned to this course" };
+            }
+
+            // Use shared logic to regenerate events for affected periods
+            var eventsUpdated = 0;
+            foreach (var period in coursePeriods)
+            {
+                eventsUpdated += await RegenerateEventsForPeriodCourse(scheduleId, period, courseId, userId);
+            }
+
+            _logger.LogInformation($"Updated {eventsUpdated} events across {coursePeriods.Count} periods for new lesson {lessonId}");
+
+            return new ScheduleUpdateResult 
+            { 
+                Success = true, 
+                EventsUpdated = eventsUpdated, 
+                Message = $"Updated {eventsUpdated} schedule events for new lesson" 
+            };
+        }
+
+        public async Task<ScheduleUpdateResult> UpdateScheduleAfterLessonMovedAsync(int scheduleId, int lessonId, int userId)
+        {
+            _logger.LogInformation($"UpdateScheduleAfterLessonMovedAsync: Updating schedule {scheduleId} after lesson {lessonId} moved by user {userId}");
+
+            var schedule = await _scheduleRepository.GetByIdAsync(scheduleId);
+            if (schedule == null || schedule.UserId != userId)
+            {
+                throw new ArgumentException($"Schedule {scheduleId} not found or not owned by user {userId}");
+            }
+
+            var lesson = await _lessonRepository.GetByIdAsync(lessonId);
+            if (lesson == null)
+            {
+                throw new ArgumentException($"Lesson {lessonId} not found");
+            }
+
+            // Find which course this lesson belongs to now
+            int courseId = GetCourseIdFromLesson(lesson);
+
+            // Find all periods that might be affected (both old and new course)
+            var configuration = await _configRepository.GetByIdAsync(schedule.ScheduleConfigurationId);
+            var affectedPeriods = new HashSet<int>();
+
+            // Add periods for the current course
+            var currentCoursePeriods = configuration.PeriodAssignments
+                .Where(pa => pa.CourseId == courseId)
+                .Select(pa => pa.Period);
+            foreach (var period in currentCoursePeriods)
+            {
+                affectedPeriods.Add(period);
+            }
+
+            // Find any existing schedule events that reference this lesson (in case it moved from another course)
+            var existingEvents = schedule.ScheduleEvents.Where(e => e.LessonId == lessonId).ToList();
+            foreach (var eventDto in existingEvents)
+            {
+                if (eventDto.CourseId.HasValue)
+                {
+                    var oldCoursePeriods = configuration.PeriodAssignments
+                        .Where(pa => pa.CourseId == eventDto.CourseId.Value)
+                        .Select(pa => pa.Period);
+                    foreach (var period in oldCoursePeriods)
+                    {
+                        affectedPeriods.Add(period);
+                    }
+                }
+            }
+
+            if (!affectedPeriods.Any())
+            {
+                _logger.LogWarning($"No periods affected by lesson {lessonId} move, no schedule updates needed");
+                return new ScheduleUpdateResult { Success = true, EventsUpdated = 0, Message = "No periods affected by lesson move" };
+            }
+
+            // Use shared logic to regenerate events for all affected periods
+            var eventsUpdated = 0;
+            foreach (var period in affectedPeriods)
+            {
+                var periodCourse = configuration.PeriodAssignments
+                    .FirstOrDefault(pa => pa.Period == period && pa.CourseId.HasValue)?.CourseId;
+                if (periodCourse.HasValue)
+                {
+                    eventsUpdated += await RegenerateEventsForPeriodCourse(scheduleId, period, periodCourse.Value, userId);
+                }
+            }
+
+            _logger.LogInformation($"Updated {eventsUpdated} events across {affectedPeriods.Count} periods for moved lesson {lessonId}");
+
+            return new ScheduleUpdateResult 
+            { 
+                Success = true, 
+                EventsUpdated = eventsUpdated, 
+                Message = $"Updated {eventsUpdated} schedule events for moved lesson" 
+            };
+        }
+
+        // === SHARED UPDATE LOGIC ===
+
+        private async Task<int> RegenerateEventsForPeriodCourse(int scheduleId, int period, int courseId, int userId)
+        {
+            _logger.LogInformation($"RegenerateEventsForPeriodCourse: Regenerating period {period}, course {courseId} in schedule {scheduleId}");
+
+            var schedule = await _scheduleRepository.GetByIdAsync(scheduleId);
+            var configuration = await _configRepository.GetByIdAsync(schedule.ScheduleConfigurationId);
+            
+            // Get the period assignment
+            var periodAssignment = configuration.PeriodAssignments
+                .FirstOrDefault(pa => pa.Period == period && pa.CourseId == courseId);
+            
+            if (periodAssignment == null)
+            {
+                _logger.LogWarning($"No period assignment found for period {period}, course {courseId}");
+                return 0;
+            }
+
+            // Remove existing events for this period
+            var existingEvents = schedule.ScheduleEvents
+                .Where(e => e.Period == period && e.CourseId == courseId)
+                .ToList();
+
+            foreach (var eventToRemove in existingEvents)
+            {
+                schedule.ScheduleEvents.Remove(eventToRemove);
+            }
+
+            // Generate new events using shared logic
+            var teachingDaysArray = configuration.TeachingDays.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            var periodAssignmentResource = ConvertToResource(periodAssignment);
+            
+            var newEvents = await GenerateEventsForPeriodCourse(
+                periodAssignmentResource,
+                configuration.StartDate,
+                configuration.EndDate,
+                teachingDaysArray,
+                -1000 - (period * 1000), // Unique negative IDs for new events
+                userId
+            );
+
+            // Convert to domain entities and add to schedule
+            var newEventEntities = newEvents.Select(eventResource => new ScheduleEvent
+            {
+                CourseId = eventResource.CourseId,
+                Date = eventResource.Date,
+                Period = eventResource.Period,
+                LessonId = eventResource.LessonId,
+                EventType = eventResource.EventType,
+                EventCategory = eventResource.EventCategory,
+                Comment = eventResource.Comment,
+                ScheduleSort = eventResource.ScheduleSort,
+                ScheduleId = scheduleId
+            }).ToList();
+
+            foreach (var newEvent in newEventEntities)
+            {
+                schedule.ScheduleEvents.Add(newEvent);
+            }
+
+            // Save changes using the correct method
+            await _scheduleRepository.UpdateScheduleEventsAsync(scheduleId, schedule.ScheduleEvents.ToList());
+
+            _logger.LogInformation($"Regenerated {newEvents.Count} events for period {period}, course {courseId}");
+            return newEvents.Count;
+        }
+
+        private int GetCourseIdFromLesson(Lesson lesson)
+        {
+            if (lesson.TopicId.HasValue && lesson.Topic != null)
+            {
+                return lesson.Topic.CourseId;
+            }
+            else if (lesson.SubTopicId.HasValue && lesson.SubTopic?.Topic != null)
+            {
+                return lesson.SubTopic.Topic.CourseId;
+            }
+            
+            throw new InvalidOperationException($"Lesson {lesson.Id} does not belong to any course");
+        }
+
         // === SPECIAL DAY INTEGRATION ===
 
         public async Task<List<ScheduleEventResource>> ApplySpecialDayIntegrationAsync(List<ScheduleEventResource> baseEvents, List<SpecialDayResource> specialDays)
@@ -746,6 +955,7 @@ namespace LessonTree.BLL.Services
             int? lessonSort = null; // ✅ ADD: Lesson sort order within course
             int scheduleSort = lessonIndex;
 
+            _logger.LogInformation($"🔢 [ScheduleSort] CRITICAL: Setting ScheduleSort = {scheduleSort} (lessonIndex) for Date: {date:yyyy-MM-dd}, Period: {assignment.Period}, CourseId: {assignment.CourseId}");
             _logger.LogDebug($"🔍 [CreatePeriodCourseEvent] Input - EventId: {eventId}, Date: {date:yyyy-MM-dd}, Period: {assignment.Period}, CourseId: {assignment.CourseId}, LessonIndex: {lessonIndex}, LessonsCount: {lessons.Count}");
 
             if (lessonIndex < lessons.Count)
@@ -814,8 +1024,10 @@ namespace LessonTree.BLL.Services
         {
             _logger.LogInformation($"🔍 [GetLessonsForCourse] Starting - CourseId: {courseId}, UserId: {userId}");
 
-            // Get all lessons for this course with necessary navigation properties
+            // Get all lessons for this course with necessary navigation properties  
+            // ✅ FIX: Use AsNoTracking to ensure fresh SubTopic.SortOrder after SubTopic moves
             var courseLessons = await _lessonRepository.GetByUserId(userId, includeArchived: false)
+                .AsNoTracking() // Force fresh navigation properties from database
                 .Where(l =>
                     // Direct topic lessons
                     (l.TopicId.HasValue && l.Topic.CourseId == courseId) ||

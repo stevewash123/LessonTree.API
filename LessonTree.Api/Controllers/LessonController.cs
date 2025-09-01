@@ -18,18 +18,15 @@ public class LessonController : BaseController
 {
     private readonly ILessonService _lessonService;
     private readonly IAttachmentService _attachmentService;
-    private readonly IEntityPositioningService _entityPositioningService;
     private readonly ILogger<LessonController> _logger;
 
     public LessonController(
         ILessonService lessonService,
         IAttachmentService attachmentService, 
-        IEntityPositioningService entityPositioningService,
         ILogger<LessonController> logger)
     {
         _lessonService = lessonService;
         _attachmentService = attachmentService;
-        _entityPositioningService = entityPositioningService;
         _logger = logger;
     }
 
@@ -232,30 +229,6 @@ public class LessonController : BaseController
         }
     }
 
-    [HttpPost("move")]
-    public async Task<IActionResult> MoveLesson([FromBody] LessonMoveResource moveResource)
-    {
-        try
-        {
-            var userId = GetCurrentUserId();
-
-            // Fix: Explicitly declare the variable type as Task<EntityPositionResult>
-            var result = await _entityPositioningService.MoveLesson(moveResource, userId);
-
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result.ErrorMessage);
-            }
-
-            // Return the full EntityPositionResult directly
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error moving lesson");
-            return StatusCode(500, "Internal server error");
-        }
-    }
 
     [HttpPost("{lessonId}/standards")]
     public async Task<IActionResult> AddStandardToLesson(int lessonId, [FromBody] int standardId)
@@ -302,6 +275,56 @@ public class LessonController : BaseController
         {
             _logger.LogWarning("Unauthorized standard removal attempt for Lesson ID: {LessonId} by User ID: {UserId}", lessonId, userId);
             return Forbid();
+        }
+    }
+
+    [HttpPost("move")]
+    public async Task<IActionResult> MoveLesson([FromBody] LessonMoveResource moveResource)
+    {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Moving Lesson ID: {LessonId} for User ID: {UserId}", moveResource.LessonId, userId);
+
+        try
+        {
+            var movedLesson = await _lessonService.MoveLessonAsync(moveResource, userId);
+            _logger.LogInformation("Moved Lesson ID: {LessonId} by User ID: {UserId}", moveResource.LessonId, userId);
+            
+            var result = new LessonPositioningResult
+            {
+                IsSuccess = true,
+                LessonId = movedLesson.Id,
+                NewSubTopicId = movedLesson.SubTopicId,
+                NewTopicId = movedLesson.TopicId,
+                TargetSortOrder = movedLesson.SortOrder,
+                ModifiedEntities = new List<ModifiedEntityInfo>
+                {
+                    new ModifiedEntityInfo
+                    {
+                        EntityId = movedLesson.Id,
+                        EntityType = "Lesson",
+                        NewSortOrder = movedLesson.SortOrder,
+                        ParentId = movedLesson.SubTopicId ?? movedLesson.TopicId,
+                        ParentType = movedLesson.SubTopicId.HasValue ? "SubTopic" : "Topic"
+                    }
+                }
+            };
+            
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Lesson move failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized Lesson move attempt for ID: {LessonId} by User ID: {UserId}", moveResource.LessonId, userId);
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error moving Lesson ID: {LessonId}", moveResource.LessonId);
+            return StatusCode(500, new { status = "error", message = ex.Message });
         }
     }
 

@@ -17,13 +17,11 @@ using Microsoft.AspNetCore.Mvc;
 public class TopicController : BaseController
 {
     private readonly ITopicService _service;
-    private readonly IEntityPositioningService _entityPositioningService;
     private readonly ILogger<TopicController> _logger;
 
-    public TopicController(ITopicService service, IEntityPositioningService entityPositioningService, ILogger<TopicController> logger)
+    public TopicController(ITopicService service, ILogger<TopicController> logger)
     {
         _service = service;
-        _entityPositioningService = entityPositioningService;
         _logger = logger;
     }
 
@@ -139,6 +137,57 @@ public class TopicController : BaseController
         }
     }
 
+    [HttpPost("move")]
+    public async Task<IActionResult> MoveTopic([FromBody] TopicMoveResource moveResource)
+    {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Moving Topic ID: {TopicId} to Course ID: {NewCourseId} for User ID: {UserId}",
+            moveResource.TopicId, moveResource.NewCourseId, userId);
+
+        try
+        {
+            var movedTopic = await _service.MoveTopicAsync(moveResource, userId);
+            _logger.LogInformation("Moved Topic ID: {TopicId} to Course ID: {NewCourseId} by User ID: {UserId}",
+                moveResource.TopicId, moveResource.NewCourseId, userId);
+            
+            var result = new TopicPositioningResult
+            {
+                IsSuccess = true,
+                TopicId = movedTopic.Id,
+                NewCourseId = movedTopic.CourseId,
+                TargetSortOrder = movedTopic.SortOrder,
+                ModifiedEntities = new List<ModifiedEntityInfo>
+                {
+                    new ModifiedEntityInfo
+                    {
+                        EntityId = movedTopic.Id,
+                        EntityType = "Topic",
+                        NewSortOrder = movedTopic.SortOrder,
+                        ParentId = movedTopic.CourseId,
+                        ParentType = "Course"
+                    }
+                }
+            };
+            
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Topic move failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized Topic move attempt for ID: {TopicId} by User ID: {UserId}", moveResource.TopicId, userId);
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error moving Topic ID: {TopicId}", moveResource.TopicId);
+            return StatusCode(500, new { status = "error", message = ex.Message });
+        }
+    }
+
     [HttpPost("copy")]
     public async Task<IActionResult> CopyTopic([FromBody] TopicMoveResource copyResource)
     {
@@ -180,27 +229,6 @@ public class TopicController : BaseController
         }
     }
 
-    [HttpPost("move")]
-    public async Task<IActionResult> MoveTopic([FromBody] TopicMoveResource moveResource)
-    {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var result = await _entityPositioningService.MoveTopic(moveResource, userId);
-
-            if (!result.IsSuccess)
-            {
-                return BadRequest(result.ErrorMessage);
-            }
-
-            return Ok(new { success = true, modifiedEntities = result.ModifiedEntities });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error moving Topic");
-            return StatusCode(500, "Internal server error");
-        }
-    }
 
     private int GetCurrentUserId() => int.Parse(User.FindFirst("UserId")?.Value ?? "0");
 

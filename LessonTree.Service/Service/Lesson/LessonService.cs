@@ -19,6 +19,7 @@ public class LessonService : ILessonService
     private readonly IMapper _mapper;
     private readonly IScheduleService _scheduleService; // NEW DEPENDENCY
     private readonly IScheduleConfigurationService _scheduleConfigurationService; // NEW DEPENDENCY
+    private readonly IScheduleGenerationService _scheduleGenerationService;
 
     public LessonService(
         ILessonRepository lessonRepository,
@@ -28,7 +29,8 @@ public class LessonService : ILessonService
         ILogger<LessonService> logger,
         IMapper mapper,
         IScheduleService scheduleService, // NEW PARAMETER
-        IScheduleConfigurationService scheduleConfigurationService) // NEW PARAMETER
+        IScheduleConfigurationService scheduleConfigurationService, // NEW PARAMETER
+        IScheduleGenerationService scheduleGenerationService)
     {
         _lessonRepository = lessonRepository;
         _topicRepository = topicRepository;
@@ -38,6 +40,7 @@ public class LessonService : ILessonService
         _mapper = mapper;
         _scheduleService = scheduleService; // NEW ASSIGNMENT
         _scheduleConfigurationService = scheduleConfigurationService; // NEW ASSIGNMENT
+        _scheduleGenerationService = scheduleGenerationService;
     }
 
     // **PARTIAL FILE** - LessonService.cs - Logging Standardization (Key Methods)
@@ -464,7 +467,7 @@ public class LessonService : ILessonService
 
     // ✅ URGENT FIX: Replace the MoveLessonAsync method in LessonService
 
-    public async Task MoveLessonAsync(LessonMoveResource moveResource, int userId)
+    public async Task<LessonResource> MoveLessonAsync(LessonMoveResource moveResource, int userId)
     {
         _logger.LogInformation("=== LESSON MOVE DIAGNOSTICS START ===");
         _logger.LogInformation("MoveLessonAsync: LessonId={LessonId}, NewSubTopicId={NewSubTopicId}, NewTopicId={NewTopicId}, UserId={UserId}",
@@ -490,8 +493,15 @@ public class LessonService : ILessonService
             _logger.LogInformation("MoveLessonAsync: POSITIONAL MOVE detected - calling MoveLessonToPositionAsync");
             await _lessonRepository.MoveLessonToPositionAsync(moveResource, userId);
             _logger.LogInformation("MoveLessonAsync: POSITIONAL MOVE completed successfully");
+            
+            // ✅ RESTORED: Update schedule events after lesson move
+            await UpdateScheduleAfterLessonMoveAsync(moveResource.LessonId, userId);
+            
             _logger.LogInformation("=== LESSON MOVE DIAGNOSTICS END ===");
-            return;
+            
+            // Get the updated lesson to return
+            var positionedLesson = await GetByIdAsync(moveResource.LessonId, userId);
+            return _mapper.Map<LessonResource>(positionedLesson);
         }
 
         _logger.LogInformation("MoveLessonAsync: SIMPLE MOVE (first position in empty container)");
@@ -546,7 +556,14 @@ public class LessonService : ILessonService
         await _lessonRepository.UpdateAsync(lesson);
 
         _logger.LogInformation("MoveLessonAsync: SIMPLE MOVE completed - final SortOrder=0");
+        
+        // ✅ RESTORED: Update schedule events after lesson move
+        await UpdateScheduleAfterLessonMoveAsync(moveResource.LessonId, userId);
+        
         _logger.LogInformation("=== LESSON MOVE DIAGNOSTICS END ===");
+
+        var updatedLesson = await GetByIdAsync(moveResource.LessonId, userId);
+        return _mapper.Map<LessonResource>(updatedLesson);
     }
 
     public async Task AddStandardToLessonAsync(int lessonId, int standardId, int userId)
@@ -673,5 +690,91 @@ public class LessonService : ILessonService
             lessonId, newLesson.Id, newSubTopicId, newTopicId, userId);
 
         return _mapper.Map<LessonResource>(newLesson);
+    }
+
+    /// <summary>
+    /// Update schedule events after lesson move
+    /// Calls schedule generation service to update all schedules containing this lesson
+    /// </summary>
+    private async Task UpdateScheduleAfterLessonMoveAsync(int lessonId, int userId)
+    {
+        try
+        {
+            _logger.LogInformation($"UpdateScheduleAfterLessonMoveAsync: Starting schedule update for lesson {lessonId}");
+            
+            // Get the moved lesson to find affected courses
+            var lesson = await _lessonRepository.GetByIdAsync(lessonId, q => q.Include(l => l.SubTopic).ThenInclude(s => s.Topic).Include(l => l.Topic));
+            if (lesson == null)
+            {
+                _logger.LogWarning($"Lesson {lessonId} not found, skipping schedule updates");
+                return;
+            }
+
+            // Determine course ID
+            var courseId = await GetCourseIdForLessonAsync(lesson, userId);
+            if (!courseId.HasValue)
+            {
+                _logger.LogWarning($"Could not determine course ID for lesson {lessonId}, skipping schedule updates");
+                return;
+            }
+
+            // Find all schedules that contain this course
+            var schedules = await GetSchedulesForCourseAsync(courseId.Value, userId);
+            
+            if (!schedules.Any())
+            {
+                _logger.LogInformation($"No schedules found for course {courseId.Value}, no updates needed");
+                return;
+            }
+
+            // Update each affected schedule
+            foreach (var schedule in schedules)
+            {
+                try
+                {
+                    _logger.LogInformation($"Updating schedule {schedule.Id} after lesson {lessonId} move");
+                    
+                    await _scheduleGenerationService.UpdateScheduleAfterLessonMovedAsync(schedule.Id, lessonId, userId);
+                    
+                    _logger.LogInformation($"Successfully updated schedule {schedule.Id} for lesson move");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Failed to update schedule {schedule.Id} after lesson {lessonId} move");
+                    // Continue with other schedules rather than failing the entire operation
+                }
+            }
+
+            _logger.LogInformation($"UpdateScheduleAfterLessonMoveAsync: Completed schedule updates for lesson {lessonId}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to update schedules after lesson {lessonId} move");
+            // Don't rethrow - schedule updates are secondary to the move operation
+        }
+    }
+
+    /// <summary>
+    /// Get all schedules that contain lessons from the specified course
+    /// </summary>
+    private async Task<List<Schedule>> GetSchedulesForCourseAsync(int courseId, int userId)
+    {
+        try
+        {
+            _logger.LogInformation($"GetSchedulesForCourseAsync: Looking for schedules containing course {courseId} for user {userId}");
+            
+            // Get all schedules that contain this course
+            var schedules = await _scheduleService.FindAllSchedulesByCourseIdAsync(courseId, userId);
+            
+            _logger.LogInformation($"Found {schedules.Count} schedules for course {courseId}");
+            
+            // Convert to domain objects
+            return schedules.Select(s => new Schedule { Id = s.Id, UserId = s.UserId }).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to get schedules for course {courseId}, user {userId}");
+            return new List<Schedule>();
+        }
     }
 }

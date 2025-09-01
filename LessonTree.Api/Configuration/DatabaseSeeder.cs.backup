@@ -1,0 +1,263 @@
+// **SIMPLIFIED SEEDER** - Minimal test data for schedule generation testing
+// 2 periods, 2 courses, 6 lessons each (enough for 2 weeks)
+
+using LessonTree.DAL;
+using LessonTree.DAL.Domain;
+using LessonTree.Models.Enums;
+using LessonTree.BLL.Service;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace LessonTree.API.Configuration
+{
+    public static class DatabaseSeeder
+    {
+        public static async Task SeedDatabaseAsync(
+            LessonTreeContext context,
+            UserManager<User> userManager,
+            RoleManager<IdentityRole<int>> roleManager,
+            ILogger logger,
+            IHostEnvironment env,
+            IScheduleGenerationService scheduleGenerationService)
+        {
+            try
+            {
+                if (!env.IsDevelopment())
+                {
+                    logger.LogInformation("Skipping test data seeding: not in Development mode.");
+                    return;
+                }
+
+                logger.LogInformation("Seeding minimal test data for schedule generation testing...");
+
+                // Clear existing data in dependency order
+                context.ScheduleEvents.RemoveRange(context.ScheduleEvents);
+                context.Schedules.RemoveRange(context.Schedules);
+                context.PeriodAssignments.RemoveRange(context.PeriodAssignments);
+                context.ScheduleConfigurations.RemoveRange(context.ScheduleConfigurations);
+                context.LessonAttachments.RemoveRange(context.LessonAttachments);
+                context.LessonStandards.RemoveRange(context.LessonStandards);
+                context.Notes.RemoveRange(context.Notes);
+                context.Lessons.RemoveRange(context.Lessons);
+                context.SubTopics.RemoveRange(context.SubTopics);
+                context.Topics.RemoveRange(context.Topics);
+                context.Courses.RemoveRange(context.Courses);
+                context.Standards.RemoveRange(context.Standards);
+                context.Attachments.RemoveRange(context.Attachments);
+                context.UserConfigurations.RemoveRange(context.UserConfigurations);
+                context.Departments.RemoveRange(context.Departments);
+                context.Schools.RemoveRange(context.Schools);
+                context.Districts.RemoveRange(context.Districts);
+                await context.SaveChangesAsync();
+
+                // Seed Roles
+                string[] roleNames = { "admin", "paidUser", "freeUser" };
+                foreach (var roleName in roleNames)
+                {
+                    if (!await roleManager.RoleExistsAsync(roleName))
+                    {
+                        logger.LogInformation("Creating role: {RoleName}", roleName);
+                        var role = new IdentityRole<int> { Name = roleName };
+                        var result = await roleManager.CreateAsync(role);
+                        if (!result.Succeeded)
+                        {
+                            logger.LogError("Failed to create role {RoleName}: {Errors}", roleName, string.Join(", ", result.Errors.Select(e => e.Description)));
+                            throw new Exception($"Role {roleName} creation failed.");
+                        }
+                    }
+                }
+
+                // Seed District
+                var district = new District { Name = "Test District", Description = "Test district for schedule testing" };
+                context.Districts.Add(district);
+                await context.SaveChangesAsync();
+
+                // Seed School
+                var school = new School { Name = "Test School", Description = "Test school", DistrictId = district.Id };
+                context.Schools.Add(school);
+                await context.SaveChangesAsync();
+
+                // Seed Department
+                var department = new Department { Name = "Mathematics", Description = "Math department", SchoolId = school.Id };
+                context.Departments.Add(department);
+                await context.SaveChangesAsync();
+
+                // Seed Admin User
+                var adminUser = await userManager.FindByNameAsync("admin");
+                if (adminUser == null)
+                {
+                    logger.LogInformation("Creating admin user");
+                    adminUser = new User
+                    {
+                        UserName = "admin",
+                        FirstName = "Test",
+                        LastName = "Teacher",
+                        DistrictId = district.Id,
+                        SchoolId = school.Id
+                    };
+                    var result = await userManager.CreateAsync(adminUser, "Admin123!");
+                    if (!result.Succeeded)
+                    {
+                        logger.LogError("Failed to create admin user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                        throw new Exception("Admin user creation failed.");
+                    }
+
+                    result = await userManager.AddToRoleAsync(adminUser, "admin");
+                    if (!result.Succeeded)
+                    {
+                        logger.LogError("Failed to assign admin role: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                        throw new Exception("Role assignment failed.");
+                    }
+
+                    adminUser.Departments.Add(department);
+                    await context.SaveChangesAsync();
+                }
+
+                // Seed 2 Courses with 6 lessons each
+                var mathCourse = new Course
+                {
+                    Title = "Math",
+                    Description = "Math course",
+                    UserId = adminUser.Id,
+                    Archived = false,
+                    Visibility = VisibilityType.Private,
+                    Topics = new List<Topic>
+                    {
+                        new Topic
+                        {
+                            Title = "Math Topic",
+                            Description = "Math lessons",
+                            UserId = adminUser.Id,
+                            Archived = false,
+                            Visibility = VisibilityType.Private,
+                            SortOrder = 0,
+                            Lessons = new List<Lesson>
+                            {
+                                new Lesson { Title = "Math Lesson 1", Objective = "First math lesson", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 0 },
+                                new Lesson { Title = "Math Lesson 2", Objective = "Second math lesson", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 1 },
+                                new Lesson { Title = "Math Lesson 3", Objective = "Third math lesson", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 2 },
+                                new Lesson { Title = "Math Lesson 4", Objective = "Fourth math lesson", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 3 },
+                                new Lesson { Title = "Math Lesson 5", Objective = "Fifth math lesson", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 4 },
+                                new Lesson { Title = "Math Lesson 6", Objective = "Sixth math lesson", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 5 }
+                            }
+                        }
+                    }
+                };
+
+                var scienceCourse = new Course
+                {
+                    Title = "Science",
+                    Description = "Science course",
+                    UserId = adminUser.Id,
+                    Archived = false,
+                    Visibility = VisibilityType.Private,
+                    Topics = new List<Topic>
+                    {
+                        new Topic
+                        {
+                            Title = "Science Topic",
+                            Description = "Science lessons",
+                            UserId = adminUser.Id,
+                            Archived = false,
+                            Visibility = VisibilityType.Private,
+                            SortOrder = 0,
+                            Lessons = new List<Lesson>
+                            {
+                                new Lesson { Title = "Science Lesson 1", Objective = "First science lesson", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 0 },
+                                new Lesson { Title = "Science Lesson 2", Objective = "Second science lesson", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 1 },
+                                new Lesson { Title = "Science Lesson 3", Objective = "Third science lesson", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 2 },
+                                new Lesson { Title = "Science Lesson 4", Objective = "Fourth science lesson", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 3 },
+                                new Lesson { Title = "Science Lesson 5", Objective = "Fifth science lesson", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 4 },
+                                new Lesson { Title = "Science Lesson 6", Objective = "Sixth science lesson", UserId = adminUser.Id, Archived = false, Visibility = VisibilityType.Private, SortOrder = 5 }
+                            }
+                        }
+                    }
+                };
+
+                context.Courses.Add(mathCourse);
+                context.Courses.Add(scienceCourse);
+                await context.SaveChangesAsync();
+
+                // Create Schedule Configuration with dates starting next week
+                var startDate = DateTime.Today.AddDays(7); // Today + 1 week
+                var endDate = startDate.AddDays(14); // 2 weeks after start
+                var scheduleConfig = new ScheduleConfiguration
+                {
+                    UserId = adminUser.Id,
+                    Title = "Test Schedule",
+                    SchoolYear = DateTime.Today.Year + "-" + (DateTime.Today.Year + 1),
+                    PeriodsPerDay = 6,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    TeachingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
+                    IsActive = true
+                };
+
+                context.ScheduleConfigurations.Add(scheduleConfig);
+                await context.SaveChangesAsync();
+
+                // Create 2 Period Assignments
+                var periodAssignments = new List<PeriodAssignment>
+                {
+                    new PeriodAssignment
+                    {
+                        ScheduleConfigurationId = scheduleConfig.Id,
+                        Period = 1,
+                        CourseId = mathCourse.Id,
+                        TeachingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
+                        Room = "Room 101",
+                        Notes = "Math class",
+                        BackgroundColor = "#E3F2FD",
+                        FontColor = "#1976D2"
+                    },
+                    new PeriodAssignment
+                    {
+                        ScheduleConfigurationId = scheduleConfig.Id,
+                        Period = 2,
+                        CourseId = scienceCourse.Id,
+                        TeachingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
+                        Room = "Room 201",
+                        Notes = "Science class",
+                        BackgroundColor = "#E8F5E8",
+                        FontColor = "#388E3C"
+                    }
+                };
+
+                context.PeriodAssignments.AddRange(periodAssignments);
+                await context.SaveChangesAsync();
+
+                // Create main Schedule record
+                var mainSchedule = new Schedule
+                {
+                    UserId = adminUser.Id,
+                    ScheduleConfigurationId = scheduleConfig.Id,
+                    Title = "Test Schedule",
+                    IsLocked = false,
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                context.Schedules.Add(mainSchedule);
+                await context.SaveChangesAsync();
+
+                // Generate initial schedule events using the main schedule ID
+                logger.LogInformation("Generating schedule events for main schedule...");
+                await scheduleGenerationService.RegenerateFullScheduleAsync(mainSchedule.Id, adminUser.Id);
+
+                logger.LogInformation("Minimal schedule test data seeded successfully:");
+                logger.LogInformation("- 2 courses: Math (6 lessons), Science (6 lessons)");
+                logger.LogInformation("- 2 periods: Math (P1), Science (P2)");
+                logger.LogInformation("- Teaching days: Monday-Friday (all periods)");
+                logger.LogInformation("- Schedule dates: {StartDate} to {EndDate}", startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
+                logger.LogInformation("- Total: 12 lessons across 2 periods (perfect for testing)");
+                logger.LogInformation("- Schedule events generated and ready for calendar");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to seed minimal test data: {Message}", ex.Message);
+                throw;
+            }
+        }
+    }
+}

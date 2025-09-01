@@ -49,5 +49,23 @@ namespace LessonTree.BLL.Services
         /// <param name="specialDays">Special days to integrate</param>
         /// <returns>Integrated events with special days</returns>
         Task<List<ScheduleEventResource>> ApplySpecialDayIntegrationAsync(List<ScheduleEventResource> baseEvents, List<SpecialDayResource> specialDays);
+
+        /// <summary>
+        /// Update schedule events after a lesson is added
+        /// </summary>
+        /// <param name="scheduleId">Schedule ID</param>
+        /// <param name="lessonId">Lesson ID that was added</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Update result with statistics</returns>
+        Task<ScheduleUpdateResult> UpdateScheduleAfterLessonAddedAsync(int scheduleId, int lessonId, int userId);
+
+        /// <summary>
+        /// Update schedule events after a lesson is moved
+        /// </summary>
+        /// <param name="scheduleId">Schedule ID</param>
+        /// <param name="lessonId">Lesson ID that was moved</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Update result with statistics</returns>
+        Task<ScheduleUpdateResult> UpdateScheduleAfterLessonMovedAsync(int scheduleId, int lessonId, int userId);
     }
 }

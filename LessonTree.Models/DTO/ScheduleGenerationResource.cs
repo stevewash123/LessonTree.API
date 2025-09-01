@@ -25,6 +25,21 @@ namespace LessonTree.BLL.Services
         public TimeSpan ProcessingTime => GenerationCompleted - GenerationStarted;
     }
 
+    // === SCHEDULE UPDATE RESULT (NEW - for smart updates) ===
+
+    /// <summary>
+    /// Result of smart schedule update operations (lesson added/moved)
+    /// </summary>
+    public class ScheduleUpdateResult
+    {
+        public bool Success { get; set; }
+        public int EventsUpdated { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public List<string> Errors { get; set; } = new();
+        public List<string> Warnings { get; set; } = new();
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
+
     // === SEQUENCE ANALYSIS RESULT (NEW - for continuation logic) ===
 
     /// <summary>

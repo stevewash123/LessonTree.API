@@ -23,7 +23,7 @@ namespace LessonTree.BLL.Service
         Task RemoveAttachmentAsync(int lessonId, int attachmentId, int userId);
 
         // Move/Copy operations - all include userId for ownership validation
-        Task MoveLessonAsync(LessonMoveResource moveResource, int userId);
+        Task<LessonResource> MoveLessonAsync(LessonMoveResource moveResource, int userId);
         Task<LessonResource> CopyLessonAsync(int lessonId, int? newSubTopicId, int? newTopicId, int userId);
 
         // Standards operations - all include userId for ownership validation

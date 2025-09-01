@@ -19,14 +19,11 @@ namespace LessonTree.API.Controllers
     public class SubTopicController : BaseController
     {
         private readonly ISubTopicService _service;
-        private readonly IEntityPositioningService _entityPositioningService;
         private readonly ILogger<SubTopicController> _logger;
 
-
-        public SubTopicController(ISubTopicService service, IEntityPositioningService entityPositioningService, ILogger<SubTopicController> logger)
+        public SubTopicController(ISubTopicService service, ILogger<SubTopicController> logger)
         {
             _service = service;
-            _entityPositioningService = entityPositioningService;
             _logger = logger;
         }
 
@@ -142,27 +139,6 @@ namespace LessonTree.API.Controllers
             }
         }
 
-        [HttpPost("move")]
-        public async Task<IActionResult> MoveSubTopic([FromBody] SubTopicMoveResource moveResource)
-        {
-            try
-            {
-                var userId = GetCurrentUserId();
-                var result = await _entityPositioningService.MoveSubTopic(moveResource, userId);
-
-                if (!result.IsSuccess)
-                {
-                    return BadRequest(result.ErrorMessage);
-                }
-
-                return Ok(new { success = true, modifiedEntities = result.ModifiedEntities });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error moving SubTopic");
-                return StatusCode(500, "Internal server error");
-            }
-        }
 
 
         [HttpPost("copy")]
@@ -187,6 +163,57 @@ namespace LessonTree.API.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error copying SubTopic ID: {SubTopicId}", copyResource.SubTopicId);
+                return StatusCode(500, new { status = "error", message = ex.Message });
+            }
+        }
+
+        [HttpPost("move")]
+        public async Task<IActionResult> MoveSubTopic([FromBody] SubTopicMoveResource moveResource)
+        {
+            int userId = GetCurrentUserId();
+            _logger.LogDebug("Moving SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId} for User ID: {UserId}",
+                moveResource.SubTopicId, moveResource.NewTopicId, userId);
+
+            try
+            {
+                var movedSubTopic = await _service.MoveSubTopicAsync(moveResource, userId);
+                _logger.LogInformation("Moved SubTopic ID: {SubTopicId} to Topic ID: {NewTopicId} by User ID: {UserId}",
+                    moveResource.SubTopicId, moveResource.NewTopicId, userId);
+                
+                var result = new SubTopicPositioningResult
+                {
+                    IsSuccess = true,
+                    SubTopicId = movedSubTopic.Id,
+                    NewTopicId = movedSubTopic.TopicId,
+                    TargetSortOrder = movedSubTopic.SortOrder,
+                    ModifiedEntities = new List<ModifiedEntityInfo>
+                    {
+                        new ModifiedEntityInfo
+                        {
+                            EntityId = movedSubTopic.Id,
+                            EntityType = "SubTopic",
+                            NewSortOrder = movedSubTopic.SortOrder,
+                            ParentId = movedSubTopic.TopicId,
+                            ParentType = "Topic"
+                        }
+                    }
+                };
+                
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning("SubTopic move failed: {Message}", ex.Message);
+                return NotFound(new { status = "error", message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning("Unauthorized SubTopic move attempt for ID: {SubTopicId} by User ID: {UserId}", moveResource.SubTopicId, userId);
+                return Forbid();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error moving SubTopic ID: {SubTopicId}", moveResource.SubTopicId);
                 return StatusCode(500, new { status = "error", message = ex.Message });
             }
         }

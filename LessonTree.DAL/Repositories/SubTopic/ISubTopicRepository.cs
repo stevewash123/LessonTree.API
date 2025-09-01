@@ -26,6 +26,9 @@ namespace LessonTree.DAL.Repositories
 
         // Positioning operations - UPDATED to sibling-based approach
         Task<SubTopic> MoveSubTopicToPositionAsync(int subTopicId, int targetTopicId, int afterSiblingId, string siblingType);
+        
+        // ✅ NEW: Positioning with complete positioning contract
+        Task<SubTopic> MoveSubTopicWithPositioningAsync(int subTopicId, int targetTopicId, int relativeToId, string position, string relativeToType);
 
         // Validation helpers
         Task<bool> IsSubTopicInTopicAsync(int subTopicId, int topicId);
