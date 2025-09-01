@@ -42,7 +42,7 @@ namespace LessonTree.Models.DTO
         public int SortOrder { get; set; }
     }
 
-    // ✅ CLEAN: Simple sibling-based move resource
+    // ✅ UPDATED: Complete positioning-aware move resource
     public class SubTopicMoveResource
     {
         [Required]
@@ -51,7 +51,12 @@ namespace LessonTree.Models.DTO
         [Required]
         public int NewTopicId { get; set; }
 
-        // ✅ SIMPLE: Which sibling to position after (null = first position)
+        // ✅ NEW: Positioning parameters matching API contract
+        public int? RelativeToId { get; set; }  // ID of entity to position relative to
+        public string? Position { get; set; }   // "before" or "after" 
+        public string? RelativeToType { get; set; }  // "SubTopic" or "Lesson"
+
+        // ✅ LEGACY: Keep for backward compatibility during transition
         public int? AfterSiblingId { get; set; }
     }
 }

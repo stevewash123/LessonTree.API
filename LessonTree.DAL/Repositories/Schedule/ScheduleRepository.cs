@@ -222,6 +222,7 @@ namespace LessonTree.DAL.Repositories
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                // Load the schedule WITH its events - let EF track the navigation property
                 var schedule = await _context.Schedules
                     .Include(s => s.ScheduleEvents)
                     .FirstOrDefaultAsync(s => s.Id == scheduleId);
@@ -231,25 +232,37 @@ namespace LessonTree.DAL.Repositories
                     throw new ArgumentException($"Schedule {scheduleId} not found");
                 }
 
-                // Remove existing events
-                _context.ScheduleEvents.RemoveRange(schedule.ScheduleEvents);
+                _logger.LogInformation($"UpdateScheduleEventsAsync: Found {schedule.ScheduleEvents.Count} existing events to replace");
 
-                // Add new events
+                // Clear existing events - EF will handle the deletions
+                schedule.ScheduleEvents.Clear();
+
+                // Add new events to the navigation property
                 foreach (var evt in events)
                 {
-                    evt.ScheduleId = scheduleId; // Ensure correct schedule ID
-                    evt.Id = 0; // Reset ID for new entities
+                    // Create a completely new entity to avoid any EF tracking conflicts
+                    var newEvent = new ScheduleEvent
+                    {
+                        ScheduleId = scheduleId,
+                        CourseId = evt.CourseId,
+                        Date = evt.Date,
+                        Period = evt.Period,
+                        LessonId = evt.LessonId,
+                        EventType = evt.EventType,
+                        EventCategory = evt.EventCategory,
+                        Comment = evt.Comment,
+                        ScheduleSort = evt.ScheduleSort
+                    };
+                    schedule.ScheduleEvents.Add(newEvent);
                 }
 
-                _context.ScheduleEvents.AddRange(events);
+                // Save once - EF handles all the deletions and insertions
                 await _context.SaveChangesAsync();
-
                 await transaction.CommitAsync();
 
-                _logger.LogInformation($"UpdateScheduleEventsAsync: Updated {events.Count} events for schedule {scheduleId}");
+                _logger.LogInformation($"UpdateScheduleEventsAsync: Updated schedule {scheduleId} with {events.Count} events");
 
-                // Return updated schedule with events
-                return await GetByIdAsync(scheduleId) ?? schedule;
+                return schedule;
             }
             catch (Exception ex)
             {

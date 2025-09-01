@@ -129,7 +129,7 @@ namespace LessonTree.DAL.Repositories
                 subTopic.SortOrder = targetSortOrder;
 
                 // Renumber all affected items to prevent collisions
-                await RenumberTopicItemsAsync(topicItems, subTopicId, targetSortOrder, "SubTopic");
+                await RenumberTopicItemsForInsertionAsync(topicItems, subTopicId, targetSortOrder, "SubTopic");
 
                 // Save the moved subtopic
                 _context.SubTopics.Update(subTopic);
@@ -144,6 +144,79 @@ namespace LessonTree.DAL.Repositories
             {
                 await transaction.RollbackAsync();
                 throw;
+            }
+        }
+
+        // ✅ NEW: Complete positioning-aware move with position parameter
+        public async Task<SubTopic> MoveSubTopicWithPositioningAsync(int subTopicId, int targetTopicId, int relativeToId, string position, string relativeToType)
+        {
+            _logger.LogInformation($"🔍 MoveSubTopicWithPositioningAsync: Moving subtopic {subTopicId} {position} {relativeToType} {relativeToId} in topic {targetTopicId}");
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Get the subtopic to move
+                var subTopic = await _context.SubTopics.FirstOrDefaultAsync(s => s.Id == subTopicId);
+                if (subTopic == null) throw new ArgumentException($"SubTopic {subTopicId} not found");
+
+                // Get all items in the topic and calculate new sort order based on position
+                var topicItems = await GetTopicItemsAsync(targetTopicId);
+                int targetSortOrder = CalculateTargetSortOrderWithPosition(topicItems, relativeToId, position, relativeToType);
+
+                _logger.LogInformation($"🎯 Calculated target sort order {targetSortOrder} for subtopic {subTopicId} ({position} {relativeToType} {relativeToId})");
+
+                // Update subtopic topic and position
+                subTopic.TopicId = targetTopicId;
+                subTopic.SortOrder = targetSortOrder;
+
+                // Renumber other items to make space for insertion at target position
+                await RenumberTopicItemsForInsertionAsync(topicItems, subTopicId, targetSortOrder, "SubTopic");
+
+                // Save changes
+                _context.SubTopics.Update(subTopic);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                _logger.LogInformation($"✅ Successfully moved subtopic {subTopicId} to position {targetSortOrder} ({position} {relativeToType} {relativeToId})");
+
+                return subTopic;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, $"❌ Failed to move subtopic {subTopicId} with positioning");
+                throw;
+            }
+        }
+
+        private int CalculateTargetSortOrderWithPosition(List<TopicItem> topicItems, int relativeToId, string position, string relativeToType)
+        {
+            var relativeItem = topicItems.FirstOrDefault(i => i.Id == relativeToId && i.Type == relativeToType);
+            if (relativeItem == null)
+            {
+                _logger.LogWarning($"⚠️ Relative entity {relativeToType} {relativeToId} not found, placing at end");
+                return (topicItems.Any() ? topicItems.Max(i => i.SortOrder) : 0) + 1;
+            }
+
+            if (position == "before")
+            {
+                // Position before the relative item (same SortOrder, renumbering will handle the rest)
+                var targetOrder = relativeItem.SortOrder;
+                _logger.LogInformation($"🔍 Before positioning: targeting SortOrder {targetOrder} (relative item has {relativeItem.SortOrder})");
+                return targetOrder;
+            }
+            else if (position == "after")
+            {
+                // Position after the relative item
+                var targetOrder = relativeItem.SortOrder + 1;
+                _logger.LogInformation($"🔍 After positioning: targeting SortOrder {targetOrder} (relative item has {relativeItem.SortOrder})");
+                return targetOrder;
+            }
+            else
+            {
+                _logger.LogWarning($"⚠️ Unknown position '{position}', placing at end");
+                return (topicItems.Any() ? topicItems.Max(i => i.SortOrder) : 0) + 1;
             }
         }
 
@@ -219,31 +292,34 @@ namespace LessonTree.DAL.Repositories
             return topicItems.Any() ? topicItems.Max(i => i.SortOrder) + 1 : 0;
         }
 
-        private async Task RenumberTopicItemsAsync(List<TopicItem> topicItems, int movedItemId, int targetSortOrder, string movedItemType)
+        private async Task RenumberTopicItemsForInsertionAsync(List<TopicItem> topicItems, int movedItemId, int targetSortOrder, string movedItemType)
         {
-            // Filter out the moved item
+            // Filter out the moved item from existing items
             var otherItems = topicItems.Where(i => !(i.Id == movedItemId && i.Type == movedItemType)).ToList();
 
-            // Create new clean sequence
-            var sortOrder = 0;
-            foreach (var item in otherItems.OrderBy(i => i.SortOrder))
+            // Sort items and renumber everything to create clean sequential order with gap at target position
+            var sortedItems = otherItems.OrderBy(i => i.SortOrder).ToList();
+            var newSortOrder = 0;
+
+            foreach (var item in sortedItems)
             {
-                // Skip target position for moved item
-                if (sortOrder == targetSortOrder)
+                // Skip the target position - this creates the gap for the moved item
+                if (newSortOrder == targetSortOrder)
                 {
-                    sortOrder++;
+                    newSortOrder++;
                 }
 
-                // Only update if sort order actually changes
-                if (item.SortOrder != sortOrder)
+                // Only update if the sort order actually changed
+                if (item.SortOrder != newSortOrder)
                 {
                     if (item.Type == "SubTopic")
                     {
                         var subTopic = await _context.SubTopics.FindAsync(item.Id);
                         if (subTopic != null)
                         {
-                            subTopic.SortOrder = sortOrder;
+                            subTopic.SortOrder = newSortOrder;
                             _context.SubTopics.Update(subTopic);
+                            _logger.LogDebug($"RenumberTopicItemsAsync: Renumbered SubTopic {item.Id} from {item.SortOrder} to {newSortOrder}");
                         }
                     }
                     else if (item.Type == "Lesson")
@@ -251,15 +327,14 @@ namespace LessonTree.DAL.Repositories
                         var lesson = await _context.Lessons.FindAsync(item.Id);
                         if (lesson != null)
                         {
-                            lesson.SortOrder = sortOrder;
+                            lesson.SortOrder = newSortOrder;
                             _context.Lessons.Update(lesson);
+                            _logger.LogDebug($"RenumberTopicItemsAsync: Renumbered Lesson {item.Id} from {item.SortOrder} to {newSortOrder}");
                         }
                     }
-
-                    _logger.LogDebug($"RenumberTopicItemsAsync: Updated {item.Type} {item.Id} to sort order {sortOrder}");
                 }
 
-                sortOrder++;
+                newSortOrder++;
             }
         }
 

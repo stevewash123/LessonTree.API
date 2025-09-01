@@ -3,6 +3,7 @@
 // CALLED BY: SubTopicController
 using AutoMapper;
 using LessonTree.BLL.Service;
+using LessonTree.BLL.Services;
 using LessonTree.DAL.Domain;
 using LessonTree.DAL.Repositories;
 using LessonTree.Models.DTO;
@@ -15,21 +16,27 @@ public class SubTopicService : ISubTopicService
     private readonly ISubTopicRepository _subTopicRepository;
     private readonly ITopicRepository _topicRepository;
     private readonly ILessonRepository _lessonRepository;
+    private readonly IScheduleRepository _scheduleRepository;
     private readonly ILogger<SubTopicService> _logger;
     private readonly IMapper _mapper;
+    private readonly IScheduleGenerationService _scheduleGenerationService;
 
     public SubTopicService(
         ISubTopicRepository subTopicRepository,
         ITopicRepository topicRepository,
         ILessonRepository lessonRepository,
+        IScheduleRepository scheduleRepository,
         ILogger<SubTopicService> logger,
-        IMapper mapper)
+        IMapper mapper,
+        IScheduleGenerationService scheduleGenerationService)
     {
         _subTopicRepository = subTopicRepository;
         _topicRepository = topicRepository;
         _lessonRepository = lessonRepository;
+        _scheduleRepository = scheduleRepository;
         _logger = logger;
         _mapper = mapper;
+        _scheduleGenerationService = scheduleGenerationService;
     }
 
     public async Task<SubTopicResource> GetByIdAsync(int id, int userId)
@@ -231,6 +238,7 @@ public class SubTopicService : ISubTopicService
     public async Task<SubTopicResource> MoveSubTopicAsync(SubTopicMoveResource moveResource, int userId)
     {
         _logger.LogInformation($"MoveSubTopicAsync: Moving subtopic {moveResource.SubTopicId} for user {userId}");
+        _logger.LogInformation($"🔍 SUBTOPIC MOVE PARAMETERS: SubTopicId={moveResource.SubTopicId}, NewTopicId={moveResource.NewTopicId}, RelativeToId={moveResource.RelativeToId}, Position={moveResource.Position}, RelativeToType={moveResource.RelativeToType}, AfterSiblingId={moveResource.AfterSiblingId}");
 
         // Validate subtopic exists and user owns it
         var subTopic = await _subTopicRepository.GetByIdAsync(moveResource.SubTopicId);
@@ -254,29 +262,96 @@ public class SubTopicService : ISubTopicService
             throw new UnauthorizedAccessException($"Target topic {moveResource.NewTopicId} not owned by user {userId}");
         }
 
-        // ✅ UPDATED: Route operation based on sibling positioning
+        // ✅ UPDATED: Route operation based on positioning parameters
         SubTopicResource result;
-        if (moveResource.AfterSiblingId.HasValue)  // ✅ CHANGED: AfterSiblingId → AfterSiblingId
+        if (moveResource.RelativeToId.HasValue && !string.IsNullOrEmpty(moveResource.Position) && !string.IsNullOrEmpty(moveResource.RelativeToType))
         {
-            // Positional move - delegate to repository for atomic operation
+            _logger.LogInformation($"🎯 Using POSITIONING logic: RelativeToId={moveResource.RelativeToId}, Position={moveResource.Position}, RelativeToType={moveResource.RelativeToType}");
+            // Positional move - use new positioning parameters
+            result = await MoveSubTopicWithPositioningAsync(moveResource, userId);
+        }
+        else if (moveResource.AfterSiblingId.HasValue)  
+        {
+            _logger.LogInformation($"🎯 Using LEGACY logic: AfterSiblingId={moveResource.AfterSiblingId}");
+            // Legacy positional move - delegate to repository for atomic operation
             result = await MoveSubTopicToPositionAsync(moveResource, userId);
         }
         else
         {
+            _logger.LogInformation($"🎯 Using SIMPLE logic: No positioning parameters provided");
             // Simple move - update topic and append to end (first position in empty container)
             result = await MoveSubTopicSimpleAsync(moveResource, userId);
         }
 
         _logger.LogInformation($"MoveSubTopicAsync: Successfully moved subtopic {moveResource.SubTopicId}");
+        
+        // ✅ RESTORED: Update schedule events after SubTopic move
+        await UpdateScheduleAfterSubTopicMoveAsync(moveResource.SubTopicId, userId);
+        
         return result;
     }
 
-    // **FIXED METHODS** - SubTopicService.cs - Replace the problematic move methods
-    // RESPONSIBILITY: Clean up duplicate methods and fix repository calls
-    // DOES NOT: Change business logic (just fixes compilation errors)
-    // CALLED BY: SubTopicController for move operations
+    // **POSITIONING METHODS** - SubTopicService.cs - Handle positioning with new contract
+    // RESPONSIBILITY: Process positioning parameters and delegate to repository
+    // DOES NOT: Change business logic (just uses new positioning contract)
+    // CALLED BY: MoveSubTopicAsync for positioned moves
 
-    // ✅ REPLACE: MoveSubTopicToPositionAsync method in SubTopicService
+    // ✅ NEW: Handle positioning with new contract (RelativeToId, Position, RelativeToType)
+    private async Task<SubTopicResource> MoveSubTopicWithPositioningAsync(SubTopicMoveResource moveResource, int userId)
+    {
+        _logger.LogInformation($"🔍 MoveSubTopicWithPositioningAsync: Processing positioning parameters RelativeToId={moveResource.RelativeToId}, Position={moveResource.Position}, RelativeToType={moveResource.RelativeToType}");
+        
+        // Validate the relative entity exists and is accessible
+        var relativeEntityType = moveResource.RelativeToType;
+        var relativeEntityId = moveResource.RelativeToId.Value;
+        
+        if (relativeEntityType == "Lesson")
+        {
+            var relativeLesson = await _lessonRepository.GetByIdAsync(relativeEntityId);
+            if (relativeLesson == null)
+            {
+                throw new ArgumentException($"Relative lesson {relativeEntityId} not found");
+            }
+            if (relativeLesson.UserId != userId)
+            {
+                throw new UnauthorizedAccessException($"Relative lesson {relativeEntityId} not owned by user {userId}");
+            }
+            _logger.LogInformation($"🎯 Validated relative Lesson {relativeEntityId} for positioning");
+        }
+        else if (relativeEntityType == "SubTopic")
+        {
+            var relativeSubTopic = await _subTopicRepository.GetByIdAsync(relativeEntityId);
+            if (relativeSubTopic == null)
+            {
+                throw new ArgumentException($"Relative subtopic {relativeEntityId} not found");
+            }
+            if (relativeSubTopic.UserId != userId)
+            {
+                throw new UnauthorizedAccessException($"Relative subtopic {relativeEntityId} not owned by user {userId}");
+            }
+            _logger.LogInformation($"🎯 Validated relative SubTopic {relativeEntityId} for positioning");
+        }
+        else
+        {
+            throw new ArgumentException($"RelativeToType '{relativeEntityType}' is not supported. Must be 'Lesson' or 'SubTopic'");
+        }
+
+        // Call repository with positioning parameters  
+        _logger.LogInformation($"🚀 Calling repository with positioning: SubTopicId={moveResource.SubTopicId}, NewTopicId={moveResource.NewTopicId}, RelativeToId={relativeEntityId}, Position={moveResource.Position}, RelativeToType={relativeEntityType}");
+        
+        var positionedSubTopic = await _subTopicRepository.MoveSubTopicWithPositioningAsync(
+            moveResource.SubTopicId,
+            moveResource.NewTopicId,
+            relativeEntityId,
+            moveResource.Position,
+            relativeEntityType
+        );
+
+        _logger.LogInformation($"✅ Repository positioning completed for SubTopic {moveResource.SubTopicId}, new SortOrder: {positionedSubTopic.SortOrder}");
+        return _mapper.Map<SubTopicResource>(positionedSubTopic);
+    }
+
+    // ✅ LEGACY: MoveSubTopicToPositionAsync method in SubTopicService
     private async Task<SubTopicResource> MoveSubTopicToPositionAsync(SubTopicMoveResource moveResource, int userId)
     {
         // ✅ NEW: Discover what type of entity the sibling is
@@ -332,13 +407,9 @@ public class SubTopicService : ISubTopicService
         // Get subtopic and update topic
         var subTopic = await _subTopicRepository.GetByIdAsync(moveResource.SubTopicId);
 
-        // If moving to different topic, get next sort order
-        if (subTopic.TopicId != moveResource.NewTopicId)
-        {
-            var maxSortOrder = await _subTopicRepository.GetMaxSortOrderInTopicAsync(moveResource.NewTopicId);
-            subTopic.SortOrder = maxSortOrder + 1;
-        }
-
+        // Always assign new sort order to ensure proper positioning
+        var maxSortOrder = await _subTopicRepository.GetMaxSortOrderInTopicAsync(moveResource.NewTopicId);
+        subTopic.SortOrder = maxSortOrder + 1;
         subTopic.TopicId = moveResource.NewTopicId;
 
         await _subTopicRepository.UpdateAsync(subTopic);
@@ -426,7 +497,7 @@ public class SubTopicService : ISubTopicService
             SpecialNeeds = originalLesson.SpecialNeeds,
             Assessment = originalLesson.Assessment,
             SubTopicId = defaultSubTopicId,
-            UserId = userId, // Set to copier’s UserId
+            UserId = userId, // Set to copier's UserId
             Visibility = originalLesson.Visibility,
             LessonAttachments = originalLesson.LessonAttachments.Select(ld => new LessonAttachment
             {
@@ -438,4 +509,92 @@ public class SubTopicService : ISubTopicService
             }).ToList()
         };
     }
+
+    /// <summary>
+    /// Update schedule events after SubTopic move
+    /// Calls schedule generation service for each lesson in the moved SubTopic
+    /// </summary>
+    private async Task UpdateScheduleAfterSubTopicMoveAsync(int subTopicId, int userId)
+    {
+        try
+        {
+            _logger.LogInformation($"UpdateScheduleAfterSubTopicMoveAsync: Starting schedule update for SubTopic {subTopicId}");
+            
+            // Get all lessons in the moved SubTopic with Topic information
+            var subTopic = await _subTopicRepository.GetByIdAsync(subTopicId, q => q.Include(s => s.Lessons).Include(s => s.Topic));
+            if (subTopic?.Lessons == null || !subTopic.Lessons.Any())
+            {
+                _logger.LogInformation($"SubTopic {subTopicId} has no lessons, no schedule updates needed");
+                return;
+            }
+
+            _logger.LogInformation($"Found {subTopic.Lessons.Count} lessons in SubTopic {subTopicId}, updating schedules");
+
+            // Find all schedules that might contain lessons from this course
+            // We need to get the course ID to find relevant schedules
+            var courseId = GetCourseIdFromSubTopicLesson(subTopic);
+            
+            if (!courseId.HasValue)
+            {
+                _logger.LogWarning($"Could not determine course ID for SubTopic {subTopicId}, skipping schedule updates");
+                return;
+            }
+
+            // Get all schedules that contain this course
+            var schedules = await _scheduleRepository.FindAllSchedulesByCourseIdAsync(courseId.Value, userId);
+            
+            if (!schedules.Any())
+            {
+                _logger.LogInformation($"No schedules found for course {courseId.Value}, no updates needed");
+                return;
+            }
+
+            // Update each schedule that might be affected
+            // Use the first lesson as a representative - the UpdateScheduleAfterLessonMovedAsync method
+            // will regenerate the entire schedule anyway, so we only need to call it once per schedule
+            var firstLesson = subTopic.Lessons.First();
+            
+            foreach (var schedule in schedules)
+            {
+                try
+                {
+                    _logger.LogInformation($"Updating schedule {schedule.Id} after SubTopic {subTopicId} move (affecting {subTopic.Lessons.Count} lessons)");
+                    
+                    // Call once per schedule using any lesson from the SubTopic as a trigger
+                    // The method will regenerate affected periods for the entire course anyway
+                    await _scheduleGenerationService.UpdateScheduleAfterLessonMovedAsync(schedule.Id, firstLesson.Id, userId);
+                    
+                    _logger.LogInformation($"Successfully updated schedule {schedule.Id} for SubTopic move");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Failed to update schedule {schedule.Id} after SubTopic {subTopicId} move");
+                    // Continue with other schedules rather than failing the entire operation
+                }
+            }
+
+            _logger.LogInformation($"UpdateScheduleAfterSubTopicMoveAsync: Completed schedule updates for SubTopic {subTopicId}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Failed to update schedules after SubTopic {subTopicId} move");
+            // Don't rethrow - schedule updates are secondary to the move operation
+        }
+    }
+
+    /// <summary>
+    /// Get course ID from a SubTopic's lesson
+    /// </summary>
+    private int? GetCourseIdFromSubTopicLesson(SubTopic subTopic)
+    {
+        // SubTopic -> Topic -> Course
+        if (subTopic.Topic?.CourseId != null)
+        {
+            return subTopic.Topic.CourseId;
+        }
+
+        _logger.LogWarning($"SubTopic {subTopic.Id} Topic not loaded or has no CourseId, cannot determine course ID");
+        return null;
+    }
+
 }
