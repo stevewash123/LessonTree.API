@@ -9,7 +9,27 @@ obj/
 *.user
 *.suo
 
+# Ignore database files
+*.db
+*.db-shm
+*.db-wal
+
+# Ignore all log files
+logs/
+*.log
+
+# Ignore backup files
+*.backup
+*~
+
 # Ignore sensitive files (if applicable)
 appsettings.json
-/LessonTree.Api/logs/log20250619.txt
-/LessonTree.Api/logs/log20250620.txt
+appsettings.*.json
+
+# Ignore development scripts and SQL files
+scripts/
+*.sql
+
+# Ignore temporary and cache files
+*.tmp
+*.cache
