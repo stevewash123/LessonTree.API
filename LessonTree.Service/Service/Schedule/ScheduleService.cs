@@ -232,12 +232,14 @@ namespace LessonTree.BLL.Services
             {
                 _logger.LogInformation($"RegenerateScheduleFromConfigurationAsync: Updating existing schedule {existingSchedule.Id}");
 
-                // ✅ CORRECT: Generate new events and UPDATE existing schedule
+                // Generate new events from configuration with inline special day integration
                 var generationResult = await _scheduleGenerationService.GenerateScheduleFromConfigurationAsync(configurationId, userId);
 
                 if (generationResult.Success && generationResult.Schedule != null)
                 {
-                    // ✅ CORRECT: Update events on EXISTING schedule (preserve Schedule ID)
+                    _logger.LogInformation($"RegenerateScheduleFromConfigurationAsync: Generated {generationResult.TotalEventsGenerated} events with inline special day integration");
+                    
+                    // Update with generated events (includes inline special day integration)
                     return await UpdateScheduleEventsAsync(existingSchedule.Id, generationResult.Schedule.ScheduleEvents, userId);
                 }
             }
@@ -419,11 +421,16 @@ namespace LessonTree.BLL.Services
         {
             _logger.LogInformation($"CreateSpecialDayAsync: Creating special day for schedule {scheduleId}, user {userId}");
 
-            await ValidateScheduleOwnershipAsync(scheduleId, userId);
+            var schedule = await ValidateScheduleOwnershipAsync(scheduleId, userId);
 
             var createdSpecialDay = await _repository.AddSpecialDayAsync(scheduleId, createResource);
 
             _logger.LogInformation($"CreateSpecialDayAsync: Created special day {createdSpecialDay.Id} for schedule {scheduleId}");
+
+            // *** CRITICAL: Regenerate schedule to integrate special day inline ***
+            _logger.LogInformation($"CreateSpecialDayAsync: Regenerating schedule {scheduleId} to integrate special day inline");
+            await RegenerateScheduleFromConfigurationAsync(schedule.ScheduleConfigurationId, userId);
+
             return _mapper.Map<SpecialDayResource>(createdSpecialDay);
         }
 
@@ -467,6 +474,33 @@ namespace LessonTree.BLL.Services
             await _repository.DeleteSpecialDayAsync(specialDayId);
 
             _logger.LogInformation($"DeleteSpecialDayAsync: Deleted special day {specialDayId} for schedule {scheduleId}");
+        }
+
+        // === EVENT RETRIEVAL ===
+
+        /// <summary>
+        /// Get schedule events for date range (already includes special days from inline generation)
+        /// </summary>
+        public async Task<List<ScheduleEventResource>> GetEventsByDateRangeAsync(int scheduleId, DateTime startDate, DateTime endDate, int userId)
+        {
+            _logger.LogInformation($"GetEventsByDateRangeAsync: Getting events for schedule {scheduleId} between {startDate:yyyy-MM-dd} and {endDate:yyyy-MM-dd}");
+
+            // Validate schedule ownership
+            var schedule = await GetByIdAsync(scheduleId, userId);
+            if (schedule == null)
+            {
+                throw new ArgumentException($"Schedule {scheduleId} not found or not owned by user {userId}");
+            }
+
+            // Get schedule events in date range (already includes inline special days)
+            var events = schedule.ScheduleEvents
+                .Where(e => e.Date.Date >= startDate.Date && e.Date.Date <= endDate.Date)
+                .OrderBy(e => e.Date)
+                .ThenBy(e => e.Period)
+                .ToList();
+
+            _logger.LogInformation($"Returning {events.Count} events (lessons + special days)");
+            return events;
         }
 
         // === CONFIGURATION-BASED SCHEDULE LOOKUP ===
