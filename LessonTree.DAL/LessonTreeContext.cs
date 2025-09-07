@@ -151,7 +151,7 @@ namespace LessonTree.DAL
                       .HasForeignKey(e => e.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
 
-                entity.HasIndex(e => new { e.UserId, e.IsActive });
+                entity.HasIndex(e => new { e.UserId, e.Status });
                 entity.HasIndex(e => new { e.UserId, e.SchoolYear });
             });
 
@@ -251,6 +251,13 @@ namespace LessonTree.DAL
 
                 entity.HasIndex(e => e.LessonId)
                       .HasDatabaseName("IX_ScheduleEvents_LessonId");
+
+                // SpecialDay relationship (nullable with cascade delete for data consistency)
+                entity.HasOne(e => e.SpecialDay)
+                      .WithMany() // SpecialDay doesn't have a ScheduleEvents collection navigation
+                      .HasForeignKey(e => e.SpecialDayId)
+                      .OnDelete(DeleteBehavior.Cascade)
+                      .IsRequired(false);
 
                 // ✅ ADD: Performance indexes for lesson queries
                 entity.HasIndex(e => new { e.ScheduleId, e.LessonId })

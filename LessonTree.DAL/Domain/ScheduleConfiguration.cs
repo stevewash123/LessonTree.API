@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using LessonTree.Models.Enums;
 
 namespace LessonTree.DAL.Domain
 {
@@ -32,7 +33,8 @@ namespace LessonTree.DAL.Domain
         // Configuration metadata
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
-        public bool IsActive { get; set; } = true; // Current active configuration
+        public ScheduleStatus Status { get; set; } = ScheduleStatus.Active; // Schedule status with locking
+        public DateTime? ArchivedDate { get; set; } // When manually archived
         public bool IsTemplate { get; set; } = false; // Can be used as template for new years
 
         // Period assignments for this configuration

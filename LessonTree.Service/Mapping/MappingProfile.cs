@@ -255,7 +255,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
             .ForMember(dest => dest.PeriodsPerDay, opt => opt.MapFrom(src => src.PeriodsPerDay))
             .ForMember(dest => dest.TeachingDays, opt => opt.MapFrom<ScheduleConfigurationTeachingDaysToArrayResolver>())
-            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive))
+            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.Status == ScheduleStatus.Active))
             .ForMember(dest => dest.PeriodAssignments, opt => opt.MapFrom(src => src.PeriodAssignments));
         // REMOVED: CreatedDate, LastUpdated (audit properties)
 
@@ -265,7 +265,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
             .ForMember(dest => dest.PeriodsPerDay, opt => opt.MapFrom(src => src.PeriodsPerDay))
             .ForMember(dest => dest.TeachingDays, opt => opt.MapFrom<ScheduleConfigurationCreateTeachingDaysToStringResolver>())
-            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => ScheduleStatus.Active))
             .ForMember(dest => dest.PeriodAssignments, opt => opt.MapFrom(src => src.PeriodAssignments))
             .ForMember(dest => dest.Id, opt => opt.Ignore()) // Set by repository
             .ForMember(dest => dest.UserId, opt => opt.Ignore()) // Set in controller
@@ -279,7 +279,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.EndDate, opt => opt.MapFrom(src => src.EndDate))
             .ForMember(dest => dest.PeriodsPerDay, opt => opt.MapFrom(src => src.PeriodsPerDay))
             .ForMember(dest => dest.TeachingDays, opt => opt.MapFrom<ScheduleConfigurationUpdateTeachingDaysToStringResolver>())
-            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.IsActive ? ScheduleStatus.Active : ScheduleStatus.Archived))
             .ForMember(dest => dest.PeriodAssignments, opt => opt.MapFrom(src => src.PeriodAssignments))
             .ForMember(dest => dest.UserId, opt => opt.Ignore()) // Don't update UserId
             .ForMember(dest => dest.CreatedDate, opt => opt.Ignore()) // Don't update CreatedDate
@@ -341,11 +341,13 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Date))
             .ForMember(dest => dest.Period, opt => opt.MapFrom(src => src.Period))
             .ForMember(dest => dest.LessonId, opt => opt.MapFrom(src => src.LessonId))
+            .ForMember(dest => dest.SpecialDayId, opt => opt.MapFrom(src => src.SpecialDayId))
             .ForMember(dest => dest.EventType, opt => opt.MapFrom(src => src.EventType))
             .ForMember(dest => dest.EventCategory, opt => opt.MapFrom(src => src.EventCategory))
             .ForMember(dest => dest.Comment, opt => opt.MapFrom(src => src.Comment))
             .ForMember(dest => dest.Schedule, opt => opt.Ignore()) // Navigation property - set by repository
-            .ForMember(dest => dest.Lesson, opt => opt.Ignore()); // Navigation property - set by repository
+            .ForMember(dest => dest.Lesson, opt => opt.Ignore()) // Navigation property - set by repository
+            .ForMember(dest => dest.SpecialDay, opt => opt.Ignore()); // Navigation property - set by repository
 
         // =============================================================================
         // SCHEDULE EVENT MAPPINGS
@@ -357,6 +359,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Date))
             .ForMember(dest => dest.Period, opt => opt.MapFrom(src => src.Period))
             .ForMember(dest => dest.LessonId, opt => opt.MapFrom(src => src.LessonId))
+            .ForMember(dest => dest.SpecialDayId, opt => opt.MapFrom(src => src.SpecialDayId))
             .ForMember(dest => dest.EventType, opt => opt.MapFrom(src => src.EventType))
             .ForMember(dest => dest.EventCategory, opt => opt.MapFrom(src => src.EventCategory))
             .ForMember(dest => dest.LessonSort, opt => opt.MapFrom(src => src.Lesson != null ? src.Lesson.SortOrder : (int?)null))

@@ -3,6 +3,7 @@ using LessonTree.BLL.Services;
 using LessonTree.DAL.Repositories;
 using LessonTree.DAL.Domain;
 using LessonTree.Models.DTO;
+using LessonTree.Models.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace LessonTree.BLL.Services
@@ -234,7 +235,7 @@ namespace LessonTree.BLL.Services
                 SchoolYear = config.SchoolYear,
                 StartDate = config.StartDate,
                 EndDate = config.EndDate,
-                IsActive = config.IsActive,
+                IsActive = config.Status == ScheduleStatus.Active,
                 PeriodCount = config.PeriodsPerDay,
                 AssignedPeriods = config.PeriodAssignments.Count
             }).ToList();

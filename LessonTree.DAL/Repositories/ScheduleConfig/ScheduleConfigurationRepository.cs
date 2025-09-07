@@ -4,6 +4,7 @@
 // CALLED BY: ScheduleConfigurationController for configuration operations
 
 using LessonTree.DAL.Domain;
+using LessonTree.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -27,7 +28,7 @@ namespace LessonTree.DAL.Repositories
             var configurations = await _context.ScheduleConfigurations
                 .Include(sc => sc.PeriodAssignments.OrderBy(pa => pa.Period))
                 .Where(sc => sc.UserId == userId)
-                .OrderByDescending(sc => sc.IsActive)
+                .OrderBy(sc => sc.Status == ScheduleStatus.Active ? 0 : 1) // Active first
                 .ThenByDescending(sc => sc.LastUpdated)
                 .ToListAsync();
 
@@ -62,7 +63,7 @@ namespace LessonTree.DAL.Repositories
 
             var configuration = await _context.ScheduleConfigurations
                 .Include(sc => sc.PeriodAssignments.OrderBy(pa => pa.Period))
-                .FirstOrDefaultAsync(sc => sc.UserId == userId && sc.IsActive);
+                .FirstOrDefaultAsync(sc => sc.UserId == userId && sc.Status == ScheduleStatus.Active);
 
             if (configuration != null)
             {
@@ -91,6 +92,9 @@ namespace LessonTree.DAL.Repositories
         {
             _logger.LogInformation($"CreateAsync: Creating configuration '{configuration.Title}' for user {configuration.UserId}");
 
+            // Validate date ranges don't overlap with existing schedules
+            await ValidateDateRangeAsync(configuration.UserId, configuration.StartDate, configuration.EndDate, configuration.Id);
+
             // Set metadata
             configuration.CreatedDate = DateTime.UtcNow;
             configuration.LastUpdated = DateTime.UtcNow;
@@ -102,13 +106,7 @@ namespace LessonTree.DAL.Repositories
 
             if (existingConfigs == 0)
             {
-                configuration.IsActive = true;
-            }
-
-            // If setting as active, deactivate others
-            if (configuration.IsActive)
-            {
-                await DeactivateOtherConfigurationsAsync(configuration.UserId);
+                configuration.Status = ScheduleStatus.Active;
             }
 
             _context.ScheduleConfigurations.Add(configuration);
@@ -133,6 +131,9 @@ namespace LessonTree.DAL.Repositories
                 throw new ArgumentException($"ScheduleConfiguration {configuration.Id} not found");
             }
 
+            // Validate date ranges don't overlap (excluding current config)
+            await ValidateDateRangeAsync(existingConfig.UserId, configuration.StartDate, configuration.EndDate, configuration.Id);
+
             // Update basic properties
             existingConfig.Title = configuration.Title;
             existingConfig.SchoolYear = configuration.SchoolYear;
@@ -141,18 +142,9 @@ namespace LessonTree.DAL.Repositories
             existingConfig.PeriodsPerDay = configuration.PeriodsPerDay;
             existingConfig.TeachingDays = configuration.TeachingDays;
             existingConfig.IsTemplate = configuration.IsTemplate;
+            existingConfig.Status = configuration.Status;
+            existingConfig.ArchivedDate = configuration.ArchivedDate;
             existingConfig.LastUpdated = DateTime.UtcNow;
-
-            // Handle active status change
-            if (configuration.IsActive && !existingConfig.IsActive)
-            {
-                await DeactivateOtherConfigurationsAsync(existingConfig.UserId);
-                existingConfig.IsActive = true;
-            }
-            else if (!configuration.IsActive && existingConfig.IsActive)
-            {
-                existingConfig.IsActive = false;
-            }
 
             // Update period assignments
             _context.PeriodAssignments.RemoveRange(existingConfig.PeriodAssignments);
@@ -213,7 +205,7 @@ namespace LessonTree.DAL.Repositories
             await DeactivateOtherConfigurationsAsync(userId);
 
             // Activate this configuration
-            configuration.IsActive = true;
+            configuration.Status = ScheduleStatus.Active;
             configuration.LastUpdated = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -242,7 +234,7 @@ namespace LessonTree.DAL.Repositories
                 EndDate = sourceConfig.EndDate,
                 PeriodsPerDay = sourceConfig.PeriodsPerDay,
                 TeachingDays = sourceConfig.TeachingDays,
-                IsActive = false,
+                Status = ScheduleStatus.Archived,
                 IsTemplate = true,
                 PeriodAssignments = sourceConfig.PeriodAssignments.Select(pa => new PeriodAssignment
                 {
@@ -279,13 +271,75 @@ namespace LessonTree.DAL.Repositories
         private async Task DeactivateOtherConfigurationsAsync(int userId)
         {
             var activeConfigs = await _context.ScheduleConfigurations
-                .Where(sc => sc.UserId == userId && sc.IsActive)
+                .Where(sc => sc.UserId == userId && sc.Status == ScheduleStatus.Active)
                 .ToListAsync();
 
             foreach (var config in activeConfigs)
             {
-                config.IsActive = false;
+                config.Status = ScheduleStatus.Archived;
             }
+        }
+
+        private async Task ValidateDateRangeAsync(int userId, DateTime startDate, DateTime endDate, int? excludeConfigId = null)
+        {
+            var overlappingConfig = await _context.ScheduleConfigurations
+                .Where(sc => sc.UserId == userId 
+                    && (excludeConfigId == null || sc.Id != excludeConfigId)
+                    && ((startDate >= sc.StartDate && startDate <= sc.EndDate)
+                        || (endDate >= sc.StartDate && endDate <= sc.EndDate)
+                        || (startDate <= sc.StartDate && endDate >= sc.EndDate)))
+                .FirstOrDefaultAsync();
+
+            if (overlappingConfig != null)
+            {
+                throw new InvalidOperationException($"Schedule dates conflict with existing '{overlappingConfig.Title}' schedule ({overlappingConfig.StartDate:MM/dd/yyyy} - {overlappingConfig.EndDate:MM/dd/yyyy})");
+            }
+        }
+
+        public async Task<ScheduleConfiguration> ArchiveConfigurationAsync(int userId, int configurationId)
+        {
+            _logger.LogInformation($"ArchiveConfigurationAsync: Archiving configuration {configurationId} for user {userId}");
+
+            var configuration = await _context.ScheduleConfigurations
+                .FirstOrDefaultAsync(sc => sc.Id == configurationId && sc.UserId == userId);
+
+            if (configuration == null)
+            {
+                throw new ArgumentException($"ScheduleConfiguration {configurationId} not found for user {userId}");
+            }
+
+            configuration.Status = ScheduleStatus.Archived;
+            configuration.ArchivedDate = DateTime.UtcNow;
+            configuration.LastUpdated = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation($"ArchiveConfigurationAsync: Archived configuration {configurationId} for user {userId}");
+
+            return await GetByIdAsync(configurationId) ?? configuration;
+        }
+
+        public async Task UpdateHistoricalStatusAsync()
+        {
+            _logger.LogInformation("UpdateHistoricalStatusAsync: Checking for schedules to auto-archive");
+
+            var gracePeriodDate = DateTime.UtcNow.AddDays(-30); // 30-day grace period
+
+            var schedules = await _context.ScheduleConfigurations
+                .Where(sc => sc.Status == ScheduleStatus.Active 
+                    && sc.EndDate < gracePeriodDate)
+                .ToListAsync();
+
+            foreach (var schedule in schedules)
+            {
+                schedule.Status = ScheduleStatus.Historical;
+                schedule.LastUpdated = DateTime.UtcNow;
+                _logger.LogInformation($"UpdateHistoricalStatusAsync: Auto-archived schedule {schedule.Id} ('{schedule.Title}') - exceeded grace period");
+            }
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation($"UpdateHistoricalStatusAsync: Auto-archived {schedules.Count} schedules");
         }
     }
 }

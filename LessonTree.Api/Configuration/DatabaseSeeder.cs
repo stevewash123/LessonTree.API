@@ -148,7 +148,7 @@ namespace LessonTree.API.Configuration
                 EndDate = DateTime.Today.AddDays(21),   // End in 3 weeks
                 PeriodsPerDay = 2,
                 TeachingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
-                IsActive = true,
+                Status = ScheduleStatus.Active,
                 IsTemplate = false,
                 CreatedDate = DateTime.UtcNow,
                 PeriodAssignments = new List<PeriodAssignment>()

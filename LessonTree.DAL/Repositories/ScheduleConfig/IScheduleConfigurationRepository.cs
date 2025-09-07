@@ -21,6 +21,10 @@ namespace LessonTree.DAL.Repositories
         // === ACTIVE CONFIGURATION MANAGEMENT ===
         Task<ScheduleConfiguration> SetActiveConfigurationAsync(int userId, int configurationId);
 
+        // === STATUS MANAGEMENT ===
+        Task<ScheduleConfiguration> ArchiveConfigurationAsync(int userId, int configurationId);
+        Task UpdateHistoricalStatusAsync();
+
         // === TEMPLATE OPERATIONS ===
         Task<ScheduleConfiguration> CopyAsTemplateAsync(int sourceConfigurationId, string newTitle);
         Task<List<ScheduleConfiguration>> GetTemplatesAsync(int userId);
