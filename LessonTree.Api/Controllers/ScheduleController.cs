@@ -249,7 +249,8 @@ namespace LessonTree.API.Controllers
         public async Task<ActionResult<List<ScheduleEventResource>>> GetEventsByDateRange(
             int scheduleId,
             [FromQuery] DateTime startDate,
-            [FromQuery] DateTime endDate)
+            [FromQuery] DateTime endDate,
+            [FromQuery] int? courseId = null)
         {
             try
             {
@@ -262,16 +263,12 @@ namespace LessonTree.API.Controllers
                     return NotFound($"Schedule {scheduleId} not found or not accessible");
                 }
 
-                // Filter events by date range
-                var eventsInRange = schedule.ScheduleEvents
-                    .Where(e => e.Date.Date >= startDate.Date && e.Date.Date <= endDate.Date)
-                    .OrderBy(e => e.Date)
-                    .ThenBy(e => e.Period)
-                    .ToList();
+                // Get events (already includes special days from inline generation)
+                var events = await _scheduleService.GetEventsByDateRangeAsync(scheduleId, startDate, endDate, userId, courseId);
 
-                _logger.LogInformation($"GetEventsByDateRange: Returning {eventsInRange.Count} events for schedule {scheduleId} between {startDate:yyyy-MM-dd} and {endDate:yyyy-MM-dd}");
+                _logger.LogInformation($"GetEventsByDateRange: Returning {events.Count} events for schedule {scheduleId} between {startDate:yyyy-MM-dd} and {endDate:yyyy-MM-dd}");
 
-                return Ok(eventsInRange);
+                return Ok(events);
             }
             catch (Exception ex)
             {

@@ -18,6 +18,7 @@ namespace LessonTree.Models.DTO
         public DateTime Date { get; set; }
         public int Period { get; set; }
         public int? LessonId { get; set; }
+        public int? SpecialDayId { get; set; }  // NEW: Link to SpecialDay that created this event
         public string EventType { get; set; } = string.Empty;
         public string? EventCategory { get; set; }
         public string? Comment { get; set; }

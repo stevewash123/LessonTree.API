@@ -481,9 +481,9 @@ namespace LessonTree.BLL.Services
         /// <summary>
         /// Get schedule events for date range (already includes special days from inline generation)
         /// </summary>
-        public async Task<List<ScheduleEventResource>> GetEventsByDateRangeAsync(int scheduleId, DateTime startDate, DateTime endDate, int userId)
+        public async Task<List<ScheduleEventResource>> GetEventsByDateRangeAsync(int scheduleId, DateTime startDate, DateTime endDate, int userId, int? courseId = null)
         {
-            _logger.LogInformation($"GetEventsByDateRangeAsync: Getting events for schedule {scheduleId} between {startDate:yyyy-MM-dd} and {endDate:yyyy-MM-dd}");
+            _logger.LogInformation($"GetEventsByDateRangeAsync: Getting events for schedule {scheduleId} between {startDate:yyyy-MM-dd} and {endDate:yyyy-MM-dd}, courseId filter: {courseId}");
 
             // Validate schedule ownership
             var schedule = await GetByIdAsync(scheduleId, userId);
@@ -493,13 +493,22 @@ namespace LessonTree.BLL.Services
             }
 
             // Get schedule events in date range (already includes inline special days)
-            var events = schedule.ScheduleEvents
-                .Where(e => e.Date.Date >= startDate.Date && e.Date.Date <= endDate.Date)
+            var query = schedule.ScheduleEvents
+                .Where(e => e.Date.Date >= startDate.Date && e.Date.Date <= endDate.Date);
+
+            // Apply course filter if specified
+            if (courseId.HasValue)
+            {
+                query = query.Where(e => e.CourseId == courseId.Value);
+                _logger.LogInformation($"Applied course filter: {courseId.Value}");
+            }
+
+            var events = query
                 .OrderBy(e => e.Date)
                 .ThenBy(e => e.Period)
                 .ToList();
 
-            _logger.LogInformation($"Returning {events.Count} events (lessons + special days)");
+            _logger.LogInformation($"Returning {events.Count} events (lessons + special days)" + (courseId.HasValue ? $" for course {courseId.Value}" : ""));
             return events;
         }
 

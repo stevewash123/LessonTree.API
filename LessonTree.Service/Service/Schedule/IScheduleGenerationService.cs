@@ -42,13 +42,6 @@ namespace LessonTree.BLL.Services
         /// <returns>List of continuation events</returns>
         Task<List<ScheduleEventResource>> GenerateSequenceContinuationAsync(int scheduleId, SequenceContinuationRequest continuationRequest, int userId);
 
-        /// <summary>
-        /// Apply special day integration to schedule events
-        /// </summary>
-        /// <param name="baseEvents">Base schedule events</param>
-        /// <param name="specialDays">Special days to integrate</param>
-        /// <returns>Integrated events with special days</returns>
-        Task<List<ScheduleEventResource>> ApplySpecialDayIntegrationAsync(List<ScheduleEventResource> baseEvents, List<SpecialDayResource> specialDays);
 
         /// <summary>
         /// Update schedule events after a lesson is added

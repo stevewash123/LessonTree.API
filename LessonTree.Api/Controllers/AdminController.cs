@@ -42,6 +42,12 @@ namespace LessonTree.API.Controllers
             _env = env;
         }
 
+        [HttpGet("health")]
+        public IActionResult Health()
+        {
+            return Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
+        }
+
         [HttpPost("reset-and-reseed")]
         public async Task<IActionResult> ResetAndReseed()
         {

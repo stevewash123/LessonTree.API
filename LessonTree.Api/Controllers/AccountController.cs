@@ -17,7 +17,7 @@ using LessonTree.Models.DTO;
 
 namespace LessonTree.API.Controllers
 {
-    [Route("account")]
+    [Route("api/account")]
     [ApiController]
     public class AccountController : ControllerBase
     {

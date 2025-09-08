@@ -168,6 +168,18 @@ namespace LessonTree.BLL.Services
         /// <returns>Task completion</returns>
         Task DeleteSpecialDayAsync(int scheduleId, int specialDayId, int userId);
 
+        // === INTEGRATED EVENT RETRIEVAL ===
+
+        /// <summary>
+        /// Get schedule events for date range (includes special days from inline generation)
+        /// </summary>
+        /// <param name="scheduleId">Schedule ID</param>
+        /// <param name="startDate">Start date for range</param>
+        /// <param name="endDate">End date for range</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <param name="courseId">Optional course ID to filter events</param>
+        /// <returns>Schedule events (lessons + special days)</returns>
+        Task<List<ScheduleEventResource>> GetEventsByDateRangeAsync(int scheduleId, DateTime startDate, DateTime endDate, int userId, int? courseId = null);
 
     }
 }

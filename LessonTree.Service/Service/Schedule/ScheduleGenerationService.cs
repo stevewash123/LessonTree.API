@@ -1157,6 +1157,7 @@ namespace LessonTree.BLL.Services
                 Date = date,
                 Period = assignment.Period,
                 LessonId = null,
+                SpecialDayId = specialDay.Id, // NEW: Link back to the special day entity
                 EventType = specialDay.EventType,
                 EventCategory = "SpecialDay",
                 Comment = specialDay.Title,

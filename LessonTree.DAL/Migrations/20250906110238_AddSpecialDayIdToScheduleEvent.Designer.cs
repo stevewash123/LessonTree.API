@@ -3,6 +3,7 @@ using System;
 using LessonTree.DAL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LessonTree.DAL.Migrations
 {
     [DbContext(typeof(LessonTreeContext))]
-    partial class LessonTreeContextModelSnapshot : ModelSnapshot
+    [Migration("20250906110238_AddSpecialDayIdToScheduleEvent")]
+    partial class AddSpecialDayIdToScheduleEvent
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.2");
@@ -394,14 +397,14 @@ namespace LessonTree.DAL.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("ArchivedDate")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsTemplate")
                         .HasColumnType("INTEGER");
@@ -420,9 +423,6 @@ namespace LessonTree.DAL.Migrations
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("TeachingDays")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -438,9 +438,9 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "SchoolYear");
+                    b.HasIndex("UserId", "IsActive");
 
-                    b.HasIndex("UserId", "Status");
+                    b.HasIndex("UserId", "SchoolYear");
 
                     b.ToTable("ScheduleConfigurations");
                 });
@@ -1107,8 +1107,7 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasOne("LessonTree.DAL.Domain.SpecialDay", "SpecialDay")
                         .WithMany()
-                        .HasForeignKey("SpecialDayId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .HasForeignKey("SpecialDayId");
 
                     b.Navigation("Lesson");
 
