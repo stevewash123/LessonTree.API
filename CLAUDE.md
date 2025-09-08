@@ -13,8 +13,12 @@ dotnet build                    # Build API
 dotnet run                     # Start API (port 5046)
 
 # Database operations  
-dotnet ef database drop --force
-dotnet ef database update
+dotnet ef database drop --force --context LessonTree.DAL.LessonTreeContext
+dotnet ef database update --context LessonTree.DAL.LessonTreeContext
+
+# Database migrations (run from API directory)
+dotnet ef migrations add MigrationName --context LessonTree.DAL.LessonTreeContext --project ../LessonTree.DAL
+dotnet ef database update --context LessonTree.DAL.LessonTreeContext
 
 # Reset and reseed database
 curl -X POST http://localhost:5046/api/admin/reset-and-reseed

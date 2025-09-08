@@ -71,6 +71,9 @@ namespace LessonTree.API.Configuration
             // === NEW SERVICE REGISTRATION FOR SCHEDULE GENERATION MIGRATION ===
             builder.Services.AddTransient<IScheduleGenerationService, ScheduleGenerationService>();
 
+            // === REPORT GENERATION SERVICE ===
+            builder.Services.AddTransient<IReportGenerationService, ReportGenerationService>();
+
             // === EXISTING HEALTH CHECKS (unchanged) ===
             builder.Services.AddHealthChecks()
                 .AddCheck("self", () => HealthCheckResult.Healthy(builder.Configuration["HealthChecks:Checks:0:Description"]))
