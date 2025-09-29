@@ -1,0 +1,1127 @@
+using AutoMapper;
+using FluentAssertions;
+using LessonTree.BLL.Service;
+using LessonTree.BLL.Services;
+using LessonTree.DAL.Domain;
+using LessonTree.DAL.Repositories;
+using LessonTree.Models.DTO;
+using LessonTree.Models.Enums;
+using LessonTree.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
+
+namespace LessonTree.Tests.Services
+{
+    public class SubTopicServiceTests : TestBase
+    {
+        private readonly Mock<ISubTopicRepository> _mockSubTopicRepository;
+        private readonly Mock<ITopicRepository> _mockTopicRepository;
+        private readonly Mock<ILessonRepository> _mockLessonRepository;
+        private readonly Mock<IScheduleRepository> _mockScheduleRepository;
+        private readonly Mock<IScheduleGenerationService> _mockScheduleGenerationService;
+        private readonly SubTopicService _service;
+
+        public SubTopicServiceTests()
+        {
+            _mockSubTopicRepository = new Mock<ISubTopicRepository>();
+            _mockTopicRepository = new Mock<ITopicRepository>();
+            _mockLessonRepository = new Mock<ILessonRepository>();
+            _mockScheduleRepository = new Mock<IScheduleRepository>();
+            _mockScheduleGenerationService = new Mock<IScheduleGenerationService>();
+            var logger = CreateLogger<SubTopicService>();
+
+            _service = new SubTopicService(
+                _mockSubTopicRepository.Object,
+                _mockTopicRepository.Object,
+                _mockLessonRepository.Object,
+                _mockScheduleRepository.Object,
+                logger,
+                Mapper,
+                _mockScheduleGenerationService.Object);
+        }
+
+        #region GetByIdAsync Tests
+
+        [Fact]
+        public async Task GetByIdAsync_WithExistingSubTopic_ShouldReturnSubTopicResource()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int userId = 1;
+            var subTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Test SubTopic",
+                Description = "Test Description",
+                TopicId = 1,
+                UserId = userId,
+                Visibility = VisibilityType.Private,
+                Archived = false,
+                SortOrder = 1,
+                Lessons = new List<Lesson>
+                {
+                    new Lesson { Id = 1, Title = "Test Lesson", UserId = userId }
+                }
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .ReturnsAsync(subTopic);
+
+            // Act
+            var result = await _service.GetByIdAsync(subTopicId, userId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Id.Should().Be(subTopicId);
+            result.Title.Should().Be("Test SubTopic");
+            result.Description.Should().Be("Test Description");
+            result.UserId.Should().Be(userId);
+            result.Lessons.Should().HaveCount(1);
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_WithNonExistentSubTopic_ShouldThrowKeyNotFoundException()
+        {
+            // Arrange
+            const int subTopicId = 999;
+            const int userId = 1;
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .ReturnsAsync((SubTopic?)null);
+
+            // Act & Assert
+            var act = () => _service.GetByIdAsync(subTopicId, userId);
+            await act.Should().ThrowAsync<KeyNotFoundException>()
+                .WithMessage("*not found or not owned by user*");
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_WithDifferentUser_ShouldThrowKeyNotFoundException()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int userId = 1;
+            const int differentUserId = 2;
+
+            var subTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Test SubTopic",
+                UserId = differentUserId,
+                Lessons = new List<Lesson>()
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .ReturnsAsync(subTopic);
+
+            // Act & Assert
+            var act = () => _service.GetByIdAsync(subTopicId, userId);
+            await act.Should().ThrowAsync<KeyNotFoundException>()
+                .WithMessage("*not found or not owned by user*");
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_WithNullLessons_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int userId = 1;
+
+            var subTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Test SubTopic",
+                UserId = userId,
+                Lessons = null // This causes the issue
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .ReturnsAsync(subTopic);
+
+            // Act & Assert
+            var act = () => _service.GetByIdAsync(subTopicId, userId);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("SubTopic data is in an invalid state.");
+        }
+
+        #endregion
+
+        #region GetAllAsync Tests
+
+        [Fact]
+        public async Task GetAllAsync_WithActiveFilter_ShouldReturnActiveSubTopicsOnly()
+        {
+            // Arrange
+            const int userId = 1;
+            var subTopics = new List<SubTopic>
+            {
+                new SubTopic { Id = 1, Title = "Active SubTopic", UserId = userId, Archived = false, Lessons = new List<Lesson>() },
+                new SubTopic { Id = 2, Title = "Archived SubTopic", UserId = userId, Archived = true, Lessons = new List<Lesson>() }
+            };
+
+            var mockQuery = new TestAsyncEnumerable<SubTopic>(subTopics.AsQueryable());
+            _mockSubTopicRepository
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .Returns(mockQuery);
+
+            // Act
+            var result = await _service.GetAllAsync(userId, ArchiveFilter.Active);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result.First().Title.Should().Be("Active SubTopic");
+            result.First().Archived.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task GetAllAsync_WithArchivedFilter_ShouldReturnArchivedSubTopicsOnly()
+        {
+            // Arrange
+            const int userId = 1;
+            var subTopics = new List<SubTopic>
+            {
+                new SubTopic { Id = 1, Title = "Active SubTopic", UserId = userId, Archived = false, Lessons = new List<Lesson>() },
+                new SubTopic { Id = 2, Title = "Archived SubTopic", UserId = userId, Archived = true, Lessons = new List<Lesson>() }
+            };
+
+            var mockQuery = new TestAsyncEnumerable<SubTopic>(subTopics.AsQueryable());
+            _mockSubTopicRepository
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .Returns(mockQuery);
+
+            // Act
+            var result = await _service.GetAllAsync(userId, ArchiveFilter.Archived);
+
+            // Assert
+            result.Should().HaveCount(1);
+            result.First().Title.Should().Be("Archived SubTopic");
+            result.First().Archived.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task GetAllAsync_WithBothFilter_ShouldReturnAllSubTopics()
+        {
+            // Arrange
+            const int userId = 1;
+            var subTopics = new List<SubTopic>
+            {
+                new SubTopic { Id = 1, Title = "Active SubTopic", UserId = userId, Archived = false, Lessons = new List<Lesson>() },
+                new SubTopic { Id = 2, Title = "Archived SubTopic", UserId = userId, Archived = true, Lessons = new List<Lesson>() }
+            };
+
+            var mockQuery = new TestAsyncEnumerable<SubTopic>(subTopics.AsQueryable());
+            _mockSubTopicRepository
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .Returns(mockQuery);
+
+            // Act
+            var result = await _service.GetAllAsync(userId, ArchiveFilter.Both);
+
+            // Assert
+            result.Should().HaveCount(2);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_WithInvalidFilter_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            const int userId = 1;
+            var invalidFilter = (ArchiveFilter)999;
+
+            var mockQuery = new TestAsyncEnumerable<SubTopic>(new List<SubTopic>().AsQueryable());
+            _mockSubTopicRepository
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .Returns(mockQuery);
+
+            // Act & Assert
+            var act = () => _service.GetAllAsync(userId, invalidFilter);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("Failed to retrieve SubTopics due to a data access error.");
+        }
+
+        [Fact]
+        public async Task GetAllAsync_WithDatabaseException_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            const int userId = 1;
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .Throws(new InvalidOperationException("Database error"));
+
+            // Act & Assert
+            var act = () => _service.GetAllAsync(userId, ArchiveFilter.Active);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("Failed to retrieve SubTopics due to a data access error.");
+        }
+
+        #endregion
+
+        #region GetSubtopicsByTopicIdAsync Tests
+
+        [Fact]
+        public async Task GetSubtopicsByTopicIdAsync_WithValidTopicId_ShouldReturnSortedSubTopics()
+        {
+            // Arrange
+            const int topicId = 1;
+            const int userId = 1;
+            var subTopics = new List<SubTopic>
+            {
+                new SubTopic { Id = 1, Title = "SubTopic 2", TopicId = topicId, UserId = userId, SortOrder = 2, Archived = false, Lessons = new List<Lesson>() },
+                new SubTopic { Id = 2, Title = "SubTopic 1", TopicId = topicId, UserId = userId, SortOrder = 1, Archived = false, Lessons = new List<Lesson>() }
+            };
+
+            var mockQuery = new TestAsyncEnumerable<SubTopic>(subTopics.AsQueryable());
+            _mockSubTopicRepository
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .Returns(mockQuery);
+
+            // Act
+            var result = await _service.GetSubtopicsByTopicIdAsync(topicId, userId, ArchiveFilter.Active);
+
+            // Assert
+            result.Should().HaveCount(2);
+            result.First().Title.Should().Be("SubTopic 1"); // Sorted by SortOrder
+            result.Last().Title.Should().Be("SubTopic 2");
+        }
+
+        [Fact]
+        public async Task GetSubtopicsByTopicIdAsync_WithDatabaseException_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            const int topicId = 1;
+            const int userId = 1;
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .Throws(new InvalidOperationException("Database error"));
+
+            // Act & Assert
+            var act = () => _service.GetSubtopicsByTopicIdAsync(topicId, userId, ArchiveFilter.Active);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("Failed to retrieve SubTopics due to a data access error.");
+        }
+
+        #endregion
+
+        #region UpdateSortOrderAsync Tests
+
+        [Fact]
+        public async Task UpdateSortOrderAsync_WithValidSubTopic_ShouldUpdateSortOrder()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int newSortOrder = 5;
+            const int userId = 1;
+
+            var subTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Test SubTopic",
+                UserId = userId,
+                SortOrder = 1
+            };
+
+            // Use specific overload without optional parameter
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(subTopic);
+
+            // Act
+            await _service.UpdateSortOrderAsync(subTopicId, newSortOrder, userId);
+
+            // Assert
+            subTopic.SortOrder.Should().Be(newSortOrder);
+            _mockSubTopicRepository.Verify(r => r.UpdateAsync(subTopic), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateSortOrderAsync_WithNonExistentSubTopic_ShouldThrowArgumentException()
+        {
+            // Arrange
+            const int subTopicId = 999;
+            const int newSortOrder = 5;
+            const int userId = 1;
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync((SubTopic?)null);
+
+            // Act & Assert
+            var act = () => _service.UpdateSortOrderAsync(subTopicId, newSortOrder, userId);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage("SubTopic not found");
+        }
+
+        [Fact]
+        public async Task UpdateSortOrderAsync_WithDifferentUser_ShouldThrowUnauthorizedAccessException()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int newSortOrder = 5;
+            const int userId = 1;
+            const int differentUserId = 2;
+
+            var subTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Test SubTopic",
+                UserId = differentUserId,
+                SortOrder = 1
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(subTopic);
+
+            // Act & Assert
+            var act = () => _service.UpdateSortOrderAsync(subTopicId, newSortOrder, userId);
+            await act.Should().ThrowAsync<UnauthorizedAccessException>()
+                .WithMessage("SubTopic not owned by user");
+        }
+
+        #endregion
+
+        #region AddAsync Tests
+
+        [Fact]
+        public async Task AddAsync_WithValidData_ShouldCreateSubTopic()
+        {
+            // Arrange
+            const int topicId = 1;
+            const int userId = 1;
+            const int nextSortOrder = 5;
+            const int createdId = 10;
+
+            var createResource = new SubTopicCreateResource
+            {
+                Title = "New SubTopic",
+                Description = "New Description",
+                TopicId = topicId,
+                Visibility = "Private"
+            };
+
+            var topic = new Topic { Id = topicId, Title = "Test Topic", UserId = userId };
+
+            _mockTopicRepository
+                .Setup(r => r.GetByIdAsync(topicId, (Func<IQueryable<Topic>, IQueryable<Topic>>?)null))
+                .ReturnsAsync(topic);
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetNextSortOrderForTopicAsync(topicId))
+                .ReturnsAsync(nextSortOrder);
+
+            _mockSubTopicRepository
+                .Setup(r => r.AddAsync(It.IsAny<SubTopic>()))
+                .ReturnsAsync(createdId);
+
+            // Act
+            var result = await _service.AddAsync(createResource, userId);
+
+            // Assert
+            result.Should().Be(createdId);
+            _mockSubTopicRepository.Verify(r => r.AddAsync(It.Is<SubTopic>(s => 
+                s.Title == "New SubTopic" && 
+                s.UserId == userId && 
+                s.SortOrder == nextSortOrder &&
+                s.Archived == false)), Times.Once);
+        }
+
+        [Fact]
+        public async Task AddAsync_WithEmptyTitle_ShouldThrowArgumentException()
+        {
+            // Arrange
+            const int userId = 1;
+            var createResource = new SubTopicCreateResource
+            {
+                Title = "",
+                TopicId = 1
+            };
+
+            // Act & Assert
+            var act = () => _service.AddAsync(createResource, userId);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage("Title is required*");
+        }
+
+        [Fact]
+        public async Task AddAsync_WithNonExistentTopic_ShouldThrowArgumentException()
+        {
+            // Arrange
+            const int topicId = 999;
+            const int userId = 1;
+
+            var createResource = new SubTopicCreateResource
+            {
+                Title = "New SubTopic",
+                TopicId = topicId
+            };
+
+            _mockTopicRepository
+                .Setup(r => r.GetByIdAsync(topicId, (Func<IQueryable<Topic>, IQueryable<Topic>>?)null))
+                .ReturnsAsync((Topic?)null);
+
+            // Act & Assert
+            var act = () => _service.AddAsync(createResource, userId);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage("The specified Topic does not exist.*");
+        }
+
+        #endregion
+
+        #region UpdateAsync Tests
+
+        [Fact]
+        public async Task UpdateAsync_WithValidData_ShouldUpdateSubTopic()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int userId = 1;
+
+            var updateResource = new SubTopicUpdateResource
+            {
+                Id = subTopicId,
+                Title = "Updated Title",
+                Description = "Updated Description",
+                Visibility = "Public"
+            };
+
+            var existingSubTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Original Title",
+                UserId = userId,
+                IsDefault = false,
+                Lessons = new List<Lesson>()
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(existingSubTopic);
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .ReturnsAsync(existingSubTopic);
+
+            // Act
+            var result = await _service.UpdateAsync(updateResource, userId);
+
+            // Assert
+            result.Should().NotBeNull();
+            _mockSubTopicRepository.Verify(r => r.UpdateAsync(It.IsAny<SubTopic>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_WithNonExistentSubTopic_ShouldThrowKeyNotFoundException()
+        {
+            // Arrange
+            const int subTopicId = 999;
+            const int userId = 1;
+
+            var updateResource = new SubTopicUpdateResource
+            {
+                Id = subTopicId,
+                Title = "Updated Title"
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync((SubTopic?)null);
+
+            // Act & Assert
+            var act = () => _service.UpdateAsync(updateResource, userId);
+            await act.Should().ThrowAsync<KeyNotFoundException>()
+                .WithMessage($"SubTopic with ID {subTopicId} not found.");
+        }
+
+        [Fact]
+        public async Task UpdateAsync_WithDifferentUser_ShouldThrowUnauthorizedAccessException()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int userId = 1;
+            const int differentUserId = 2;
+
+            var updateResource = new SubTopicUpdateResource
+            {
+                Id = subTopicId,
+                Title = "Updated Title"
+            };
+
+            var existingSubTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Original Title",
+                UserId = differentUserId,
+                IsDefault = false
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(existingSubTopic);
+
+            // Act & Assert
+            var act = () => _service.UpdateAsync(updateResource, userId);
+            await act.Should().ThrowAsync<UnauthorizedAccessException>()
+                .WithMessage("SubTopic not owned by user");
+        }
+
+        [Fact]
+        public async Task UpdateAsync_WithDefaultSubTopic_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int userId = 1;
+
+            var updateResource = new SubTopicUpdateResource
+            {
+                Id = subTopicId,
+                Title = "Updated Title"
+            };
+
+            var existingSubTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Original Title",
+                UserId = userId,
+                IsDefault = true // This should prevent updates
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(existingSubTopic);
+
+            // Act & Assert
+            var act = () => _service.UpdateAsync(updateResource, userId);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("Cannot update a default SubTopic.");
+        }
+
+        #endregion
+
+        #region DeleteAsync Tests
+
+        [Fact]
+        public async Task DeleteAsync_WithValidSubTopic_ShouldDeleteSubTopic()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int userId = 1;
+
+            var subTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Test SubTopic",
+                UserId = userId,
+                IsDefault = false
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(subTopic);
+
+            // Act
+            await _service.DeleteAsync(subTopicId, userId);
+
+            // Assert
+            _mockSubTopicRepository.Verify(r => r.DeleteAsync(subTopicId), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_WithNonExistentSubTopic_ShouldThrowArgumentException()
+        {
+            // Arrange
+            const int subTopicId = 999;
+            const int userId = 1;
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync((SubTopic?)null);
+
+            // Act & Assert
+            var act = () => _service.DeleteAsync(subTopicId, userId);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage($"SubTopic with ID {subTopicId} not found.");
+        }
+
+        [Fact]
+        public async Task DeleteAsync_WithDifferentUser_ShouldThrowUnauthorizedAccessException()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int userId = 1;
+            const int differentUserId = 2;
+
+            var subTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Test SubTopic",
+                UserId = differentUserId,
+                IsDefault = false
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(subTopic);
+
+            // Act & Assert
+            var act = () => _service.DeleteAsync(subTopicId, userId);
+            await act.Should().ThrowAsync<UnauthorizedAccessException>()
+                .WithMessage("SubTopic not owned by user");
+        }
+
+        [Fact]
+        public async Task DeleteAsync_WithDefaultSubTopic_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int userId = 1;
+
+            var subTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Test SubTopic",
+                UserId = userId,
+                IsDefault = true // This should prevent deletion
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(subTopic);
+
+            // Act & Assert
+            var act = () => _service.DeleteAsync(subTopicId, userId);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("Cannot delete a default SubTopic.");
+        }
+
+        #endregion
+
+        #region MoveSubTopicAsync Tests
+
+        [Fact]
+        public async Task MoveSubTopicAsync_WithPositioningParameters_ShouldUsePositioningLogic()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int newTopicId = 2;
+            const int userId = 1;
+            const int relativeToId = 3;
+
+            var moveResource = new SubTopicMoveResource
+            {
+                SubTopicId = subTopicId,
+                NewTopicId = newTopicId,
+                RelativeToId = relativeToId,
+                Position = "after",
+                RelativeToType = "Lesson"
+            };
+
+            var subTopic = new SubTopic { Id = subTopicId, UserId = userId };
+            var targetTopic = new Topic { Id = newTopicId, UserId = userId };
+            var relativeLesson = new Lesson { Id = relativeToId, UserId = userId };
+            var movedSubTopic = new SubTopic { Id = subTopicId, UserId = userId, TopicId = newTopicId, SortOrder = 5 };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(subTopic);
+            
+            _mockTopicRepository
+                .Setup(r => r.GetByIdAsync(newTopicId, (Func<IQueryable<Topic>, IQueryable<Topic>>?)null))
+                .ReturnsAsync(targetTopic);
+            
+            _mockLessonRepository
+                .Setup(r => r.GetByIdAsync(relativeToId, (Func<IQueryable<Lesson>, IQueryable<Lesson>>?)null))
+                .ReturnsAsync(relativeLesson);
+
+            _mockSubTopicRepository
+                .Setup(r => r.MoveSubTopicWithPositioningAsync(subTopicId, newTopicId, relativeToId, "after", "Lesson"))
+                .ReturnsAsync(movedSubTopic);
+
+            // Act
+            var result = await _service.MoveSubTopicAsync(moveResource, userId);
+
+            // Assert
+            result.Should().NotBeNull();
+            _mockSubTopicRepository.Verify(r => r.MoveSubTopicWithPositioningAsync(subTopicId, newTopicId, relativeToId, "after", "Lesson"), Times.Once);
+        }
+
+        [Fact]
+        public async Task MoveSubTopicAsync_WithLegacyAfterSiblingId_ShouldUseLegacyLogic()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int newTopicId = 2;
+            const int userId = 1;
+            const int afterSiblingId = 3;
+
+            var moveResource = new SubTopicMoveResource
+            {
+                SubTopicId = subTopicId,
+                NewTopicId = newTopicId,
+                AfterSiblingId = afterSiblingId
+            };
+
+            var subTopic = new SubTopic { Id = subTopicId, UserId = userId };
+            var targetTopic = new Topic { Id = newTopicId, UserId = userId };
+            var relativeSubTopic = new SubTopic { Id = afterSiblingId, UserId = userId, TopicId = newTopicId };
+            var movedSubTopic = new SubTopic { Id = subTopicId, UserId = userId, TopicId = newTopicId };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(subTopic);
+            
+            _mockTopicRepository
+                .Setup(r => r.GetByIdAsync(newTopicId, (Func<IQueryable<Topic>, IQueryable<Topic>>?)null))
+                .ReturnsAsync(targetTopic);
+            
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(afterSiblingId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(relativeSubTopic);
+
+            _mockSubTopicRepository
+                .Setup(r => r.MoveSubTopicToPositionAsync(subTopicId, newTopicId, afterSiblingId, "SubTopic"))
+                .ReturnsAsync(movedSubTopic);
+
+            // Act
+            var result = await _service.MoveSubTopicAsync(moveResource, userId);
+
+            // Assert
+            result.Should().NotBeNull();
+            _mockSubTopicRepository.Verify(r => r.MoveSubTopicToPositionAsync(subTopicId, newTopicId, afterSiblingId, "SubTopic"), Times.Once);
+        }
+
+        [Fact]
+        public async Task MoveSubTopicAsync_WithSimpleMove_ShouldUseSimpleLogic()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int newTopicId = 2;
+            const int userId = 1;
+            const int maxSortOrder = 10;
+
+            var moveResource = new SubTopicMoveResource
+            {
+                SubTopicId = subTopicId,
+                NewTopicId = newTopicId
+                // No positioning parameters
+            };
+
+            var subTopic = new SubTopic { Id = subTopicId, UserId = userId, TopicId = 1, SortOrder = 1 };
+            var targetTopic = new Topic { Id = newTopicId, UserId = userId };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(subTopic);
+            
+            _mockTopicRepository
+                .Setup(r => r.GetByIdAsync(newTopicId, (Func<IQueryable<Topic>, IQueryable<Topic>>?)null))
+                .ReturnsAsync(targetTopic);
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetMaxSortOrderInTopicAsync(newTopicId))
+                .ReturnsAsync(maxSortOrder);
+
+            // Act
+            var result = await _service.MoveSubTopicAsync(moveResource, userId);
+
+            // Assert
+            result.Should().NotBeNull();
+            subTopic.TopicId.Should().Be(newTopicId);
+            subTopic.SortOrder.Should().Be(maxSortOrder + 1);
+            _mockSubTopicRepository.Verify(r => r.UpdateAsync(subTopic), Times.Once);
+        }
+
+        [Fact]
+        public async Task MoveSubTopicAsync_WithNonExistentSubTopic_ShouldThrowArgumentException()
+        {
+            // Arrange
+            const int subTopicId = 999;
+            const int newTopicId = 2;
+            const int userId = 1;
+
+            var moveResource = new SubTopicMoveResource
+            {
+                SubTopicId = subTopicId,
+                NewTopicId = newTopicId
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync((SubTopic?)null);
+
+            // Act & Assert
+            var act = () => _service.MoveSubTopicAsync(moveResource, userId);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage($"SubTopic {subTopicId} not found");
+        }
+
+        [Fact]
+        public async Task MoveSubTopicAsync_WithUnauthorizedSubTopic_ShouldThrowUnauthorizedAccessException()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int newTopicId = 2;
+            const int userId = 1;
+            const int differentUserId = 2;
+
+            var moveResource = new SubTopicMoveResource
+            {
+                SubTopicId = subTopicId,
+                NewTopicId = newTopicId
+            };
+
+            var subTopic = new SubTopic { Id = subTopicId, UserId = differentUserId };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(subTopic);
+
+            // Act & Assert
+            var act = () => _service.MoveSubTopicAsync(moveResource, userId);
+            await act.Should().ThrowAsync<UnauthorizedAccessException>()
+                .WithMessage($"SubTopic {subTopicId} not owned by user {userId}");
+        }
+
+        [Fact]
+        public async Task MoveSubTopicAsync_WithNonExistentTargetTopic_ShouldThrowArgumentException()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int newTopicId = 999;
+            const int userId = 1;
+
+            var moveResource = new SubTopicMoveResource
+            {
+                SubTopicId = subTopicId,
+                NewTopicId = newTopicId
+            };
+
+            var subTopic = new SubTopic { Id = subTopicId, UserId = userId };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(subTopic);
+
+            _mockTopicRepository
+                .Setup(r => r.GetByIdAsync(newTopicId, (Func<IQueryable<Topic>, IQueryable<Topic>>?)null))
+                .ReturnsAsync((Topic?)null);
+
+            // Act & Assert
+            var act = () => _service.MoveSubTopicAsync(moveResource, userId);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage($"Target topic {newTopicId} not found");
+        }
+
+        #endregion
+
+        #region CopySubTopicAsync Tests
+
+        [Fact]
+        public async Task CopySubTopicAsync_WithValidData_ShouldCopySubTopicAndLessons()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int newTopicId = 2;
+            const int userId = 1;
+            const int newSubTopicId = 10;
+
+            var originalSubTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Original SubTopic",
+                Description = "Original Description",
+                TopicId = 1,
+                UserId = userId,
+                Visibility = VisibilityType.Private,
+                Lessons = new List<Lesson>
+                {
+                    new Lesson
+                    {
+                        Id = 1,
+                        Title = "Original Lesson",
+                        Objective = "Learn something",
+                        UserId = userId,
+                        LessonAttachments = new List<LessonAttachment>(),
+                        LessonStandards = new List<LessonStandard>()
+                    }
+                }
+            };
+
+            var targetTopic = new Topic
+            {
+                Id = newTopicId,
+                Title = "Target Topic",
+                UserId = userId,
+                SubTopics = new List<SubTopic>()
+            };
+
+            var newSubTopic = new SubTopic
+            {
+                Id = newSubTopicId,
+                Title = "Original SubTopic",
+                Description = "Original Description",
+                TopicId = newTopicId,
+                UserId = userId,
+                Visibility = VisibilityType.Private,
+                Archived = false
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .ReturnsAsync(originalSubTopic);
+
+            _mockTopicRepository
+                .Setup(r => r.GetByIdAsync(newTopicId, It.IsAny<Func<IQueryable<Topic>, IQueryable<Topic>>>()))
+                .ReturnsAsync(targetTopic);
+
+            _mockSubTopicRepository
+                .Setup(r => r.AddAsync(It.IsAny<SubTopic>()))
+                .Callback<SubTopic>(st => st.Id = newSubTopicId)
+                .ReturnsAsync(newSubTopicId);
+
+            // Act
+            var result = await _service.CopySubTopicAsync(subTopicId, newTopicId, userId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Title.Should().Be("Original SubTopic");
+            result.TopicId.Should().Be(newTopicId);
+            _mockSubTopicRepository.Verify(r => r.AddAsync(It.IsAny<SubTopic>()), Times.Once);
+            _mockSubTopicRepository.Verify(r => r.UpdateAsync(It.IsAny<SubTopic>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task CopySubTopicAsync_WithNonExistentSubTopic_ShouldThrowArgumentException()
+        {
+            // Arrange
+            const int subTopicId = 999;
+            const int newTopicId = 2;
+            const int userId = 1;
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .ReturnsAsync((SubTopic?)null);
+
+            // Act & Assert
+            var act = () => _service.CopySubTopicAsync(subTopicId, newTopicId, userId);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage("SubTopic not found");
+        }
+
+        [Fact]
+        public async Task CopySubTopicAsync_WithNonExistentTargetTopic_ShouldThrowArgumentException()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int newTopicId = 999;
+            const int userId = 1;
+
+            var originalSubTopic = new SubTopic
+            {
+                Id = subTopicId,
+                Title = "Original SubTopic",
+                UserId = userId,
+                Lessons = new List<Lesson>()
+            };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
+                .ReturnsAsync(originalSubTopic);
+
+            _mockTopicRepository
+                .Setup(r => r.GetByIdAsync(newTopicId, It.IsAny<Func<IQueryable<Topic>, IQueryable<Topic>>>()))
+                .ReturnsAsync((Topic?)null);
+
+            // Act & Assert
+            var act = () => _service.CopySubTopicAsync(subTopicId, newTopicId, userId);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage("Topic not found");
+        }
+
+        #endregion
+
+        #region Private Method Tests via Public Interface
+
+        [Fact]
+        public async Task MoveSubTopicAsync_WithInvalidRelativeToType_ShouldThrowArgumentException()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int newTopicId = 2;
+            const int userId = 1;
+            const int relativeToId = 3;
+
+            var moveResource = new SubTopicMoveResource
+            {
+                SubTopicId = subTopicId,
+                NewTopicId = newTopicId,
+                RelativeToId = relativeToId,
+                Position = "after",
+                RelativeToType = "InvalidType" // Invalid type
+            };
+
+            var subTopic = new SubTopic { Id = subTopicId, UserId = userId };
+            var targetTopic = new Topic { Id = newTopicId, UserId = userId };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(subTopic);
+            
+            _mockTopicRepository
+                .Setup(r => r.GetByIdAsync(newTopicId, (Func<IQueryable<Topic>, IQueryable<Topic>>?)null))
+                .ReturnsAsync(targetTopic);
+
+            // Act & Assert
+            var act = () => _service.MoveSubTopicAsync(moveResource, userId);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage("RelativeToType 'InvalidType' is not supported*");
+        }
+
+        [Fact]
+        public async Task MoveSubTopicAsync_WithNonExistentRelativeLesson_ShouldThrowArgumentException()
+        {
+            // Arrange
+            const int subTopicId = 1;
+            const int newTopicId = 2;
+            const int userId = 1;
+            const int relativeToId = 999; // Non-existent lesson
+
+            var moveResource = new SubTopicMoveResource
+            {
+                SubTopicId = subTopicId,
+                NewTopicId = newTopicId,
+                RelativeToId = relativeToId,
+                Position = "after",
+                RelativeToType = "Lesson"
+            };
+
+            var subTopic = new SubTopic { Id = subTopicId, UserId = userId };
+            var targetTopic = new Topic { Id = newTopicId, UserId = userId };
+
+            _mockSubTopicRepository
+                .Setup(r => r.GetByIdAsync(subTopicId, (Func<IQueryable<SubTopic>, IQueryable<SubTopic>>?)null))
+                .ReturnsAsync(subTopic);
+            
+            _mockTopicRepository
+                .Setup(r => r.GetByIdAsync(newTopicId, (Func<IQueryable<Topic>, IQueryable<Topic>>?)null))
+                .ReturnsAsync(targetTopic);
+
+            _mockLessonRepository
+                .Setup(r => r.GetByIdAsync(relativeToId, (Func<IQueryable<Lesson>, IQueryable<Lesson>>?)null))
+                .ReturnsAsync((Lesson?)null);
+
+            // Act & Assert
+            var act = () => _service.MoveSubTopicAsync(moveResource, userId);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage($"Relative lesson {relativeToId} not found");
+        }
+
+        #endregion
+    }
+}

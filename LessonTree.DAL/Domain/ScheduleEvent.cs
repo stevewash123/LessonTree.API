@@ -23,6 +23,9 @@ namespace LessonTree.DAL.Domain
         public int? LessonId { get; set; }
         public virtual Lesson? Lesson { get; set; }
 
+        public int? SpecialDayId { get; set; }      // NEW: Link to SpecialDay that created this event
+        public virtual SpecialDay? SpecialDay { get; set; }
+
         [MaxLength(50)]
         public string EventType { get; set; }       // RENAMED from SpecialCode, now required
 
