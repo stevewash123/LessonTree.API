@@ -64,8 +64,13 @@ namespace LessonTree.API.Controllers
             {
                 _logger.LogInformation("Resetting and reseeding database...");
 
-                // Clear all dependent tables in proper order
-                _context.ScheduleEvents.RemoveRange(_context.ScheduleEvents);
+                // Ensure database exists first
+                await _context.Database.EnsureCreatedAsync();
+
+                // Clear all dependent tables in proper order (only if they exist)
+                if (_context.Database.CanConnect())
+                {
+                    _context.ScheduleEvents.RemoveRange(_context.ScheduleEvents);
                 _context.Schedules.RemoveRange(_context.Schedules);
                 _context.PeriodAssignments.RemoveRange(_context.PeriodAssignments);
                 _context.ScheduleConfigurations.RemoveRange(_context.ScheduleConfigurations);
@@ -90,7 +95,8 @@ namespace LessonTree.API.Controllers
                 _context.Users.RemoveRange(_context.Users);
                 _context.Roles.RemoveRange(_context.Roles);
 
-                await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync();
+                }
 
                 // ✅ FIXED: Get service provider and call updated SeedDatabaseAsync method
                 var serviceProvider = HttpContext.RequestServices;
