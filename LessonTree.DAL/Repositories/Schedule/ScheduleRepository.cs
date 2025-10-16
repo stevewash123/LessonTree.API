@@ -47,9 +47,10 @@ namespace LessonTree.DAL.Repositories
                     // ✅ UPDATE existing schedule in-place - keeps same ID
                     _logger.LogInformation($"CreateOrReplaceScheduleAsync: Updating existing schedule {existingSchedule.Id} for user {userId}");
 
-                    // Clear existing events and special days but keep the Schedule entity
+                    // Clear existing events but PRESERVE existing special days
                     existingSchedule.ScheduleEvents.Clear();
-                    existingSchedule.SpecialDays.Clear();
+                    // ✅ CRITICAL FIX: Do NOT clear Special Days - they should be preserved during regeneration
+                    // existingSchedule.SpecialDays.Clear(); // REMOVED to preserve existing Special Days
 
                     // Update schedule properties
                     if (scheduleConfigurationId.HasValue)
@@ -248,6 +249,7 @@ namespace LessonTree.DAL.Repositories
                         Date = evt.Date,
                         Period = evt.Period,
                         LessonId = evt.LessonId,
+                        SpecialDayId = evt.SpecialDayId, // ✅ CRITICAL FIX: Include SpecialDayId for edit/delete operations
                         EventType = evt.EventType,
                         EventCategory = evt.EventCategory,
                         Comment = evt.Comment,
@@ -373,6 +375,29 @@ namespace LessonTree.DAL.Repositories
                 throw new ArgumentException($"Schedule {scheduleId} not found");
             }
 
+            // ✅ CRITICAL FIX: Check for existing Special Days on same date+period
+            var existingSpecialDays = await _context.SpecialDays
+                .Where(sd => sd.ScheduleId == scheduleId && sd.Date.Date == createResource.Date.Date)
+                .ToListAsync();
+
+            if (existingSpecialDays.Any())
+            {
+                foreach (var existing in existingSpecialDays)
+                {
+                    var existingPeriods = System.Text.Json.JsonSerializer.Deserialize<List<int>>(existing.Periods ?? "[]");
+                    var newPeriods = createResource.Periods;
+
+                    // Check for period conflicts
+                    var conflictingPeriods = existingPeriods.Intersect(newPeriods).ToList();
+                    if (conflictingPeriods.Any())
+                    {
+                        var conflictingPeriodsStr = string.Join(", ", conflictingPeriods);
+                        _logger.LogWarning($"AddSpecialDayAsync: Period conflict detected - periods {conflictingPeriodsStr} already have special day '{existing.EventType}' on {createResource.Date:yyyy-MM-dd}");
+                        throw new InvalidOperationException($"Special day already exists on {createResource.Date:yyyy-MM-dd} for period(s): {conflictingPeriodsStr}. Cannot create overlapping special days.");
+                    }
+                }
+            }
+
             var specialDay = new SpecialDay
             {
                 ScheduleId = scheduleId,
@@ -385,7 +410,7 @@ namespace LessonTree.DAL.Repositories
             _context.SpecialDays.Add(specialDay);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation($"AddSpecialDayAsync: Added special day {specialDay.Id}");
+            _logger.LogInformation($"🔍 SPECIAL DAY DEBUG: Successfully saved Special Day to database - ID:{specialDay.Id}, ScheduleId:{specialDay.ScheduleId}, Date:{specialDay.Date:yyyy-MM-dd}, Type:{specialDay.EventType}, Periods:{specialDay.Periods}");
 
             return specialDay;
         }

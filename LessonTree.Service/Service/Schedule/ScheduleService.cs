@@ -423,18 +423,29 @@ namespace LessonTree.BLL.Services
 
             var schedule = await ValidateScheduleOwnershipAsync(scheduleId, userId);
 
+            // ✅ CRITICAL FIX: Create Special Day and ensure it's committed before regeneration
             var createdSpecialDay = await _repository.AddSpecialDayAsync(scheduleId, createResource);
 
             _logger.LogInformation($"CreateSpecialDayAsync: Created special day {createdSpecialDay.Id} for schedule {scheduleId}");
 
-            // *** CRITICAL: Regenerate schedule to integrate special day inline ***
+            // ✅ TRANSACTION FIX: Regenerate schedule in separate operation to ensure Special Day is visible
             _logger.LogInformation($"CreateSpecialDayAsync: Regenerating schedule {scheduleId} to integrate special day inline");
-            await RegenerateScheduleFromConfigurationAsync(schedule.ScheduleConfigurationId, userId);
+
+            try
+            {
+                await RegenerateScheduleFromConfigurationAsync(schedule.ScheduleConfigurationId, userId);
+                _logger.LogInformation($"CreateSpecialDayAsync: Successfully regenerated schedule after special day creation");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"CreateSpecialDayAsync: Failed to regenerate schedule after special day creation, but special day {createdSpecialDay.Id} was created successfully");
+                // Don't throw - the special day was created successfully, regeneration can be retried later
+            }
 
             return _mapper.Map<SpecialDayResource>(createdSpecialDay);
         }
 
-        public async Task<SpecialDayResource> UpdateSpecialDayAsync(int scheduleId, int specialDayId, SpecialDayUpdateResource updateResource, int userId)
+        public async Task<SpecialDayUpdateResponse> UpdateSpecialDayAsync(int scheduleId, int specialDayId, SpecialDayUpdateResource updateResource, int userId)
         {
             _logger.LogInformation($"UpdateSpecialDayAsync: Updating special day {specialDayId} for schedule {scheduleId}, user {userId}");
 
@@ -452,10 +463,51 @@ namespace LessonTree.BLL.Services
                 throw new ArgumentException($"SpecialDay {specialDayId} not found in schedule {scheduleId}");
             }
 
-            var updatedSpecialDay = await _repository.UpdateSpecialDayAsync(updateResource);
+            // Check if periods changed to determine if regeneration is needed
+            // Parse JSON string from domain entity to int array for comparison
+            var originalPeriods = ParsePeriodsFromJson(existingSpecialDay.Periods) ?? new int[0];
+            var newPeriods = updateResource.Periods ?? new int[0];
+            var periodsChanged = !originalPeriods.OrderBy(p => p).SequenceEqual(newPeriods.OrderBy(p => p));
 
+            _logger.LogInformation($"UpdateSpecialDayAsync: Periods changed? {periodsChanged} (Original: [{string.Join(",", originalPeriods)}], New: [{string.Join(",", newPeriods)}])");
+
+            var updatedSpecialDay = await _repository.UpdateSpecialDayAsync(updateResource);
             _logger.LogInformation($"UpdateSpecialDayAsync: Updated special day {specialDayId} for schedule {scheduleId}");
-            return _mapper.Map<SpecialDayResource>(updatedSpecialDay);
+
+            bool calendarRefreshNeeded = false;
+            string? refreshReason = null;
+
+            // Only regenerate if periods changed (affects schedule events)
+            if (periodsChanged)
+            {
+                _logger.LogInformation($"UpdateSpecialDayAsync: Period assignments changed, regenerating schedule {scheduleId}");
+                try
+                {
+                    await RegenerateScheduleFromConfigurationAsync(schedule.ScheduleConfigurationId, userId);
+                    _logger.LogInformation($"UpdateSpecialDayAsync: Successfully regenerated schedule after period change");
+                    calendarRefreshNeeded = true;
+                    refreshReason = "Period assignments changed";
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"UpdateSpecialDayAsync: Failed to regenerate schedule after period change, but special day {specialDayId} was updated successfully");
+                    calendarRefreshNeeded = true;
+                    refreshReason = "Period assignments changed, but regeneration failed - manual refresh recommended";
+                }
+            }
+            else
+            {
+                _logger.LogInformation($"UpdateSpecialDayAsync: No period changes detected, skipping regeneration");
+                calendarRefreshNeeded = false;
+                refreshReason = "Only title/description changed, no regeneration needed";
+            }
+
+            return new SpecialDayUpdateResponse
+            {
+                SpecialDay = _mapper.Map<SpecialDayResource>(updatedSpecialDay),
+                CalendarRefreshNeeded = calendarRefreshNeeded,
+                RefreshReason = refreshReason
+            };
         }
 
         public async Task DeleteSpecialDayAsync(int scheduleId, int specialDayId, int userId)
@@ -554,6 +606,25 @@ namespace LessonTree.BLL.Services
             }
 
             return schedule;
+        }
+
+        /// <summary>
+        /// Parse periods JSON string to int array
+        /// </summary>
+        private int[]? ParsePeriodsFromJson(string? periodsJson)
+        {
+            if (string.IsNullOrEmpty(periodsJson))
+                return new int[0];
+
+            try
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<int[]>(periodsJson);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Failed to parse periods JSON '{periodsJson}': {ex.Message}");
+                return new int[0];
+            }
         }
 
         private int CalculateTeachingDaysCount(DateTime startDate, DateTime endDate, string[] teachingDays)

@@ -13,6 +13,7 @@ namespace LessonTree.Models.DTO
         public int[] Periods { get; set; } = new int[0]; // Deserialized from JSON
         public string EventType { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; } // ✅ ADD: Description field for Special Day details
     }
 
     public class SpecialDayCreateResource
@@ -21,6 +22,7 @@ namespace LessonTree.Models.DTO
         public int[] Periods { get; set; } = new int[0];
         public string EventType { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; } // ✅ ADD: Description field for Special Day details
     }
 
     public class SpecialDayUpdateResource
@@ -30,5 +32,13 @@ namespace LessonTree.Models.DTO
         public int[] Periods { get; set; } = new int[0];
         public string EventType { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
+        public string? Description { get; set; } // ✅ ADD: Description field for Special Day details
+    }
+
+    public class SpecialDayUpdateResponse
+    {
+        public SpecialDayResource SpecialDay { get; set; } = new SpecialDayResource();
+        public bool CalendarRefreshNeeded { get; set; }
+        public string? RefreshReason { get; set; }
     }
 }

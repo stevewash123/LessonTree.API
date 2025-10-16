@@ -150,7 +150,7 @@ public class MappingProfile : Profile
         // =============================================================================
         CreateMap<Lesson, LessonResource>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.SubTopic != null ? src.SubTopic.Topic.CourseId : src.Topic.CourseId))
+            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.SubTopic != null && src.SubTopic.Topic != null ? src.SubTopic.Topic.CourseId : src.Topic != null ? src.Topic.CourseId : (int?)null))
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.Objective, opt => opt.MapFrom(src => src.Objective))
             .ForMember(dest => dest.SubTopicId, opt => opt.MapFrom(src => src.SubTopicId))
@@ -163,7 +163,7 @@ public class MappingProfile : Profile
 
         CreateMap<Lesson, LessonDetailResource>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.SubTopic != null ? src.SubTopic.Topic.CourseId : src.Topic.CourseId))
+            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.SubTopic != null && src.SubTopic.Topic != null ? src.SubTopic.Topic.CourseId : src.Topic != null ? src.Topic.CourseId : (int?)null))
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.Level, opt => opt.MapFrom(src => src.Level))
             .ForMember(dest => dest.Objective, opt => opt.MapFrom(src => src.Objective))

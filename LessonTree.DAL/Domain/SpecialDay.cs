@@ -24,5 +24,8 @@ namespace LessonTree.DAL.Domain
 
         [MaxLength(200)]
         public string Title { get; set; } // 'All School Assembly', 'State Testing', etc.
+
+        [MaxLength(1000)]
+        public string? Description { get; set; } // Optional detailed description for special day
     }
 }

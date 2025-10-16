@@ -84,6 +84,7 @@ namespace LessonTree.BLL.Services
                     Date = eventResource.Date,
                     Period = eventResource.Period,
                     LessonId = eventResource.LessonId,
+                    SpecialDayId = eventResource.SpecialDayId, // ✅ CRITICAL FIX: Include SpecialDayId for persistence
                     EventType = eventResource.EventType,
                     EventCategory = eventResource.EventCategory,
                     Comment = eventResource.Comment,
@@ -601,7 +602,13 @@ namespace LessonTree.BLL.Services
 
             // *** CRITICAL: Get existing special days for inline integration ***
             var existingSpecialDays = await GetExistingSpecialDaysForSchedule(configuration.Id, userId);
-            _logger.LogInformation($"Found {existingSpecialDays.Count} existing special days for inline integration");
+            _logger.LogInformation($"🔍 SPECIAL DAY DEBUG: Found {existingSpecialDays.Count} existing special days for inline integration");
+
+            // ✅ DEBUG: Log details of each existing special day
+            foreach (var sd in existingSpecialDays)
+            {
+                _logger.LogInformation($"🔍 SPECIAL DAY DEBUG: Existing Special Day ID:{sd.Id}, Date:{sd.Date:yyyy-MM-dd}, Type:{sd.EventType}, Periods:[{string.Join(",", sd.Periods)}]");
+            }
 
             // Initialize lesson trackers for course assignments only
             var periodLessonTrackers = new Dictionary<int, PeriodLessonTracker>();
@@ -1121,17 +1128,39 @@ namespace LessonTree.BLL.Services
         /// </summary>
         private async Task<List<SpecialDayResource>> GetExistingSpecialDaysForSchedule(int configurationId, int userId)
         {
+            _logger.LogInformation($"🔍 SPECIAL DAY DEBUG: GetExistingSpecialDaysForSchedule called for configurationId:{configurationId}, userId:{userId}");
+
             // Get existing schedule for this configuration
             var existingSchedule = await _scheduleRepository.GetByConfigurationIdAsync(configurationId);
-            
-            if (existingSchedule == null || existingSchedule.UserId != userId)
+
+            if (existingSchedule == null)
             {
+                _logger.LogWarning($"🔍 SPECIAL DAY DEBUG: No existing schedule found for configurationId:{configurationId}");
                 return new List<SpecialDayResource>();
             }
 
+            if (existingSchedule.UserId != userId)
+            {
+                _logger.LogWarning($"🔍 SPECIAL DAY DEBUG: Schedule {existingSchedule.Id} found but userId mismatch. Expected:{userId}, Actual:{existingSchedule.UserId}");
+                return new List<SpecialDayResource>();
+            }
+
+            _logger.LogInformation($"🔍 SPECIAL DAY DEBUG: Found existing schedule {existingSchedule.Id} for configurationId:{configurationId}");
+
             // Get special days for the existing schedule
             var specialDays = existingSchedule.SpecialDays ?? new List<SpecialDay>();
-            return _mapper.Map<List<SpecialDayResource>>(specialDays);
+            _logger.LogInformation($"🔍 SPECIAL DAY DEBUG: Schedule {existingSchedule.Id} has {specialDays.Count} special days in database");
+
+            // ✅ DEBUG: Log each special day from database
+            foreach (var sd in specialDays)
+            {
+                _logger.LogInformation($"🔍 SPECIAL DAY DEBUG: Raw DB Special Day - ID:{sd.Id}, ScheduleId:{sd.ScheduleId}, Date:{sd.Date:yyyy-MM-dd}, Type:{sd.EventType}, Title:{sd.Title}, Periods:{sd.Periods}");
+            }
+
+            var result = _mapper.Map<List<SpecialDayResource>>(specialDays);
+            _logger.LogInformation($"🔍 SPECIAL DAY DEBUG: Mapped {result.Count} special days to resources for regeneration");
+
+            return result;
         }
 
         /// <summary>
@@ -1160,8 +1189,8 @@ namespace LessonTree.BLL.Services
                 SpecialDayId = specialDay.Id, // NEW: Link back to the special day entity
                 EventType = specialDay.EventType,
                 EventCategory = "SpecialDay",
-                Comment = specialDay.Title,
-                LessonTitle = null,
+                Comment = specialDay.Description ?? string.Empty, // ✅ FIXED: Store description in Comment field
+                LessonTitle = specialDay.Title, // ✅ FIXED: Store title in LessonTitle field for Special Days
                 LessonObjective = null,
                 LessonMethods = null,
                 LessonMaterials = null,
