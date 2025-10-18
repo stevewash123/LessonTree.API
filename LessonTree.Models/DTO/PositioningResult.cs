@@ -54,7 +54,7 @@ namespace LessonTree.Models.DTO
     }
 
     /// <summary>
-    /// Result for lesson positioning operations
+    /// Enhanced result for lesson positioning operations with calendar optimization support
     /// </summary>
     public class LessonPositioningResult : PositioningResult
     {
@@ -63,6 +63,14 @@ namespace LessonTree.Models.DTO
         public int? NewTopicId { get; set; }
         public string NewParentType => NewSubTopicId.HasValue ? "SubTopic" : "Topic";
         public int NewParentId => NewSubTopicId ?? NewTopicId ?? 0;
+
+        // ✅ NEW: Calendar optimization fields for efficient frontend updates
+        public bool HasPartialScheduleUpdates { get; set; } = false;
+        public List<ScheduleEventResource>? PartialScheduleEvents { get; set; }
+        public DateTime? UpdatedDateRangeStart { get; set; }
+        public DateTime? UpdatedDateRangeEnd { get; set; }
+        public bool RequiresFullScheduleRegeneration { get; set; } = true;
+        public string? OptimizationReason { get; set; }
     }
 
     /// <summary>

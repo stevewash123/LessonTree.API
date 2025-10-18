@@ -54,7 +54,7 @@ namespace LessonTree.Models.DTO
         public string NodeType { get; set; } = "Lesson";
     }
 
-    // ✅ CLEAN: Simple sibling-based move resource
+    // ✅ ENHANCED: Lesson move resource with calendar optimization support
     public class LessonMoveResource
     {
         [Required]
@@ -65,6 +65,11 @@ namespace LessonTree.Models.DTO
 
         // ✅ SIMPLE: Which sibling to position after (null = first position)
         public int? AfterSiblingId { get; set; }
+
+        // ✅ NEW: Calendar optimization fields for partial schedule updates
+        public DateTime? CalendarStartDate { get; set; }
+        public DateTime? CalendarEndDate { get; set; }
+        public bool RequestPartialScheduleUpdate { get; set; } = false;
     }
 
     public class LessonDetailResource

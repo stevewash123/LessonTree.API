@@ -6,9 +6,19 @@ using Serilog;
 using System.Text.Json;
 using NWebsec.AspNetCore.Middleware;
 using Microsoft.AspNetCore.Diagnostics;
+using Hangfire;
 
 namespace LessonTree.API.Configuration
 {
+    // Development-only filter to allow all connections to Hangfire dashboard
+    public class AllowAllConnectionsFilter : Hangfire.Dashboard.IDashboardAuthorizationFilter
+    {
+        public bool Authorize(Hangfire.Dashboard.DashboardContext context)
+        {
+            return true; // Allow all connections for development
+        }
+    }
+
     public static class MiddlewareConfiguration
     {
         public static void ConfigureMiddleware(WebApplication app)
@@ -38,6 +48,12 @@ namespace LessonTree.API.Configuration
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "LessonTree API V1");
                 c.RoutePrefix = "swagger";
+            });
+
+            // === HANGFIRE DASHBOARD ===
+            app.UseHangfireDashboard("/hangfire", new DashboardOptions
+            {
+                Authorization = new[] { new AllowAllConnectionsFilter() } // For development only
             });
 
             app.UseSerilogRequestLogging();

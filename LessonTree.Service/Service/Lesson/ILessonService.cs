@@ -24,6 +24,10 @@ namespace LessonTree.BLL.Service
 
         // Move/Copy operations - all include userId for ownership validation
         Task<LessonResource> MoveLessonAsync(LessonMoveResource moveResource, int userId);
+
+        // ✅ NEW: Enhanced move method with calendar optimization support
+        Task<LessonPositioningResult> MoveLessonWithOptimizationAsync(LessonMoveResource moveResource, int userId);
+
         Task<LessonResource> CopyLessonAsync(int lessonId, int? newSubTopicId, int? newTopicId, int userId);
 
         // Standards operations - all include userId for ownership validation

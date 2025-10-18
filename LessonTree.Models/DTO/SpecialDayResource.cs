@@ -47,4 +47,17 @@ namespace LessonTree.Models.DTO
         public bool CalendarRefreshNeeded { get; set; }
         public string? RefreshReason { get; set; }
     }
+
+    // ✅ NEW: Optimized Special Day response with partial generation metadata
+    public class SpecialDayOptimizedResponse
+    {
+        public SpecialDayResource SpecialDay { get; set; } = new SpecialDayResource();
+        public bool IsOptimized { get; set; } = false;
+        public bool HasPartialGeneration { get; set; } = false;
+        public int PartialEventsGenerated { get; set; } = 0;
+        public DateTime? PartialGenerationDate { get; set; }
+        public bool RequiresFullRefresh { get; set; } = false;
+        public string? OptimizationReason { get; set; }
+        public string? PerformanceMetrics { get; set; }
+    }
 }

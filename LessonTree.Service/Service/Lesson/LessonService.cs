@@ -566,6 +566,133 @@ public class LessonService : ILessonService
         return _mapper.Map<LessonResource>(updatedLesson);
     }
 
+    // ✅ NEW: Enhanced lesson move with calendar optimization support
+    public async Task<LessonPositioningResult> MoveLessonWithOptimizationAsync(LessonMoveResource moveResource, int userId)
+    {
+        _logger.LogInformation("=== OPTIMIZED LESSON MOVE START ===");
+        _logger.LogInformation("MoveLessonWithOptimizationAsync: LessonId={LessonId}, RequestPartialScheduleUpdate={RequestPartialUpdate}, DateRange={Start}-{End}",
+            moveResource.LessonId, moveResource.RequestPartialScheduleUpdate, moveResource.CalendarStartDate, moveResource.CalendarEndDate);
+
+        // First, perform the standard lesson move
+        var movedLesson = await MoveLessonAsync(moveResource, userId);
+
+        // Create the enhanced result
+        var result = new LessonPositioningResult
+        {
+            IsSuccess = true,
+            LessonId = movedLesson.Id,
+            NewSubTopicId = movedLesson.SubTopicId,
+            NewTopicId = movedLesson.TopicId,
+            TargetSortOrder = movedLesson.SortOrder,
+            ModifiedEntities = new List<ModifiedEntityInfo>
+            {
+                new ModifiedEntityInfo
+                {
+                    EntityId = movedLesson.Id,
+                    EntityType = "Lesson",
+                    NewSortOrder = movedLesson.SortOrder,
+                    ParentId = movedLesson.SubTopicId ?? movedLesson.TopicId,
+                    ParentType = movedLesson.SubTopicId.HasValue ? "SubTopic" : "Topic"
+                }
+            }
+        };
+
+        // ✅ NEW: Check if partial schedule update was requested and is feasible
+        if (moveResource.RequestPartialScheduleUpdate &&
+            moveResource.CalendarStartDate.HasValue &&
+            moveResource.CalendarEndDate.HasValue)
+        {
+            try
+            {
+                _logger.LogInformation("Attempting partial schedule update for date range {Start} to {End}",
+                    moveResource.CalendarStartDate, moveResource.CalendarEndDate);
+
+                var partialEvents = await GeneratePartialScheduleEventsAsync(
+                    movedLesson.Id,
+                    userId,
+                    moveResource.CalendarStartDate.Value,
+                    moveResource.CalendarEndDate.Value);
+
+                if (partialEvents?.Any() == true)
+                {
+                    result.HasPartialScheduleUpdates = true;
+                    result.PartialScheduleEvents = partialEvents;
+                    result.UpdatedDateRangeStart = moveResource.CalendarStartDate;
+                    result.UpdatedDateRangeEnd = moveResource.CalendarEndDate;
+                    result.RequiresFullScheduleRegeneration = false;
+                    result.OptimizationReason = $"Generated {partialEvents.Count} events for date range optimization";
+
+                    _logger.LogInformation("Partial schedule update successful: {EventCount} events generated", partialEvents.Count);
+                }
+                else
+                {
+                    result.RequiresFullScheduleRegeneration = true;
+                    result.OptimizationReason = "No events generated for specified date range - falling back to full regeneration";
+                    _logger.LogWarning("Partial schedule update failed - no events generated");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Partial schedule update failed - falling back to full regeneration");
+                result.RequiresFullScheduleRegeneration = true;
+                result.OptimizationReason = $"Partial update failed: {ex.Message} - falling back to full regeneration";
+            }
+        }
+        else
+        {
+            result.RequiresFullScheduleRegeneration = true;
+            result.OptimizationReason = "Standard move operation - full schedule regeneration required";
+            _logger.LogInformation("No partial schedule update requested - using standard full regeneration");
+        }
+
+        _logger.LogInformation("=== OPTIMIZED LESSON MOVE END === Result: HasPartial={HasPartial}, RequiresFull={RequiresFull}",
+            result.HasPartialScheduleUpdates, result.RequiresFullScheduleRegeneration);
+
+        return result;
+    }
+
+    // ✅ NEW: Helper method to generate partial schedule events for date range
+    private async Task<List<ScheduleEventResource>?> GeneratePartialScheduleEventsAsync(int lessonId, int userId, DateTime startDate, DateTime endDate)
+    {
+        try
+        {
+            // Get the lesson to determine its course
+            var lesson = await _lessonRepository.GetByIdAsync(lessonId, q => q.Include(l => l.SubTopic).ThenInclude(s => s.Topic).Include(l => l.Topic));
+            if (lesson == null) return null;
+
+            var courseId = await GetCourseIdForLessonAsync(lesson, userId);
+            if (!courseId.HasValue) return null;
+
+            // Find schedules containing this course
+            var schedules = await GetSchedulesForCourseAsync(courseId.Value, userId);
+            if (!schedules.Any()) return null;
+
+            var allPartialEvents = new List<ScheduleEventResource>();
+
+            foreach (var schedule in schedules)
+            {
+                // Generate events for this schedule within the date range
+                var scheduleEvents = await _scheduleGenerationService.GenerateEventsForDateRangeAsync(
+                    schedule.Id, startDate, endDate, userId);
+
+                if (scheduleEvents?.Any() == true)
+                {
+                    allPartialEvents.AddRange(scheduleEvents);
+                }
+            }
+
+            _logger.LogInformation("Generated {EventCount} partial schedule events for lesson {LessonId} in date range {Start}-{End}",
+                allPartialEvents.Count, lessonId, startDate, endDate);
+
+            return allPartialEvents;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate partial schedule events for lesson {LessonId}", lessonId);
+            return null;
+        }
+    }
+
     public async Task AddStandardToLessonAsync(int lessonId, int standardId, int userId)
     {
         _logger.LogDebug("Adding standard ID: {StandardId} to Lesson ID: {LessonId} for User ID: {UserId}", standardId, lessonId, userId);

@@ -60,5 +60,16 @@ namespace LessonTree.BLL.Services
         /// <param name="userId">User ID for ownership validation</param>
         /// <returns>Update result with statistics</returns>
         Task<ScheduleUpdateResult> UpdateScheduleAfterLessonMovedAsync(int scheduleId, int lessonId, int userId);
+
+        /// <summary>
+        /// ✅ NEW: Generate partial schedule events for a specific date range
+        /// Used for calendar optimization to avoid full schedule regeneration
+        /// </summary>
+        /// <param name="scheduleId">Schedule ID</param>
+        /// <param name="startDate">Start date for event generation</param>
+        /// <param name="endDate">End date for event generation</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>List of schedule events for the specified date range</returns>
+        Task<List<ScheduleEventResource>> GenerateEventsForDateRangeAsync(int scheduleId, DateTime startDate, DateTime endDate, int userId);
     }
 }

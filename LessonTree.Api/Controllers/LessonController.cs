@@ -328,6 +328,37 @@ public class LessonController : BaseController
         }
     }
 
+    [HttpPost("move-optimized")]
+    public async Task<IActionResult> MoveLessonOptimized([FromBody] LessonMoveResource moveResource)
+    {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Optimized moving Lesson ID: {LessonId} for User ID: {UserId}", moveResource.LessonId, userId);
+
+        try
+        {
+            var result = await _lessonService.MoveLessonWithOptimizationAsync(moveResource, userId);
+            _logger.LogInformation("Optimized moved Lesson ID: {LessonId} by User ID: {UserId}, HasPartialUpdates: {HasPartial}",
+                moveResource.LessonId, userId, result.HasPartialScheduleUpdates);
+
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Optimized lesson move failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized optimized lesson move attempt for ID: {LessonId} by User ID: {UserId}", moveResource.LessonId, userId);
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in optimized lesson move for ID: {LessonId}", moveResource.LessonId);
+            return StatusCode(500, new { status = "error", message = ex.Message });
+        }
+    }
+
     [HttpPost("copy")]
     public async Task<IActionResult> CopyLesson([FromBody] LessonMoveResource copyResource)
     {

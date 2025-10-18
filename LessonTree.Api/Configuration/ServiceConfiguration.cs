@@ -21,6 +21,8 @@ using System.Text.Json.Serialization.Metadata;
 using System.Text.Json;
 using Microsoft.OpenApi.Models;
 using LessonTree.BLL.Services;
+using Hangfire;
+using Hangfire.Storage.SQLite;
 
 namespace LessonTree.API.Configuration
 {
@@ -71,6 +73,9 @@ namespace LessonTree.API.Configuration
             // === NEW SERVICE REGISTRATION FOR SCHEDULE GENERATION MIGRATION ===
             builder.Services.AddTransient<IScheduleGenerationService, ScheduleGenerationService>();
 
+            // === BACKGROUND SCHEDULE SERVICE ===
+            builder.Services.AddTransient<IBackgroundScheduleService, BackgroundScheduleService>();
+
             // === REPORT GENERATION SERVICE ===
             builder.Services.AddTransient<IReportGenerationService, ReportGenerationService>();
 
@@ -117,6 +122,13 @@ namespace LessonTree.API.Configuration
             });
 
             builder.Services.AddMemoryCache(); // Keep MemoryCache for other uses
+
+            // === HANGFIRE CONFIGURATION ===
+            builder.Services.AddHangfire(configuration => configuration
+                .UseRecommendedSerializerSettings()
+                .UseSQLiteStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            builder.Services.AddHangfireServer();
 
             // === EXISTING CONTROLLERS AND SWAGGER (unchanged) ===
             builder.Services.AddScoped<RequestLoggingFilter>();

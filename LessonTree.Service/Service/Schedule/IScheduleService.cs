@@ -168,6 +168,28 @@ namespace LessonTree.BLL.Services
         /// <returns>Task completion</returns>
         Task DeleteSpecialDayAsync(int scheduleId, int specialDayId, int userId);
 
+        // ✅ NEW: Optimized Special Day operations with partial schedule regeneration
+
+        /// <summary>
+        /// Create special day with optimized partial schedule regeneration
+        /// Only regenerates events for the special day's date instead of full schedule
+        /// </summary>
+        /// <param name="scheduleId">Schedule ID</param>
+        /// <param name="createResource">Special day creation data</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Created special day resource with optimization metadata</returns>
+        Task<SpecialDayOptimizedResponse> CreateSpecialDayOptimizedAsync(int scheduleId, SpecialDayCreateResource createResource, int userId);
+
+        /// <summary>
+        /// Delete special day with optimized partial schedule regeneration
+        /// Only regenerates events for the special day's date instead of full schedule
+        /// </summary>
+        /// <param name="scheduleId">Schedule ID</param>
+        /// <param name="specialDayId">Special day ID</param>
+        /// <param name="userId">User ID for ownership validation</param>
+        /// <returns>Optimization result with performance metadata</returns>
+        Task<SpecialDayOptimizedResponse> DeleteSpecialDayOptimizedAsync(int scheduleId, int specialDayId, int userId);
+
         // === INTEGRATED EVENT RETRIEVAL ===
 
         /// <summary>

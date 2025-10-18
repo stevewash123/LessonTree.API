@@ -21,19 +21,22 @@ namespace LessonTree.BLL.Services
         private readonly ILogger<ScheduleService> _logger;
         private readonly IScheduleGenerationService _scheduleGenerationService;
         private readonly IScheduleConfigurationService _scheduleConfigurationService;
+        private readonly IBackgroundScheduleService _backgroundScheduleService;
 
         public ScheduleService(
             IScheduleRepository repository,
             IMapper mapper,
             ILogger<ScheduleService> logger,
             IScheduleGenerationService scheduleGenerationService,
-            IScheduleConfigurationService scheduleConfigurationService)
+            IScheduleConfigurationService scheduleConfigurationService,
+            IBackgroundScheduleService backgroundScheduleService)
         {
             _repository = repository;
             _mapper = mapper;
             _logger = logger;
             _scheduleGenerationService = scheduleGenerationService;
             _scheduleConfigurationService = scheduleConfigurationService;
+            _backgroundScheduleService = backgroundScheduleService;
         }
 
         // === CORE SCHEDULE OPERATIONS ===
@@ -601,6 +604,264 @@ namespace LessonTree.BLL.Services
             }
 
             _logger.LogInformation($"DeleteSpecialDayAsync: Completed deletion of special day {specialDayId} for schedule {scheduleId}");
+        }
+
+        // ✅ NEW: Optimized Special Day operations with partial schedule regeneration
+
+        /// <summary>
+        /// Create special day with optimized partial regeneration
+        /// Uses enhanced GenerateEventsForDateRangeAsync for targeted updates instead of full schedule regeneration
+        /// </summary>
+        public async Task<SpecialDayOptimizedResponse> CreateSpecialDayOptimizedAsync(int scheduleId, SpecialDayCreateResource createResource, int userId)
+        {
+            var startTime = DateTime.UtcNow;
+            _logger.LogInformation($"CreateSpecialDayOptimizedAsync: Creating special day for schedule {scheduleId}, date {createResource.Date:yyyy-MM-dd}, user {userId}");
+
+            var schedule = await _repository.GetByIdAsync(scheduleId);
+            if (schedule == null || schedule.UserId != userId)
+            {
+                throw new ArgumentException($"Schedule {scheduleId} not found or not accessible by user {userId}");
+            }
+
+            try
+            {
+                // Create the special day
+                var createdSpecialDay = await _repository.AddSpecialDayAsync(scheduleId, createResource);
+                _logger.LogInformation($"Created special day {createdSpecialDay.Id} for date {createResource.Date:yyyy-MM-dd}");
+
+                // ✅ OPTIMIZATION: Use partial generation for only the special day's date
+                var optimizationStartTime = DateTime.UtcNow;
+                var specialDayDate = createResource.Date.Date;
+                var partialEvents = await _scheduleGenerationService.GenerateEventsForDateRangeAsync(
+                    scheduleId,
+                    specialDayDate,
+                    specialDayDate,
+                    userId
+                );
+
+                var isOptimized = partialEvents.Count > 0;
+                var optimizationTime = DateTime.UtcNow - optimizationStartTime;
+
+                if (isOptimized)
+                {
+                    // Update only the events for this specific date
+                    await UpdateSpecificDateEventsAsync(scheduleId, specialDayDate, partialEvents);
+                    _logger.LogInformation($"Optimized: Updated {partialEvents.Count} events for date {specialDayDate:yyyy-MM-dd} in {optimizationTime.TotalMilliseconds}ms");
+                }
+                else
+                {
+                    // Fallback to full regeneration
+                    _logger.LogInformation("Partial generation returned no events, falling back to full regeneration");
+                    await RegenerateScheduleFromConfigurationAsync(schedule.ScheduleConfigurationId, userId);
+                }
+
+                var totalTime = DateTime.UtcNow - startTime;
+
+                // ✅ ENHANCEMENT: Trigger background full rebuild for eventual consistency
+                var backgroundJobId = _backgroundScheduleService.EnqueueScheduleRebuild(
+                    scheduleId,
+                    schedule.ScheduleConfigurationId,
+                    userId,
+                    $"Special Day Create - {createResource.Title} on {specialDayDate:yyyy-MM-dd}"
+                );
+                _logger.LogInformation($"Enqueued background rebuild job {backgroundJobId} for eventual consistency");
+
+                return new SpecialDayOptimizedResponse
+                {
+                    SpecialDay = _mapper.Map<SpecialDayResource>(createdSpecialDay),
+                    IsOptimized = isOptimized,
+                    HasPartialGeneration = isOptimized,
+                    PartialEventsGenerated = partialEvents.Count,
+                    PartialGenerationDate = specialDayDate,
+                    RequiresFullRefresh = !isOptimized,
+                    OptimizationReason = isOptimized ? "Partial date regeneration successful" : "Fallback to full regeneration",
+                    PerformanceMetrics = $"Total: {totalTime.TotalMilliseconds}ms, Optimization: {optimizationTime.TotalMilliseconds}ms"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error in CreateSpecialDayOptimizedAsync for schedule {scheduleId}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Delete special day with optimized partial regeneration
+        /// Uses enhanced GenerateEventsForDateRangeAsync for targeted updates instead of full schedule regeneration
+        /// </summary>
+        public async Task<SpecialDayOptimizedResponse> DeleteSpecialDayOptimizedAsync(int scheduleId, int specialDayId, int userId)
+        {
+            var startTime = DateTime.UtcNow;
+            _logger.LogInformation($"DeleteSpecialDayOptimizedAsync: Deleting special day {specialDayId} from schedule {scheduleId}, user {userId}");
+
+            var schedule = await _repository.GetByIdAsync(scheduleId);
+            if (schedule == null || schedule.UserId != userId)
+            {
+                throw new ArgumentException($"Schedule {scheduleId} not found or not accessible by user {userId}");
+            }
+
+            // Get the special day before deletion to know its date
+            var specialDay = schedule.SpecialDays?.FirstOrDefault(sd => sd.Id == specialDayId);
+            if (specialDay == null)
+            {
+                throw new ArgumentException($"Special day {specialDayId} not found in schedule {scheduleId}");
+            }
+
+            var specialDayDate = specialDay.Date.Date;
+
+            try
+            {
+                // Delete the special day (using existing repository pattern)
+                await _repository.DeleteSpecialDayAsync(specialDayId);
+                _logger.LogInformation($"Deleted special day {specialDayId} for date {specialDayDate:yyyy-MM-dd}");
+
+                // ✅ OPTIMIZATION: Use partial generation for only the affected date
+                var optimizationStartTime = DateTime.UtcNow;
+                var partialEvents = await _scheduleGenerationService.GenerateEventsForDateRangeAsync(
+                    scheduleId,
+                    specialDayDate,
+                    specialDayDate,
+                    userId
+                );
+
+                var isOptimized = partialEvents.Count >= 0; // Even 0 events is valid for partial generation
+                var optimizationTime = DateTime.UtcNow - optimizationStartTime;
+
+                if (isOptimized)
+                {
+                    // Remove special day events and replace with regenerated events
+                    await RemoveSpecialDayEventsAndUpdateAsync(scheduleId, specialDayId, specialDayDate, partialEvents);
+                    _logger.LogInformation($"Optimized: Regenerated {partialEvents.Count} events for date {specialDayDate:yyyy-MM-dd} in {optimizationTime.TotalMilliseconds}ms");
+                }
+                else
+                {
+                    // Fallback to full regeneration (should rarely happen with enhanced implementation)
+                    _logger.LogInformation("Partial generation failed, falling back to full regeneration");
+                    await RegenerateScheduleFromConfigurationAsync(schedule.ScheduleConfigurationId, userId);
+                }
+
+                var totalTime = DateTime.UtcNow - startTime;
+
+                // ✅ ENHANCEMENT: Trigger background full rebuild for eventual consistency
+                var backgroundJobId = _backgroundScheduleService.EnqueueScheduleRebuild(
+                    scheduleId,
+                    schedule.ScheduleConfigurationId,
+                    userId,
+                    $"Special Day Delete - ID {specialDayId} on {specialDayDate:yyyy-MM-dd}"
+                );
+                _logger.LogInformation($"Enqueued background rebuild job {backgroundJobId} for eventual consistency");
+
+                return new SpecialDayOptimizedResponse
+                {
+                    SpecialDay = new SpecialDayResource { Id = specialDayId }, // Minimal response since it's deleted
+                    IsOptimized = isOptimized,
+                    HasPartialGeneration = isOptimized,
+                    PartialEventsGenerated = partialEvents.Count,
+                    PartialGenerationDate = specialDayDate,
+                    RequiresFullRefresh = !isOptimized,
+                    OptimizationReason = isOptimized ? "Partial date regeneration successful" : "Fallback to full regeneration",
+                    PerformanceMetrics = $"Total: {totalTime.TotalMilliseconds}ms, Optimization: {optimizationTime.TotalMilliseconds}ms"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error in DeleteSpecialDayOptimizedAsync for special day {specialDayId}");
+                throw;
+            }
+        }
+
+        // ✅ NEW: Helper methods for optimized special day operations
+
+        /// <summary>
+        /// Update schedule events for a specific date with new events
+        /// </summary>
+        private async Task UpdateSpecificDateEventsAsync(int scheduleId, DateTime date, List<ScheduleEventResource> newEvents)
+        {
+            var schedule = await _repository.GetByIdAsync(scheduleId);
+            if (schedule?.ScheduleEvents != null)
+            {
+                // Remove existing events for this date
+                var existingEventsForDate = schedule.ScheduleEvents
+                    .Where(e => e.Date.Date == date.Date)
+                    .ToList();
+
+                foreach (var eventToRemove in existingEventsForDate)
+                {
+                    schedule.ScheduleEvents.Remove(eventToRemove);
+                }
+
+                // Add new events
+                foreach (var newEvent in newEvents)
+                {
+                    schedule.ScheduleEvents.Add(new ScheduleEvent
+                    {
+                        ScheduleId = scheduleId,
+                        Date = newEvent.Date,
+                        Period = newEvent.Period,
+                        EventType = newEvent.EventType,
+                        EventCategory = newEvent.EventCategory,
+                        LessonId = newEvent.LessonId,
+                        CourseId = newEvent.CourseId,
+                        SpecialDayId = newEvent.SpecialDayId,
+                        Comment = newEvent.Comment
+                    });
+                }
+
+                // For now, use the existing pattern - this is a proof of concept
+                // In a full implementation, we'd add specific repository methods for bulk event updates
+                _logger.LogInformation($"Updated {newEvents.Count} events for date {date:yyyy-MM-dd} (using existing repository pattern)");
+            }
+        }
+
+        /// <summary>
+        /// Remove special day events and update with regenerated events
+        /// </summary>
+        private async Task RemoveSpecialDayEventsAndUpdateAsync(int scheduleId, int specialDayId, DateTime date, List<ScheduleEventResource> newEvents)
+        {
+            var schedule = await _repository.GetByIdAsync(scheduleId);
+            if (schedule?.ScheduleEvents != null)
+            {
+                // Remove events for the deleted special day
+                var specialDayEventsToRemove = schedule.ScheduleEvents
+                    .Where(e => e.SpecialDayId == specialDayId)
+                    .ToList();
+
+                foreach (var eventToRemove in specialDayEventsToRemove)
+                {
+                    schedule.ScheduleEvents.Remove(eventToRemove);
+                }
+
+                // Also remove any existing events for this date to avoid duplicates
+                var existingEventsForDate = schedule.ScheduleEvents
+                    .Where(e => e.Date.Date == date.Date && e.SpecialDayId != specialDayId)
+                    .ToList();
+
+                foreach (var eventToRemove in existingEventsForDate)
+                {
+                    schedule.ScheduleEvents.Remove(eventToRemove);
+                }
+
+                // Add regenerated events
+                foreach (var newEvent in newEvents)
+                {
+                    schedule.ScheduleEvents.Add(new ScheduleEvent
+                    {
+                        ScheduleId = scheduleId,
+                        Date = newEvent.Date,
+                        Period = newEvent.Period,
+                        EventType = newEvent.EventType,
+                        EventCategory = newEvent.EventCategory,
+                        LessonId = newEvent.LessonId,
+                        CourseId = newEvent.CourseId,
+                        SpecialDayId = newEvent.SpecialDayId,
+                        Comment = newEvent.Comment
+                    });
+                }
+
+                // For now, use the existing pattern - this is a proof of concept
+                // In a full implementation, we'd add specific repository methods for bulk event updates
+                _logger.LogInformation($"Removed special day {specialDayId} events and added {newEvents.Count} regenerated events for date {date:yyyy-MM-dd}");
+            }
         }
 
         // === EVENT RETRIEVAL ===
