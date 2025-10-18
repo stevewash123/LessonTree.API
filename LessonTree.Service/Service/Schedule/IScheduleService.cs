@@ -156,8 +156,8 @@ namespace LessonTree.BLL.Services
         /// <param name="specialDayId">Special day ID</param>
         /// <param name="updateResource">Special day update data</param>
         /// <param name="userId">User ID for ownership validation</param>
-        /// <returns>Updated special day resource</returns>
-        Task<SpecialDayResource> UpdateSpecialDayAsync(int scheduleId, int specialDayId, SpecialDayUpdateResource updateResource, int userId);
+        /// <returns>Updated special day response with refresh indication</returns>
+        Task<SpecialDayUpdateResponse> UpdateSpecialDayAsync(int scheduleId, int specialDayId, SpecialDayUpdateResource updateResource, int userId);
 
         /// <summary>
         /// Delete special day

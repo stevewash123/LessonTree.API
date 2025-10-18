@@ -252,11 +252,11 @@ namespace LessonTree.DAL
                 entity.HasIndex(e => e.LessonId)
                       .HasDatabaseName("IX_ScheduleEvents_LessonId");
 
-                // SpecialDay relationship (nullable with cascade delete for data consistency)
+                // ✅ CRITICAL FIX: SpecialDay relationship - use SetNull to prevent cascade deletion of SpecialDays
                 entity.HasOne(e => e.SpecialDay)
                       .WithMany() // SpecialDay doesn't have a ScheduleEvents collection navigation
                       .HasForeignKey(e => e.SpecialDayId)
-                      .OnDelete(DeleteBehavior.Cascade)
+                      .OnDelete(DeleteBehavior.SetNull) // Changed from Cascade to SetNull to preserve SpecialDays
                       .IsRequired(false);
 
                 // ✅ ADD: Performance indexes for lesson queries

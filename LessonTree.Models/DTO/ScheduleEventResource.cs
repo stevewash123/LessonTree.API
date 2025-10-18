@@ -31,6 +31,12 @@ namespace LessonTree.Models.DTO
         public string? LessonAssessment { get; set; }
         public int? LessonSort { get; set; }
         public int ScheduleSort { get; set; }
+
+        // **NEW** - Embedded SpecialDay properties for calendar display
+        public string? SpecialDayTitle { get; set; }
+        public string? SpecialDayDescription { get; set; }
+        public string? SpecialDayBackgroundColor { get; set; }
+        public string? SpecialDayFontColor { get; set; }
     }
 
     public class ScheduleEventCreateResource

@@ -150,7 +150,7 @@ public class MappingProfile : Profile
         // =============================================================================
         CreateMap<Lesson, LessonResource>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.SubTopic != null ? src.SubTopic.Topic.CourseId : src.Topic.CourseId))
+            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.SubTopic != null && src.SubTopic.Topic != null ? src.SubTopic.Topic.CourseId : src.Topic != null ? src.Topic.CourseId : (int?)null))
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.Objective, opt => opt.MapFrom(src => src.Objective))
             .ForMember(dest => dest.SubTopicId, opt => opt.MapFrom(src => src.SubTopicId))
@@ -163,7 +163,7 @@ public class MappingProfile : Profile
 
         CreateMap<Lesson, LessonDetailResource>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.SubTopic != null ? src.SubTopic.Topic.CourseId : src.Topic.CourseId))
+            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.SubTopic != null && src.SubTopic.Topic != null ? src.SubTopic.Topic.CourseId : src.Topic != null ? src.Topic.CourseId : (int?)null))
             .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.Level, opt => opt.MapFrom(src => src.Level))
             .ForMember(dest => dest.Objective, opt => opt.MapFrom(src => src.Objective))
@@ -368,6 +368,10 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.LessonMethods, opt => opt.MapFrom(src => src.Lesson != null ? src.Lesson.Methods : null))
             .ForMember(dest => dest.LessonMaterials, opt => opt.MapFrom(src => src.Lesson != null ? src.Lesson.Materials : null))
             .ForMember(dest => dest.LessonAssessment, opt => opt.MapFrom(src => src.Lesson != null ? src.Lesson.Assessment : null))
+            .ForMember(dest => dest.SpecialDayTitle, opt => opt.MapFrom(src => src.SpecialDay != null ? src.SpecialDay.Title : null))
+            .ForMember(dest => dest.SpecialDayDescription, opt => opt.MapFrom(src => src.SpecialDay != null ? src.SpecialDay.Description : null))
+            .ForMember(dest => dest.SpecialDayBackgroundColor, opt => opt.MapFrom(src => src.SpecialDay != null ? src.SpecialDay.BackgroundColor : null))
+            .ForMember(dest => dest.SpecialDayFontColor, opt => opt.MapFrom(src => src.SpecialDay != null ? src.SpecialDay.FontColor : null))
             .ForMember(dest => dest.Comment, opt => opt.MapFrom(src => src.Comment));
         
 
@@ -386,7 +390,10 @@ public class MappingProfile : Profile
         // SPECIAL DAY MAPPINGS
         // =============================================================================
         CreateMap<SpecialDay, SpecialDayResource>()
-            .ForMember(dest => dest.Periods, opt => opt.MapFrom<SpecialDayPeriodsToArrayResolver>());
+            .ForMember(dest => dest.Periods, opt => opt.MapFrom<SpecialDayPeriodsToArrayResolver>())
+            .ForMember(dest => dest.BackgroundColor, opt => opt.MapFrom(src => src.BackgroundColor))
+            .ForMember(dest => dest.FontColor, opt => opt.MapFrom(src => src.FontColor))
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description));
 
         CreateMap<SpecialDayCreateResource, SpecialDay>()
             .ForMember(dest => dest.Periods, opt => opt.MapFrom<SpecialDayCreatePeriodsToStringResolver>())

@@ -200,7 +200,7 @@ namespace LessonTree.API.Controllers
 
         // PUT /api/Schedule/{scheduleId}/specialDays/{specialDayId}
         [HttpPut("{scheduleId}/specialDays/{specialDayId}")]
-        public async Task<ActionResult<SpecialDayResource>> UpdateSpecialDay(int scheduleId, int specialDayId, [FromBody] SpecialDayUpdateResource updateResource)
+        public async Task<ActionResult<SpecialDayUpdateResponse>> UpdateSpecialDay(int scheduleId, int specialDayId, [FromBody] SpecialDayUpdateResource updateResource)
         {
             int userId = GetCurrentUserId();
 

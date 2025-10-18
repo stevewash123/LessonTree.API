@@ -24,5 +24,14 @@ namespace LessonTree.DAL.Domain
 
         [MaxLength(200)]
         public string Title { get; set; } // 'All School Assembly', 'State Testing', etc.
+
+        [MaxLength(1000)]
+        public string? Description { get; set; } // Optional detailed description for special day
+
+        [MaxLength(20)]
+        public string? BackgroundColor { get; set; } // Custom background color (e.g., "#FF5733")
+
+        [MaxLength(20)]
+        public string? FontColor { get; set; } // Custom font color (e.g., "#FFFFFF")
     }
 }
