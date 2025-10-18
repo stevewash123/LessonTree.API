@@ -152,6 +152,8 @@ namespace LessonTree.DAL.Repositories
                     .ThenInclude(sc => sc.PeriodAssignments)
                 .Include(s => s.ScheduleEvents.OrderBy(e => e.Date).ThenBy(e => e.Period))
                     .ThenInclude(e => e.Lesson) // Include lesson data for display
+                .Include(s => s.ScheduleEvents)
+                    .ThenInclude(e => e.SpecialDay) // Include SpecialDay data for calendar colors
                 .Include(s => s.SpecialDays.OrderBy(sd => sd.Date))
                 .FirstOrDefaultAsync(s => s.UserId == userId);
 
@@ -176,6 +178,8 @@ namespace LessonTree.DAL.Repositories
                     .ThenInclude(sc => sc.PeriodAssignments)
                 .Include(s => s.ScheduleEvents.OrderBy(e => e.Date).ThenBy(e => e.Period))
                     .ThenInclude(e => e.Lesson)
+                .Include(s => s.ScheduleEvents)
+                    .ThenInclude(e => e.SpecialDay) // Include SpecialDay data for calendar colors
                 .Include(s => s.SpecialDays.OrderBy(sd => sd.Date))
                 .Include(s => s.User) // Include user for validation
                 .FirstOrDefaultAsync(s => s.Id == id);
@@ -404,7 +408,10 @@ namespace LessonTree.DAL.Repositories
                 Date = createResource.Date,
                 Periods = System.Text.Json.JsonSerializer.Serialize(createResource.Periods),
                 EventType = createResource.EventType,
-                Title = createResource.Title
+                Title = createResource.Title,
+                Description = createResource.Description,
+                BackgroundColor = createResource.BackgroundColor,
+                FontColor = createResource.FontColor
             };
 
             _context.SpecialDays.Add(specialDay);
@@ -430,6 +437,9 @@ namespace LessonTree.DAL.Repositories
             existingSpecialDay.Periods = System.Text.Json.JsonSerializer.Serialize(updateResource.Periods);
             existingSpecialDay.EventType = updateResource.EventType;
             existingSpecialDay.Title = updateResource.Title;
+            existingSpecialDay.Description = updateResource.Description;
+            existingSpecialDay.BackgroundColor = updateResource.BackgroundColor;
+            existingSpecialDay.FontColor = updateResource.FontColor;
 
             await _context.SaveChangesAsync();
 
@@ -465,6 +475,8 @@ namespace LessonTree.DAL.Repositories
                     .ThenInclude(sc => sc.PeriodAssignments)
                 .Include(s => s.ScheduleEvents.OrderBy(e => e.Date).ThenBy(e => e.Period))
                     .ThenInclude(e => e.Lesson) // Include lesson data for display
+                .Include(s => s.ScheduleEvents)
+                    .ThenInclude(e => e.SpecialDay) // Include SpecialDay data for calendar colors
                 .Include(s => s.SpecialDays.OrderBy(sd => sd.Date))
                 .Include(s => s.User) // Include user for validation
                 .FirstOrDefaultAsync(s => s.ScheduleConfigurationId == configurationId);

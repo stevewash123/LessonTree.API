@@ -14,6 +14,8 @@ namespace LessonTree.Models.DTO
         public string EventType { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; } // ✅ ADD: Description field for Special Day details
+        public string? BackgroundColor { get; set; } // ✅ ADD: Custom background color for Special Day
+        public string? FontColor { get; set; } // ✅ ADD: Custom font color for Special Day
     }
 
     public class SpecialDayCreateResource
@@ -23,6 +25,8 @@ namespace LessonTree.Models.DTO
         public string EventType { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; } // ✅ ADD: Description field for Special Day details
+        public string? BackgroundColor { get; set; } // ✅ ADD: Custom background color for Special Day
+        public string? FontColor { get; set; } // ✅ ADD: Custom font color for Special Day
     }
 
     public class SpecialDayUpdateResource
@@ -33,6 +37,8 @@ namespace LessonTree.Models.DTO
         public string EventType { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; } // ✅ ADD: Description field for Special Day details
+        public string? BackgroundColor { get; set; } // ✅ ADD: Custom background color for Special Day
+        public string? FontColor { get; set; } // ✅ ADD: Custom font color for Special Day
     }
 
     public class SpecialDayUpdateResponse

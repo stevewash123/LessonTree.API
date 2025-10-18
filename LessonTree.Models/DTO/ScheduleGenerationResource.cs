@@ -1,6 +1,4 @@
-﻿using LessonTree.Models.DTO;
-
-namespace LessonTree.BLL.Services
+﻿namespace LessonTree.Models.DTO
 {
     // === SCHEDULE GENERATION RESULT (NEW - not in existing DTOs) ===
 
