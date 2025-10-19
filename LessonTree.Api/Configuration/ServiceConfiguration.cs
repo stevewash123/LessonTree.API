@@ -124,9 +124,14 @@ namespace LessonTree.API.Configuration
             builder.Services.AddMemoryCache(); // Keep MemoryCache for other uses
 
             // === HANGFIRE CONFIGURATION ===
+            // ✅ PROPER FIX: Always use separate database file for Hangfire to avoid conflicts
+            var hangfireConnectionString = "Data Source=LessonTree-Hangfire.db";
+
+            Console.WriteLine($"Hangfire using database: {hangfireConnectionString}");
+
             builder.Services.AddHangfire(configuration => configuration
                 .UseRecommendedSerializerSettings()
-                .UseSQLiteStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
+                .UseSQLiteStorage(hangfireConnectionString));
 
             builder.Services.AddHangfireServer();
 

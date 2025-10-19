@@ -94,4 +94,37 @@ namespace LessonTree.Models.DTO
         public List<AttachmentResource> Attachments { get; set; }
         public List<NoteResource> Notes { get; set; } = new List<NoteResource>();
     }
+
+    // ✅ NEW: Calendar Update Optimization for Lesson Create operations
+    public class LessonCreateOptimizedResource : LessonCreateResource
+    {
+        // Calendar date range for partial schedule generation
+        public DateTime? CalendarStartDate { get; set; }
+        public DateTime? CalendarEndDate { get; set; }
+        public bool RequestPartialScheduleUpdate { get; set; } = false;
+    }
+
+    // ✅ NEW: Optimized response for lesson creation with Calendar Update Optimization
+    public class LessonOptimizedResponse
+    {
+        public LessonResource Lesson { get; set; } = new LessonResource();
+        public bool IsOptimized { get; set; } = false;
+        public bool HasPartialGeneration { get; set; } = false;
+        public int PartialEventsGenerated { get; set; } = 0;
+        public DateTime? PartialGenerationDateRange { get; set; }
+        public string? PerformanceMetrics { get; set; }
+        public string? BackgroundJobId { get; set; }
+    }
+
+    // ✅ NEW: Calendar Update Optimization for Lesson Delete operations
+    public class LessonDeleteOptimizedRequest
+    {
+        [Required]
+        public int LessonId { get; set; }
+
+        // Calendar date range for partial schedule generation
+        public DateTime? CalendarStartDate { get; set; }
+        public DateTime? CalendarEndDate { get; set; }
+        public bool RequestPartialScheduleUpdate { get; set; } = false;
+    }
 }

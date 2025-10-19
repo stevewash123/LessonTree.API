@@ -20,6 +20,7 @@ public class LessonService : ILessonService
     private readonly IScheduleService _scheduleService; // NEW DEPENDENCY
     private readonly IScheduleConfigurationService _scheduleConfigurationService; // NEW DEPENDENCY
     private readonly IScheduleGenerationService _scheduleGenerationService;
+    private readonly IBackgroundScheduleService _backgroundScheduleService; // NEW DEPENDENCY FOR CALENDAR OPTIMIZATION
 
     public LessonService(
         ILessonRepository lessonRepository,
@@ -30,7 +31,8 @@ public class LessonService : ILessonService
         IMapper mapper,
         IScheduleService scheduleService, // NEW PARAMETER
         IScheduleConfigurationService scheduleConfigurationService, // NEW PARAMETER
-        IScheduleGenerationService scheduleGenerationService)
+        IScheduleGenerationService scheduleGenerationService,
+        IBackgroundScheduleService backgroundScheduleService) // NEW PARAMETER FOR CALENDAR OPTIMIZATION
     {
         _lessonRepository = lessonRepository;
         _topicRepository = topicRepository;
@@ -41,6 +43,7 @@ public class LessonService : ILessonService
         _scheduleService = scheduleService; // NEW ASSIGNMENT
         _scheduleConfigurationService = scheduleConfigurationService; // NEW ASSIGNMENT
         _scheduleGenerationService = scheduleGenerationService;
+        _backgroundScheduleService = backgroundScheduleService; // NEW ASSIGNMENT FOR CALENDAR OPTIMIZATION
     }
 
     // **PARTIAL FILE** - LessonService.cs - Logging Standardization (Key Methods)
@@ -598,9 +601,20 @@ public class LessonService : ILessonService
         };
 
         // ✅ NEW: Check if partial schedule update was requested and is feasible
+        // ✅ UPDATED: Handle null calendar ranges per user requirement
+        var canOptimizeMove = moveResource.RequestPartialScheduleUpdate &&
+                              moveResource.CalendarStartDate.HasValue &&
+                              moveResource.CalendarEndDate.HasValue;
+
+        // ✅ NEW: If calendar is not open/instantiated, pass null for range and skip optimization
         if (moveResource.RequestPartialScheduleUpdate &&
-            moveResource.CalendarStartDate.HasValue &&
-            moveResource.CalendarEndDate.HasValue)
+            (!moveResource.CalendarStartDate.HasValue || !moveResource.CalendarEndDate.HasValue))
+        {
+            _logger.LogInformation("MoveLessonWithOptimizationAsync: Calendar not open/instantiated - null date range provided, skipping partial generation and using full regeneration");
+            canOptimizeMove = false;
+        }
+
+        if (canOptimizeMove)
         {
             try
             {
@@ -641,8 +655,18 @@ public class LessonService : ILessonService
         else
         {
             result.RequiresFullScheduleRegeneration = true;
-            result.OptimizationReason = "Standard move operation - full schedule regeneration required";
-            _logger.LogInformation("No partial schedule update requested - using standard full regeneration");
+            // ✅ UPDATED: Better logging for null calendar scenarios
+            if (moveResource.RequestPartialScheduleUpdate &&
+                (!moveResource.CalendarStartDate.HasValue || !moveResource.CalendarEndDate.HasValue))
+            {
+                result.OptimizationReason = "Calendar not open/instantiated (null date range) - full schedule regeneration required";
+                _logger.LogInformation("Calendar not open/instantiated - null date range provided, using standard full regeneration");
+            }
+            else
+            {
+                result.OptimizationReason = "Standard move operation - full schedule regeneration required";
+                _logger.LogInformation("No partial schedule update requested - using standard full regeneration");
+            }
         }
 
         _logger.LogInformation("=== OPTIMIZED LESSON MOVE END === Result: HasPartial={HasPartial}, RequiresFull={RequiresFull}",
@@ -889,12 +913,12 @@ public class LessonService : ILessonService
         try
         {
             _logger.LogInformation($"GetSchedulesForCourseAsync: Looking for schedules containing course {courseId} for user {userId}");
-            
+
             // Get all schedules that contain this course
             var schedules = await _scheduleService.FindAllSchedulesByCourseIdAsync(courseId, userId);
-            
+
             _logger.LogInformation($"Found {schedules.Count} schedules for course {courseId}");
-            
+
             // Convert to domain objects
             return schedules.Select(s => new Schedule { Id = s.Id, UserId = s.UserId }).ToList();
         }
@@ -902,6 +926,325 @@ public class LessonService : ILessonService
         {
             _logger.LogError(ex, $"Failed to get schedules for course {courseId}, user {userId}");
             return new List<Schedule>();
+        }
+    }
+
+    // ✅ NEW: Calendar Update Optimization - Optimized lesson creation with partial schedule generation
+    public async Task<LessonOptimizedResponse> CreateLessonOptimizedAsync(LessonCreateOptimizedResource createResource, int userId)
+    {
+        var startTime = DateTime.UtcNow;
+        _logger.LogInformation("CreateLessonOptimizedAsync: Starting optimized lesson creation for user {UserId}, Title: {Title}", userId, createResource.Title);
+
+        var response = new LessonOptimizedResponse();
+
+        try
+        {
+            // 1. Create the lesson using regular creation process
+            var lessonId = await AddAsync(createResource, userId);
+            var createdLesson = await GetByIdAsync(lessonId, userId);
+            response.Lesson = _mapper.Map<LessonResource>(createdLesson);
+
+            _logger.LogInformation("CreateLessonOptimizedAsync: Lesson {LessonId} created successfully", lessonId);
+
+            // 2. Determine if partial schedule optimization can be applied
+            // ✅ UPDATED: Handle null calendar ranges per user requirement
+            var canOptimize = createResource.RequestPartialScheduleUpdate &&
+                             createResource.CalendarStartDate.HasValue &&
+                             createResource.CalendarEndDate.HasValue;
+
+            // ✅ NEW: If calendar is not open/instantiated, pass null for range and skip optimization
+            if (createResource.RequestPartialScheduleUpdate &&
+                (!createResource.CalendarStartDate.HasValue || !createResource.CalendarEndDate.HasValue))
+            {
+                _logger.LogInformation("CreateLessonOptimizedAsync: Calendar not open/instantiated - null date range provided, skipping partial generation and using full regeneration");
+                canOptimize = false;
+            }
+
+            if (canOptimize)
+            {
+                _logger.LogInformation("CreateLessonOptimizedAsync: Attempting partial schedule generation for lesson {LessonId} between {StartDate} and {EndDate}",
+                    lessonId, createResource.CalendarStartDate.Value.ToString("yyyy-MM-dd"), createResource.CalendarEndDate.Value.ToString("yyyy-MM-dd"));
+
+                // 3. Find schedules that contain this course for partial optimization
+                var courseId = GetCourseIdFromLesson(createResource);
+                if (courseId.HasValue)
+                {
+                    var schedules = await GetSchedulesForCourseAsync(courseId.Value, userId);
+
+                    if (schedules.Any())
+                    {
+                        // 4. Apply partial schedule generation for the date range
+                        var totalEventsGenerated = 0;
+                        var optimizationSuccessful = true;
+
+                        foreach (var schedule in schedules)
+                        {
+                            try
+                            {
+                                var partialEvents = await _scheduleGenerationService.GenerateEventsForDateRangeAsync(
+                                    schedule.Id,
+                                    createResource.CalendarStartDate.Value,
+                                    createResource.CalendarEndDate.Value,
+                                    userId);
+
+                                if (partialEvents?.Count > 0)
+                                {
+                                    // Update schedule with partial events for the date range
+                                    totalEventsGenerated += partialEvents.Count;
+                                    _logger.LogInformation("CreateLessonOptimizedAsync: Generated {EventCount} partial events for schedule {ScheduleId}",
+                                        partialEvents.Count, schedule.Id);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "CreateLessonOptimizedAsync: Partial generation failed for schedule {ScheduleId}, will use background job", schedule.Id);
+                                optimizationSuccessful = false;
+                            }
+                        }
+
+                        // 5. Set optimization results
+                        response.IsOptimized = optimizationSuccessful;
+                        response.HasPartialGeneration = totalEventsGenerated > 0;
+                        response.PartialEventsGenerated = totalEventsGenerated;
+                        response.PartialGenerationDateRange = createResource.CalendarStartDate.Value;
+
+                        // 6. Trigger background job for full schedule rebuild (eventual consistency)
+                        var backgroundJobId = _backgroundScheduleService.EnqueueScheduleRebuild(
+                            schedules.First().Id,
+                            await GetScheduleConfigurationIdAsync(schedules.First().Id, userId),
+                            userId,
+                            $"Lesson Create - {createResource.Title} on {DateTime.UtcNow:yyyy-MM-dd}"
+                        );
+                        response.BackgroundJobId = backgroundJobId;
+
+                        _logger.LogInformation("CreateLessonOptimizedAsync: Optimization completed. IsOptimized: {IsOptimized}, EventsGenerated: {EventsGenerated}",
+                            response.IsOptimized, response.PartialEventsGenerated);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("CreateLessonOptimizedAsync: No schedules found for course {CourseId}, using fallback", courseId.Value);
+                        response.IsOptimized = false;
+                        response.HasPartialGeneration = false;
+                    }
+                }
+            }
+            else
+            {
+                _logger.LogInformation("CreateLessonOptimizedAsync: Calendar optimization not requested or date range not provided - using background full regeneration");
+
+                // ✅ NEW: Even when optimization can't be applied, still trigger background rebuild
+                var courseId = GetCourseIdFromLesson(createResource);
+                if (courseId.HasValue)
+                {
+                    var schedules = await GetSchedulesForCourseAsync(courseId.Value, userId);
+                    if (schedules.Any())
+                    {
+                        var backgroundJobId = _backgroundScheduleService.EnqueueScheduleRebuild(
+                            schedules.First().Id,
+                            await GetScheduleConfigurationIdAsync(schedules.First().Id, userId),
+                            userId,
+                            $"Lesson Create (Full Rebuild) - {createResource.Title} on {DateTime.UtcNow:yyyy-MM-dd}"
+                        );
+                        response.BackgroundJobId = backgroundJobId;
+                        _logger.LogInformation("CreateLessonOptimizedAsync: Enqueued background full regeneration with job ID {JobId}", backgroundJobId);
+                    }
+                }
+
+                response.IsOptimized = false;
+                response.HasPartialGeneration = false;
+            }
+
+            // 7. Performance metrics
+            var elapsedMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            response.PerformanceMetrics = $"Total: {elapsedMs:F0}ms, Optimized: {response.IsOptimized}";
+
+            _logger.LogInformation("CreateLessonOptimizedAsync: Completed for lesson {LessonId} in {ElapsedMs}ms", lessonId, elapsedMs);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "CreateLessonOptimizedAsync: Failed for user {UserId}", userId);
+            throw;
+        }
+    }
+
+    // ✅ NEW: Calendar Update Optimization - Optimized lesson deletion with partial schedule generation
+    public async Task<LessonOptimizedResponse> DeleteLessonOptimizedAsync(LessonDeleteOptimizedRequest deleteRequest, int userId)
+    {
+        var startTime = DateTime.UtcNow;
+        _logger.LogInformation("DeleteLessonOptimizedAsync: Starting optimized lesson deletion for lesson {LessonId}", deleteRequest.LessonId);
+
+        var response = new LessonOptimizedResponse();
+
+        try
+        {
+            // 1. Get lesson info before deletion for course identification
+            var lessonToDelete = await GetByIdAsync(deleteRequest.LessonId, userId);
+            if (lessonToDelete == null)
+            {
+                throw new ArgumentException($"Lesson {deleteRequest.LessonId} not found or not accessible by user {userId}");
+            }
+
+            var courseId = lessonToDelete.CourseId;
+            _logger.LogInformation("DeleteLessonOptimizedAsync: Found lesson {LessonId} in course {CourseId}", deleteRequest.LessonId, courseId);
+
+            // 2. Determine if partial schedule optimization can be applied
+            // ✅ UPDATED: Handle null calendar ranges per user requirement
+            var canOptimize = deleteRequest.RequestPartialScheduleUpdate &&
+                             deleteRequest.CalendarStartDate.HasValue &&
+                             deleteRequest.CalendarEndDate.HasValue;
+
+            // ✅ NEW: If calendar is not open/instantiated, pass null for range and skip optimization
+            if (deleteRequest.RequestPartialScheduleUpdate &&
+                (!deleteRequest.CalendarStartDate.HasValue || !deleteRequest.CalendarEndDate.HasValue))
+            {
+                _logger.LogInformation("DeleteLessonOptimizedAsync: Calendar not open/instantiated - null date range provided, skipping partial generation and using full regeneration");
+                canOptimize = false;
+            }
+
+            if (canOptimize)
+            {
+                _logger.LogInformation("DeleteLessonOptimizedAsync: Attempting partial schedule regeneration for date range {StartDate} to {EndDate}",
+                    deleteRequest.CalendarStartDate.Value.ToString("yyyy-MM-dd"), deleteRequest.CalendarEndDate.Value.ToString("yyyy-MM-dd"));
+
+                // 3. Find schedules that contain this course for partial optimization
+                var schedules = await GetSchedulesForCourseAsync(courseId, userId);
+
+                if (schedules.Any())
+                {
+                    // 4. Delete the lesson first
+                    await DeleteAsync(deleteRequest.LessonId, userId);
+                    response.Lesson.Id = deleteRequest.LessonId; // Set deleted lesson ID
+
+                    // 5. Apply partial schedule regeneration for the date range (after deletion)
+                    var totalEventsGenerated = 0;
+                    var optimizationSuccessful = true;
+
+                    foreach (var schedule in schedules)
+                    {
+                        try
+                        {
+                            var partialEvents = await _scheduleGenerationService.GenerateEventsForDateRangeAsync(
+                                schedule.Id,
+                                deleteRequest.CalendarStartDate.Value,
+                                deleteRequest.CalendarEndDate.Value,
+                                userId);
+
+                            if (partialEvents?.Count > 0)
+                            {
+                                totalEventsGenerated += partialEvents.Count;
+                                _logger.LogInformation("DeleteLessonOptimizedAsync: Regenerated {EventCount} partial events for schedule {ScheduleId} after deletion",
+                                    partialEvents.Count, schedule.Id);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "DeleteLessonOptimizedAsync: Partial regeneration failed for schedule {ScheduleId}, will use background job", schedule.Id);
+                            optimizationSuccessful = false;
+                        }
+                    }
+
+                    // 6. Set optimization results
+                    response.IsOptimized = optimizationSuccessful;
+                    response.HasPartialGeneration = totalEventsGenerated > 0;
+                    response.PartialEventsGenerated = totalEventsGenerated;
+                    response.PartialGenerationDateRange = deleteRequest.CalendarStartDate.Value;
+
+                    // 7. Trigger background job for full schedule rebuild (eventual consistency)
+                    var backgroundJobId = _backgroundScheduleService.EnqueueScheduleRebuild(
+                        schedules.First().Id,
+                        await GetScheduleConfigurationIdAsync(schedules.First().Id, userId),
+                        userId,
+                        $"Lesson Delete - ID {deleteRequest.LessonId} on {DateTime.UtcNow:yyyy-MM-dd}"
+                    );
+                    response.BackgroundJobId = backgroundJobId;
+
+                    _logger.LogInformation("DeleteLessonOptimizedAsync: Optimization completed. IsOptimized: {IsOptimized}, EventsGenerated: {EventsGenerated}",
+                        response.IsOptimized, response.PartialEventsGenerated);
+                }
+                else
+                {
+                    // No schedules found, just delete the lesson
+                    await DeleteAsync(deleteRequest.LessonId, userId);
+                    response.Lesson.Id = deleteRequest.LessonId;
+                    response.IsOptimized = false;
+                    response.HasPartialGeneration = false;
+                    _logger.LogInformation("DeleteLessonOptimizedAsync: No schedules found for course {CourseId}, used regular deletion", courseId);
+                }
+            }
+            else
+            {
+                // Regular deletion without optimization - but still trigger background rebuild
+                await DeleteAsync(deleteRequest.LessonId, userId);
+                response.Lesson.Id = deleteRequest.LessonId;
+                response.IsOptimized = false;
+                response.HasPartialGeneration = false;
+
+                // ✅ NEW: Even when optimization can't be applied, still trigger background rebuild
+                var schedules = await GetSchedulesForCourseAsync(courseId, userId);
+                if (schedules.Any())
+                {
+                    var backgroundJobId = _backgroundScheduleService.EnqueueScheduleRebuild(
+                        schedules.First().Id,
+                        await GetScheduleConfigurationIdAsync(schedules.First().Id, userId),
+                        userId,
+                        $"Lesson Delete (Full Rebuild) - ID {deleteRequest.LessonId} on {DateTime.UtcNow:yyyy-MM-dd}"
+                    );
+                    response.BackgroundJobId = backgroundJobId;
+                    _logger.LogInformation("DeleteLessonOptimizedAsync: Enqueued background full regeneration with job ID {JobId}", backgroundJobId);
+                }
+
+                _logger.LogInformation("DeleteLessonOptimizedAsync: Calendar optimization not requested or calendar not open - used regular deletion with background rebuild");
+            }
+
+            // 8. Performance metrics
+            var elapsedMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
+            response.PerformanceMetrics = $"Total: {elapsedMs:F0}ms, Optimized: {response.IsOptimized}";
+
+            _logger.LogInformation("DeleteLessonOptimizedAsync: Completed for lesson {LessonId} in {ElapsedMs}ms", deleteRequest.LessonId, elapsedMs);
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "DeleteLessonOptimizedAsync: Failed for lesson {LessonId}", deleteRequest.LessonId);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Extract course ID from lesson creation resource
+    /// </summary>
+    private int? GetCourseIdFromLesson(LessonCreateOptimizedResource createResource)
+    {
+        // For lesson creation, we need to determine course ID from the parent (SubTopic or Topic)
+        if (createResource.SubTopicId.HasValue)
+        {
+            // Get course ID from SubTopic
+            var subTopic = _subTopicRepository.GetByIdAsync(createResource.SubTopicId.Value, q => q.Include(s => s.Topic)).Result;
+            return subTopic?.Topic?.CourseId;
+        }
+        else if (createResource.TopicId.HasValue)
+        {
+            // Get course ID from Topic
+            var topic = _topicRepository.GetByIdAsync(createResource.TopicId.Value).Result;
+            return topic?.CourseId;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Get schedule configuration ID for a schedule
+    /// </summary>
+    private async Task<int> GetScheduleConfigurationIdAsync(int scheduleId, int userId)
+    {
+        try
+        {
+            var schedule = await _scheduleService.GetByIdAsync(scheduleId, userId);
+            return schedule?.ScheduleConfiguration?.Id ?? 0;
+        }
+        catch
+        {
+            return 0; // Fallback value if configuration cannot be retrieved
         }
     }
 }

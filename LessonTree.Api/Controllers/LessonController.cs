@@ -384,5 +384,66 @@ public class LessonController : BaseController
         }
     }
 
+    // ✅ NEW: Calendar Update Optimization - Optimized lesson creation with partial schedule generation
+    [HttpPost("create-optimized")]
+    public async Task<IActionResult> CreateLessonOptimized([FromBody] LessonCreateOptimizedResource createResource)
+    {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Creating optimized lesson with Title: {Title} for User ID: {UserId}, HasCalendarRange: {HasRange}",
+            createResource.Title, userId, createResource.CalendarStartDate.HasValue);
+
+        try
+        {
+            var result = await _lessonService.CreateLessonOptimizedAsync(createResource, userId);
+            _logger.LogInformation("Created optimized lesson ID: {LessonId} by User ID: {UserId}, IsOptimized: {IsOptimized}",
+                result.Lesson.Id, userId, result.IsOptimized);
+
+            return CreatedAtAction(nameof(GetLesson), new { id = result.Lesson.Id }, result);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Optimized lesson creation failed: {Message}", ex.Message);
+            return BadRequest(new { status = "error", message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in optimized lesson creation");
+            return StatusCode(500, new { status = "error", message = ex.Message });
+        }
+    }
+
+    // ✅ NEW: Calendar Update Optimization - Optimized lesson deletion with partial schedule generation
+    [HttpDelete("delete-optimized")]
+    public async Task<IActionResult> DeleteLessonOptimized([FromBody] LessonDeleteOptimizedRequest deleteRequest)
+    {
+        int userId = GetCurrentUserId();
+        _logger.LogDebug("Deleting optimized lesson ID: {LessonId} for User ID: {UserId}, HasCalendarRange: {HasRange}",
+            deleteRequest.LessonId, userId, deleteRequest.CalendarStartDate.HasValue);
+
+        try
+        {
+            var result = await _lessonService.DeleteLessonOptimizedAsync(deleteRequest, userId);
+            _logger.LogInformation("Deleted optimized lesson ID: {LessonId} by User ID: {UserId}, IsOptimized: {IsOptimized}",
+                deleteRequest.LessonId, userId, result.IsOptimized);
+
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Optimized lesson deletion failed: {Message}", ex.Message);
+            return NotFound(new { status = "error", message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning("Unauthorized optimized lesson deletion attempt for ID: {LessonId} by User ID: {UserId}", deleteRequest.LessonId, userId);
+            return Forbid();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in optimized lesson deletion for ID: {LessonId}", deleteRequest.LessonId);
+            return StatusCode(500, new { status = "error", message = ex.Message });
+        }
+    }
+
 
 }

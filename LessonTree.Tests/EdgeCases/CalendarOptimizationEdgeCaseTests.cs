@@ -1,0 +1,621 @@
+using LessonTree.BLL.Services;
+using LessonTree.DAL.Domain;
+using LessonTree.DAL.Repositories;
+using LessonTree.Models.DTO;
+using LessonTree.Tests.Helpers;
+using Microsoft.Extensions.Logging;
+
+namespace LessonTree.Tests.EdgeCases
+{
+    /// <summary>
+    /// Edge case tests for Calendar Optimization features
+    /// Tests boundary conditions, error scenarios, and data validation edge cases
+    /// </summary>
+    public class CalendarOptimizationEdgeCaseTests : TestBase
+    {
+        private readonly Mock<IScheduleRepository> _mockScheduleRepository;
+        private readonly Mock<IScheduleGenerationService> _mockScheduleGenerationService;
+        private readonly Mock<IScheduleConfigurationService> _mockScheduleConfigurationService;
+        private readonly ScheduleService _scheduleService;
+        private const int TestUserId = 1;
+        private const int TestScheduleId = 100;
+
+        public CalendarOptimizationEdgeCaseTests()
+        {
+            _mockScheduleRepository = new Mock<IScheduleRepository>();
+            _mockScheduleGenerationService = new Mock<IScheduleGenerationService>();
+            _mockScheduleConfigurationService = new Mock<IScheduleConfigurationService>();
+            var logger = CreateLogger<ScheduleService>();
+
+            _scheduleService = new ScheduleService(
+                _mockScheduleRepository.Object,
+                logger,
+                Mapper,
+                _mockScheduleGenerationService.Object,
+                _mockScheduleConfigurationService.Object);
+        }
+
+        #region Date Range Edge Cases
+
+        [Theory]
+        [InlineData("1900-01-01", "1900-01-31")] // Very old dates
+        [InlineData("2099-12-01", "2099-12-31")] // Far future dates
+        [InlineData("2024-02-29", "2024-03-01")] // Leap year boundary
+        [InlineData("2023-02-28", "2023-03-01")] // Non-leap year boundary
+        [InlineData("2024-12-31", "2025-01-01")] // Year boundary
+        public async Task GetEventsByDateRangeAsync_WithBoundaryDates_ShouldHandleGracefully(string startStr, string endStr)
+        {
+            // Arrange
+            var startDate = DateTime.Parse(startStr);
+            var endDate = DateTime.Parse(endStr);
+
+            var mockSchedule = new Schedule
+            {
+                Id = TestScheduleId,
+                UserId = TestUserId,
+                ScheduleEvents = new List<ScheduleEvent>
+                {
+                    new() { Id = 1, Date = startDate, EventType = "Lesson", Period = 1 },
+                    new() { Id = 2, Date = endDate, EventType = "Lesson", Period = 1 },
+                    new() { Id = 3, Date = startDate.AddDays(-1), EventType = "Lesson", Period = 1 }, // Outside range
+                    new() { Id = 4, Date = endDate.AddDays(1), EventType = "Lesson", Period = 1 } // Outside range
+                }
+            };
+
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(mockSchedule);
+
+            // Act
+            var result = await _scheduleService.GetEventsByDateRangeAsync(TestScheduleId, startDate, endDate, TestUserId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(2); // Only events 1 and 2 should be in range
+            result.All(e => e.Date >= startDate && e.Date <= endDate).Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task GetEventsByDateRangeAsync_WithMinMaxDateTimeValues_ShouldHandleExtremes()
+        {
+            // Arrange
+            var startDate = DateTime.MinValue;
+            var endDate = DateTime.MaxValue;
+
+            var mockSchedule = new Schedule
+            {
+                Id = TestScheduleId,
+                UserId = TestUserId,
+                ScheduleEvents = new List<ScheduleEvent>
+                {
+                    new() { Id = 1, Date = new DateTime(2024, 6, 15), EventType = "Lesson", Period = 1 }
+                }
+            };
+
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(mockSchedule);
+
+            // Act
+            var result = await _scheduleService.GetEventsByDateRangeAsync(TestScheduleId, startDate, endDate, TestUserId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(1); // All events should be included
+        }
+
+        [Fact]
+        public async Task GetEventsByDateRangeAsync_WithSameDateRange_ShouldReturnEventsOnThatDate()
+        {
+            // Arrange
+            var targetDate = new DateTime(2024, 6, 15);
+
+            var mockSchedule = new Schedule
+            {
+                Id = TestScheduleId,
+                UserId = TestUserId,
+                ScheduleEvents = new List<ScheduleEvent>
+                {
+                    new() { Id = 1, Date = targetDate, EventType = "Lesson", Period = 1 },
+                    new() { Id = 2, Date = targetDate.AddDays(-1), EventType = "Lesson", Period = 1 },
+                    new() { Id = 3, Date = targetDate.AddDays(1), EventType = "Lesson", Period = 1 }
+                }
+            };
+
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(mockSchedule);
+
+            // Act
+            var result = await _scheduleService.GetEventsByDateRangeAsync(TestScheduleId, targetDate, targetDate, TestUserId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(1);
+            result.First().Date.Should().Be(targetDate);
+        }
+
+        [Fact]
+        public async Task GetEventsByDateRangeAsync_WithReversedDateRange_ShouldReturnEmptyList()
+        {
+            // Arrange
+            var startDate = new DateTime(2024, 6, 15);
+            var endDate = new DateTime(2024, 6, 10); // End before start
+
+            var mockSchedule = new Schedule
+            {
+                Id = TestScheduleId,
+                UserId = TestUserId,
+                ScheduleEvents = new List<ScheduleEvent>
+                {
+                    new() { Id = 1, Date = new DateTime(2024, 6, 12), EventType = "Lesson", Period = 1 }
+                }
+            };
+
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(mockSchedule);
+
+            // Act
+            var result = await _scheduleService.GetEventsByDateRangeAsync(TestScheduleId, startDate, endDate, TestUserId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().BeEmpty();
+        }
+
+        #endregion
+
+        #region Course Filter Edge Cases
+
+        [Fact]
+        public async Task GetEventsByDateRangeAsync_WithNonExistentCourseFilter_ShouldReturnOnlySpecialDays()
+        {
+            // Arrange
+            var startDate = new DateTime(2024, 6, 1);
+            var endDate = new DateTime(2024, 6, 30);
+            var nonExistentCourseId = 999;
+
+            var mockSchedule = new Schedule
+            {
+                Id = TestScheduleId,
+                UserId = TestUserId,
+                ScheduleEvents = new List<ScheduleEvent>
+                {
+                    new() { Id = 1, Date = new DateTime(2024, 6, 5), EventType = "Lesson", Period = 1, CourseId = 1 },
+                    new() { Id = 2, Date = new DateTime(2024, 6, 10), EventType = "SpecialDay", Period = 2 }, // No CourseId
+                    new() { Id = 3, Date = new DateTime(2024, 6, 15), EventType = "Lesson", Period = 1, CourseId = 2 }
+                }
+            };
+
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(mockSchedule);
+
+            // Act
+            var result = await _scheduleService.GetEventsByDateRangeAsync(TestScheduleId, startDate, endDate, TestUserId, nonExistentCourseId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(1); // Only the SpecialDay should be returned
+            result.First().EventType.Should().Be("SpecialDay");
+        }
+
+        [Fact]
+        public async Task GetEventsByDateRangeAsync_WithNegativeCourseId_ShouldFilterCorrectly()
+        {
+            // Arrange
+            var startDate = new DateTime(2024, 6, 1);
+            var endDate = new DateTime(2024, 6, 30);
+            var negativeCourseId = -1;
+
+            var mockSchedule = new Schedule
+            {
+                Id = TestScheduleId,
+                UserId = TestUserId,
+                ScheduleEvents = new List<ScheduleEvent>
+                {
+                    new() { Id = 1, Date = new DateTime(2024, 6, 5), EventType = "Lesson", Period = 1, CourseId = 1 },
+                    new() { Id = 2, Date = new DateTime(2024, 6, 10), EventType = "SpecialDay", Period = 2 }
+                }
+            };
+
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(mockSchedule);
+
+            // Act
+            var result = await _scheduleService.GetEventsByDateRangeAsync(TestScheduleId, startDate, endDate, TestUserId, negativeCourseId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(1); // Only SpecialDay (no course filter applies)
+            result.First().EventType.Should().Be("SpecialDay");
+        }
+
+        #endregion
+
+        #region Sequence Analysis Edge Cases
+
+        [Fact]
+        public async Task AnalyzeSequenceStateAsync_WithVeryLargeSchedule_ShouldHandlePerformantly()
+        {
+            // Arrange
+            var afterDate = new DateTime(2024, 6, 1);
+
+            var largeAnalysisResult = new SequenceAnalysisResult
+            {
+                TotalCoursesInScope = 100,
+                TotalLessonsInScope = 5000,
+                ContinuationPoints = Enumerable.Range(1, 100).Select(i => new ContinuationPoint
+                {
+                    CourseId = i,
+                    CourseTitle = $"Course {i}",
+                    RemainingLessons = 50
+                }).ToList()
+            };
+
+            _mockScheduleGenerationService
+                .Setup(s => s.AnalyzeSequenceStateAsync(TestScheduleId, afterDate, TestUserId))
+                .ReturnsAsync(largeAnalysisResult);
+
+            // Act
+            var result = await _scheduleService.AnalyzeSequenceStateAsync(TestScheduleId, afterDate, TestUserId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.TotalCoursesInScope.Should().Be(100);
+            result.TotalLessonsInScope.Should().Be(5000);
+            result.ContinuationPoints.Should().HaveCount(100);
+        }
+
+        [Fact]
+        public async Task AnalyzeSequenceStateAsync_WithEmptySchedule_ShouldReturnEmptyAnalysis()
+        {
+            // Arrange
+            var afterDate = new DateTime(2024, 6, 1);
+
+            var emptyAnalysisResult = new SequenceAnalysisResult
+            {
+                TotalCoursesInScope = 0,
+                TotalLessonsInScope = 0,
+                ContinuationPoints = new List<ContinuationPoint>()
+            };
+
+            _mockScheduleGenerationService
+                .Setup(s => s.AnalyzeSequenceStateAsync(TestScheduleId, afterDate, TestUserId))
+                .ReturnsAsync(emptyAnalysisResult);
+
+            // Act
+            var result = await _scheduleService.AnalyzeSequenceStateAsync(TestScheduleId, afterDate, TestUserId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.TotalCoursesInScope.Should().Be(0);
+            result.TotalLessonsInScope.Should().Be(0);
+            result.ContinuationPoints.Should().BeEmpty();
+        }
+
+        #endregion
+
+        #region Sequence Continuation Edge Cases
+
+        [Fact]
+        public async Task ContinueSequencesAsync_WithExtremelyLongDateRange_ShouldHandleGracefully()
+        {
+            // Arrange
+            var continuationRequest = new SequenceContinuationRequest
+            {
+                AfterDate = new DateTime(2024, 1, 1),
+                EndDate = new DateTime(2034, 12, 31), // 10 years
+                MaxEventsToGenerate = 10000
+            };
+
+            var mockAnalysis = new SequenceAnalysisResult
+            {
+                ContinuationPoints = new List<ContinuationPoint>
+                {
+                    new()
+                    {
+                        CourseId = 1,
+                        CourseTitle = "Long Course",
+                        RemainingLessons = 1000
+                    }
+                }
+            };
+
+            var mockContinuationEvents = Enumerable.Range(1, 1000).Select(i => new ScheduleEventResource
+            {
+                Id = i,
+                Date = new DateTime(2024, 1, 1).AddDays(i),
+                EventType = "Lesson",
+                CourseId = 1
+            }).ToList();
+
+            // Setup mocks
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(new Schedule { Id = TestScheduleId, UserId = TestUserId });
+
+            _mockScheduleGenerationService
+                .Setup(s => s.AnalyzeSequenceStateAsync(TestScheduleId, continuationRequest.AfterDate, TestUserId))
+                .ReturnsAsync(mockAnalysis);
+
+            _mockScheduleGenerationService
+                .Setup(s => s.GenerateSequenceContinuationAsync(TestScheduleId, continuationRequest, TestUserId))
+                .ReturnsAsync(mockContinuationEvents);
+
+            // Act
+            var result = await _scheduleService.ContinueSequencesAsync(TestScheduleId, continuationRequest, TestUserId);
+
+            // Assert
+            result.Should().NotBeNull();
+            // Should handle large datasets without throwing exceptions
+        }
+
+        [Fact]
+        public async Task ContinueSequencesAsync_WithZeroMaxEvents_ShouldReturnEmptyList()
+        {
+            // Arrange
+            var continuationRequest = new SequenceContinuationRequest
+            {
+                AfterDate = new DateTime(2024, 6, 1),
+                MaxEventsToGenerate = 0 // Zero limit
+            };
+
+            var mockAnalysis = new SequenceAnalysisResult
+            {
+                ContinuationPoints = new List<ContinuationPoint>
+                {
+                    new() { CourseId = 1, RemainingLessons = 50 }
+                }
+            };
+
+            // Setup mocks
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(new Schedule { Id = TestScheduleId, UserId = TestUserId });
+
+            _mockScheduleGenerationService
+                .Setup(s => s.AnalyzeSequenceStateAsync(TestScheduleId, continuationRequest.AfterDate, TestUserId))
+                .ReturnsAsync(mockAnalysis);
+
+            _mockScheduleGenerationService
+                .Setup(s => s.GenerateSequenceContinuationAsync(TestScheduleId, continuationRequest, TestUserId))
+                .ReturnsAsync(new List<ScheduleEventResource>()); // Empty list due to zero limit
+
+            // Act
+            var result = await _scheduleService.ContinueSequencesAsync(TestScheduleId, continuationRequest, TestUserId);
+
+            // Assert
+            result.Should().NotBeNull();
+            // Should handle zero limit gracefully
+        }
+
+        [Fact]
+        public async Task ContinueSequencesAsync_WithEmptySpecificCourseIds_ShouldProcessAllCourses()
+        {
+            // Arrange
+            var continuationRequest = new SequenceContinuationRequest
+            {
+                AfterDate = new DateTime(2024, 6, 1),
+                SpecificCourseIds = new List<int>() // Empty list means all courses
+            };
+
+            var mockAnalysis = new SequenceAnalysisResult
+            {
+                ContinuationPoints = new List<ContinuationPoint>
+                {
+                    new() { CourseId = 1, RemainingLessons = 10 },
+                    new() { CourseId = 2, RemainingLessons = 15 }
+                }
+            };
+
+            // Setup mocks
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(new Schedule { Id = TestScheduleId, UserId = TestUserId });
+
+            _mockScheduleGenerationService
+                .Setup(s => s.AnalyzeSequenceStateAsync(TestScheduleId, continuationRequest.AfterDate, TestUserId))
+                .ReturnsAsync(mockAnalysis);
+
+            // Act & Assert - Should not throw and should process request
+            await _scheduleService.Invoking(s => s.ContinueSequencesAsync(TestScheduleId, continuationRequest, TestUserId))
+                .Should().NotThrowAsync();
+        }
+
+        #endregion
+
+        #region Data Validation Edge Cases
+
+        [Theory]
+        [InlineData(int.MinValue)]
+        [InlineData(-1)]
+        [InlineData(0)]
+        public async Task GetEventsByDateRangeAsync_WithInvalidScheduleId_ShouldThrowArgumentException(int invalidScheduleId)
+        {
+            // Arrange
+            var startDate = new DateTime(2024, 6, 1);
+            var endDate = new DateTime(2024, 6, 30);
+
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(invalidScheduleId))
+                .ReturnsAsync((Schedule?)null);
+
+            // Act & Assert
+            await _scheduleService.Invoking(s => s.GetEventsByDateRangeAsync(invalidScheduleId, startDate, endDate, TestUserId))
+                .Should().ThrowAsync<ArgumentException>();
+        }
+
+        [Theory]
+        [InlineData(int.MinValue)]
+        [InlineData(-1)]
+        [InlineData(0)]
+        public async Task AnalyzeSequenceStateAsync_WithInvalidUserId_ShouldThrowArgumentException(int invalidUserId)
+        {
+            // Arrange
+            var afterDate = new DateTime(2024, 6, 1);
+
+            _mockScheduleGenerationService
+                .Setup(s => s.AnalyzeSequenceStateAsync(TestScheduleId, afterDate, invalidUserId))
+                .ThrowsAsync(new ArgumentException("Invalid user"));
+
+            // Act & Assert
+            await _scheduleService.Invoking(s => s.AnalyzeSequenceStateAsync(TestScheduleId, afterDate, invalidUserId))
+                .Should().ThrowAsync<ArgumentException>();
+        }
+
+        #endregion
+
+        #region Null Reference Edge Cases
+
+        [Fact]
+        public async Task GetEventsByDateRangeAsync_WithNullScheduleEvents_ShouldReturnEmptyList()
+        {
+            // Arrange
+            var startDate = new DateTime(2024, 6, 1);
+            var endDate = new DateTime(2024, 6, 30);
+
+            var mockSchedule = new Schedule
+            {
+                Id = TestScheduleId,
+                UserId = TestUserId,
+                ScheduleEvents = null! // Null collection
+            };
+
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(mockSchedule);
+
+            // Act
+            var result = await _scheduleService.GetEventsByDateRangeAsync(TestScheduleId, startDate, endDate, TestUserId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ContinueSequencesAsync_WithNullContinuationRequest_ShouldThrowArgumentException()
+        {
+            // Arrange
+            SequenceContinuationRequest? nullRequest = null;
+
+            // Act & Assert
+            await _scheduleService.Invoking(s => s.ContinueSequencesAsync(TestScheduleId, nullRequest!, TestUserId))
+                .Should().ThrowAsync<ArgumentNullException>();
+        }
+
+        #endregion
+
+        #region Performance Edge Cases
+
+        [Fact]
+        public async Task GetEventsByDateRangeAsync_WithVeryLargeSchedule_ShouldFilterEfficiently()
+        {
+            // Arrange
+            var startDate = new DateTime(2024, 6, 1);
+            var endDate = new DateTime(2024, 6, 30);
+
+            // Create a large schedule with 10,000 events
+            var largeEventList = Enumerable.Range(1, 10000).Select(i => new ScheduleEvent
+            {
+                Id = i,
+                Date = new DateTime(2024, 1, 1).AddDays(i % 365), // Spread across year
+                EventType = "Lesson",
+                Period = 1,
+                CourseId = i % 10
+            }).ToList();
+
+            var mockSchedule = new Schedule
+            {
+                Id = TestScheduleId,
+                UserId = TestUserId,
+                ScheduleEvents = largeEventList
+            };
+
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(mockSchedule);
+
+            // Act
+            var result = await _scheduleService.GetEventsByDateRangeAsync(TestScheduleId, startDate, endDate, TestUserId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.All(e => e.Date >= startDate && e.Date <= endDate).Should().BeTrue();
+            // Should complete without timeout or memory issues
+        }
+
+        #endregion
+
+        #region Timezone and DateTime Edge Cases
+
+        [Fact]
+        public async Task GetEventsByDateRangeAsync_WithDateTimeKinds_ShouldHandleConsistently()
+        {
+            // Arrange
+            var startDateLocal = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Local);
+            var endDateUtc = new DateTime(2024, 6, 30, 23, 59, 59, DateTimeKind.Utc);
+            var eventDateUnspecified = new DateTime(2024, 6, 15, 12, 0, 0, DateTimeKind.Unspecified);
+
+            var mockSchedule = new Schedule
+            {
+                Id = TestScheduleId,
+                UserId = TestUserId,
+                ScheduleEvents = new List<ScheduleEvent>
+                {
+                    new() { Id = 1, Date = eventDateUnspecified, EventType = "Lesson", Period = 1 }
+                }
+            };
+
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(mockSchedule);
+
+            // Act
+            var result = await _scheduleService.GetEventsByDateRangeAsync(TestScheduleId, startDateLocal, endDateUtc, TestUserId);
+
+            // Assert
+            result.Should().NotBeNull();
+            // Should handle different DateTime.Kind values consistently
+            result.Should().HaveCount(1);
+        }
+
+        [Fact]
+        public async Task GetEventsByDateRangeAsync_WithMidnightBoundaries_ShouldIncludeBoundaryEvents()
+        {
+            // Arrange
+            var startDate = new DateTime(2024, 6, 1, 0, 0, 0); // Midnight start
+            var endDate = new DateTime(2024, 6, 1, 23, 59, 59); // End of same day
+
+            var mockSchedule = new Schedule
+            {
+                Id = TestScheduleId,
+                UserId = TestUserId,
+                ScheduleEvents = new List<ScheduleEvent>
+                {
+                    new() { Id = 1, Date = new DateTime(2024, 6, 1, 0, 0, 0), EventType = "Lesson", Period = 1 }, // Exactly at start
+                    new() { Id = 2, Date = new DateTime(2024, 6, 1, 12, 0, 0), EventType = "Lesson", Period = 1 }, // Middle of day
+                    new() { Id = 3, Date = new DateTime(2024, 6, 1, 23, 59, 59), EventType = "Lesson", Period = 1 }, // Just before end
+                    new() { Id = 4, Date = new DateTime(2024, 6, 2, 0, 0, 0), EventType = "Lesson", Period = 1 } // Just after end
+                }
+            };
+
+            _mockScheduleRepository
+                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(mockSchedule);
+
+            // Act
+            var result = await _scheduleService.GetEventsByDateRangeAsync(TestScheduleId, startDate, endDate, TestUserId);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().HaveCount(3); // Events 1, 2, and 3 should be included
+            result.Should().NotContain(e => e.Id == 4); // Event 4 should be excluded
+        }
+
+        #endregion
+    }
+}

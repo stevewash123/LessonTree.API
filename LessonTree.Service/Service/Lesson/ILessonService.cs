@@ -34,5 +34,9 @@ namespace LessonTree.BLL.Service
         Task AddStandardToLessonAsync(int lessonId, int standardId, int userId);
         Task RemoveStandardFromLessonAsync(int lessonId, int standardId, int userId);
 
+        // ✅ NEW: Calendar Update Optimization methods
+        Task<LessonOptimizedResponse> CreateLessonOptimizedAsync(LessonCreateOptimizedResource createResource, int userId);
+        Task<LessonOptimizedResponse> DeleteLessonOptimizedAsync(LessonDeleteOptimizedRequest deleteRequest, int userId);
+
     }
 }
