@@ -8,6 +8,7 @@ using LessonTree.Models.Enums;
 using LessonTree.Tests.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using MockQueryable.Moq;
 
 namespace LessonTree.Tests.Services
 {
@@ -20,6 +21,7 @@ namespace LessonTree.Tests.Services
         private readonly Mock<IScheduleService> _mockScheduleService;
         private readonly Mock<IScheduleConfigurationService> _mockScheduleConfigurationService;
         private readonly Mock<IScheduleGenerationService> _mockScheduleGenerationService;
+        private readonly Mock<IBackgroundScheduleService> _mockBackgroundScheduleService;
         private readonly LessonService _service;
 
         public LessonServiceTests()
@@ -31,6 +33,7 @@ namespace LessonTree.Tests.Services
             _mockScheduleService = new Mock<IScheduleService>();
             _mockScheduleConfigurationService = new Mock<IScheduleConfigurationService>();
             _mockScheduleGenerationService = new Mock<IScheduleGenerationService>();
+            _mockBackgroundScheduleService = new Mock<IBackgroundScheduleService>();
             var logger = CreateLogger<LessonService>();
 
             _service = new LessonService(
@@ -42,7 +45,8 @@ namespace LessonTree.Tests.Services
                 Mapper,
                 _mockScheduleService.Object,
                 _mockScheduleConfigurationService.Object,
-                _mockScheduleGenerationService.Object);
+                _mockScheduleGenerationService.Object,
+                _mockBackgroundScheduleService.Object);
         }
 
         [Fact]
@@ -117,11 +121,12 @@ namespace LessonTree.Tests.Services
         {
             // Arrange
             const int userId = 1;
-            var lessons = CreateTestLessons(userId).AsQueryable();
-            
+            var lessons = CreateTestLessons(userId);
+            var mockQueryable = lessons.AsQueryable().BuildMock();
+
             _mockLessonRepository
-                .Setup(r => r.GetByUserId(userId, It.IsAny<bool>()))
-                .Returns(lessons);
+                .Setup(r => r.GetAll())
+                .Returns(mockQueryable);
 
             // Act
             var result = await _service.GetAllAsync(userId, ArchiveFilter.Active);
@@ -136,11 +141,12 @@ namespace LessonTree.Tests.Services
         {
             // Arrange
             const int userId = 1;
-            var lessons = CreateTestLessons(userId).AsQueryable();
-            
+            var lessons = CreateTestLessons(userId);
+            var mockQueryable = lessons.AsQueryable().BuildMock();
+
             _mockLessonRepository
-                .Setup(r => r.GetByUserId(userId, It.IsAny<bool>()))
-                .Returns(lessons);
+                .Setup(r => r.GetAll())
+                .Returns(mockQueryable);
 
             // Act
             var result = await _service.GetAllAsync(userId, ArchiveFilter.Archived);
@@ -155,11 +161,12 @@ namespace LessonTree.Tests.Services
         {
             // Arrange
             const int userId = 1;
-            var lessons = CreateTestLessons(userId).AsQueryable();
-            
+            var lessons = CreateTestLessons(userId);
+            var mockQueryable = lessons.AsQueryable().BuildMock();
+
             _mockLessonRepository
-                .Setup(r => r.GetByUserId(userId, It.IsAny<bool>()))
-                .Returns(lessons);
+                .Setup(r => r.GetAll())
+                .Returns(mockQueryable);
 
             // Act
             var result = await _service.GetAllAsync(userId, ArchiveFilter.Both);
@@ -183,10 +190,19 @@ namespace LessonTree.Tests.Services
             };
 
             var topic = new Topic { Id = topicId, UserId = userId };
+            var existingLessons = new List<Lesson>
+            {
+                new() { Id = 1, TopicId = topicId, SortOrder = 1 },
+                new() { Id = 2, TopicId = topicId, SortOrder = 2 }
+            };
 
             _mockTopicRepository
                 .Setup(r => r.GetByIdAsync(topicId, It.IsAny<Func<IQueryable<Topic>, IQueryable<Topic>>>()))
                 .ReturnsAsync(topic);
+
+            _mockLessonRepository
+                .Setup(r => r.GetByTopicId(topicId, true))
+                .Returns(existingLessons.AsQueryable().BuildMock());
 
             _mockLessonRepository
                 .Setup(r => r.AddAsync(It.IsAny<Lesson>()))
@@ -214,10 +230,19 @@ namespace LessonTree.Tests.Services
             };
 
             var subTopic = new SubTopic { Id = subTopicId, UserId = userId };
+            var existingLessons = new List<Lesson>
+            {
+                new() { Id = 1, SubTopicId = subTopicId, SortOrder = 1 },
+                new() { Id = 2, SubTopicId = subTopicId, SortOrder = 2 }
+            };
 
             _mockSubTopicRepository
                 .Setup(r => r.GetByIdAsync(subTopicId, It.IsAny<Func<IQueryable<SubTopic>, IQueryable<SubTopic>>>()))
                 .ReturnsAsync(subTopic);
+
+            _mockLessonRepository
+                .Setup(r => r.GetBySubTopicId(subTopicId, true))
+                .Returns(existingLessons.AsQueryable().BuildMock());
 
             _mockLessonRepository
                 .Setup(r => r.AddAsync(It.IsAny<Lesson>()))
@@ -242,6 +267,16 @@ namespace LessonTree.Tests.Services
                 Title = "New Lesson",
                 TopicId = topicId
             };
+
+            // Mock empty lessons for sort order calculation
+            var emptyLessons = new List<Lesson>();
+            _mockLessonRepository
+                .Setup(r => r.GetByTopicId(topicId, true))
+                .Returns(emptyLessons.AsQueryable().BuildMock());
+
+            _mockLessonRepository
+                .Setup(r => r.AddAsync(It.IsAny<Lesson>()))
+                .ReturnsAsync(1);
 
             _mockTopicRepository
                 .Setup(r => r.GetByIdAsync(topicId, It.IsAny<Func<IQueryable<Topic>, IQueryable<Topic>>>()))
@@ -289,7 +324,7 @@ namespace LessonTree.Tests.Services
 
             // Assert
             result.Should().NotBeNull();
-            _mockLessonRepository.Verify(r => r.GetByIdAsync(lessonId, It.IsAny<Func<IQueryable<Lesson>, IQueryable<Lesson>>>()), Times.Once);
+            _mockLessonRepository.Verify(r => r.GetByIdAsync(lessonId, It.IsAny<Func<IQueryable<Lesson>, IQueryable<Lesson>>>()), Times.Exactly(2));
             _mockLessonRepository.Verify(r => r.UpdateAsync(It.IsAny<Lesson>()), Times.Once);
         }
 

@@ -30,12 +30,11 @@ namespace LessonTree.Tests.Services
             var logger = CreateLogger<ScheduleGenerationService>();
 
             _service = new ScheduleGenerationService(
-                _mockScheduleRepository.Object,
-                _mockLessonRepository.Object,
-                _mockCourseRepository.Object,
                 _mockScheduleConfigurationRepository.Object,
-                logger,
-                Mapper);
+                _mockLessonRepository.Object,
+                _mockScheduleRepository.Object,
+                Mapper,
+                logger);
         }
 
         #region AnalyzeSequenceStateAsync Tests
@@ -67,8 +66,8 @@ namespace LessonTree.Tests.Services
 
             var mockCourses = new List<Course>
             {
-                new() { Id = 1, Title = "Mathematics", UserId = TestUserId, Lessons = CreateLessonsForCourse(1, 25) },
-                new() { Id = 2, Title = "Science", UserId = TestUserId, Lessons = CreateLessonsForCourse(2, 30) }
+                new() { Id = 1, Title = "Mathematics", UserId = TestUserId },
+                new() { Id = 2, Title = "Science", UserId = TestUserId }
             };
 
             var mockConfiguration = new ScheduleConfiguration
@@ -77,8 +76,8 @@ namespace LessonTree.Tests.Services
                 UserId = TestUserId,
                 PeriodAssignments = new List<PeriodAssignment>
                 {
-                    new() { Period = 1, CourseId = 1, LessonsPerWeek = 2 },
-                    new() { Period = 2, CourseId = 2, LessonsPerWeek = 1 }
+                    new() { Period = 1, CourseId = 1 },
+                    new() { Period = 2, CourseId = 2 }
                 }
             };
 
@@ -87,8 +86,8 @@ namespace LessonTree.Tests.Services
                 .ReturnsAsync(mockSchedule);
 
             _mockCourseRepository
-                .Setup(r => r.GetByUserIdAsync(TestUserId))
-                .ReturnsAsync(mockCourses);
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<Course>, IQueryable<Course>>>()))
+                .Returns(mockCourses.AsQueryable());
 
             _mockScheduleConfigurationRepository
                 .Setup(r => r.GetByIdAsync(1))
@@ -166,7 +165,7 @@ namespace LessonTree.Tests.Services
 
             var mockCourses = new List<Course>
             {
-                new() { Id = 1, Title = "Mathematics", UserId = TestUserId, Lessons = CreateLessonsForCourse(1, 10) }
+                new() { Id = 1, Title = "Mathematics", UserId = TestUserId }
             };
 
             var mockConfiguration = new ScheduleConfiguration
@@ -175,7 +174,7 @@ namespace LessonTree.Tests.Services
                 UserId = TestUserId,
                 PeriodAssignments = new List<PeriodAssignment>
                 {
-                    new() { Period = 1, CourseId = 1, LessonsPerWeek = 2 }
+                    new() { Period = 1, CourseId = 1 }
                 }
             };
 
@@ -184,8 +183,8 @@ namespace LessonTree.Tests.Services
                 .ReturnsAsync(mockSchedule);
 
             _mockCourseRepository
-                .Setup(r => r.GetByUserIdAsync(TestUserId))
-                .ReturnsAsync(mockCourses);
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<Course>, IQueryable<Course>>>()))
+                .Returns(mockCourses.AsQueryable());
 
             _mockScheduleConfigurationRepository
                 .Setup(r => r.GetByIdAsync(1))
@@ -223,7 +222,7 @@ namespace LessonTree.Tests.Services
 
             var mockCourses = new List<Course>
             {
-                new() { Id = 1, Title = "Mathematics", UserId = TestUserId, Lessons = CreateLessonsForCourse(1, 3) } // Only 3 lessons
+                new() { Id = 1, Title = "Mathematics", UserId = TestUserId } // Course with 3 lessons total
             };
 
             var mockConfiguration = new ScheduleConfiguration
@@ -232,7 +231,7 @@ namespace LessonTree.Tests.Services
                 UserId = TestUserId,
                 PeriodAssignments = new List<PeriodAssignment>
                 {
-                    new() { Period = 1, CourseId = 1, LessonsPerWeek = 2 }
+                    new() { Period = 1, CourseId = 1 }
                 }
             };
 
@@ -241,8 +240,8 @@ namespace LessonTree.Tests.Services
                 .ReturnsAsync(mockSchedule);
 
             _mockCourseRepository
-                .Setup(r => r.GetByUserIdAsync(TestUserId))
-                .ReturnsAsync(mockCourses);
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<Course>, IQueryable<Course>>>()))
+                .Returns(mockCourses.AsQueryable());
 
             _mockScheduleConfigurationRepository
                 .Setup(r => r.GetByIdAsync(1))
@@ -284,14 +283,14 @@ namespace LessonTree.Tests.Services
                         TotalLessons = 20,
                         RemainingLessons = 15,
                         ContinuationDate = new DateTime(2024, 6, 5),
-                        PeriodAssignment = new PeriodAssignmentResource { Period = 1, CourseId = 1, LessonsPerWeek = 2 }
+                        PeriodAssignment = new PeriodAssignmentResource { Period = 1, CourseId = 1 }
                     }
                 }
             };
 
             var mockCourses = new List<Course>
             {
-                new() { Id = 1, Title = "Mathematics", UserId = TestUserId, Lessons = CreateLessonsForCourse(1, 20) }
+                new() { Id = 1, Title = "Mathematics", UserId = TestUserId }
             };
 
             var mockScheduleConfiguration = new ScheduleConfiguration
@@ -299,8 +298,7 @@ namespace LessonTree.Tests.Services
                 Id = 1,
                 StartDate = new DateTime(2024, 1, 1),
                 EndDate = new DateTime(2024, 12, 31),
-                TeachingDays = "1,2,3,4,5", // Monday to Friday
-                SpecialDays = new List<SpecialDay>()
+                TeachingDays = "1,2,3,4,5" // Monday to Friday
             };
 
             // Setup mocks
@@ -309,8 +307,8 @@ namespace LessonTree.Tests.Services
                 .ReturnsAsync(new Schedule { Id = TestScheduleId, UserId = TestUserId, ScheduleConfigurationId = 1 });
 
             _mockCourseRepository
-                .Setup(r => r.GetByUserIdAsync(TestUserId))
-                .ReturnsAsync(mockCourses);
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<Course>, IQueryable<Course>>>()))
+                .Returns(mockCourses.AsQueryable());
 
             _mockScheduleConfigurationRepository
                 .Setup(r => r.GetByIdAsync(1))
@@ -398,7 +396,7 @@ namespace LessonTree.Tests.Services
                         CourseTitle = "Mathematics",
                         LastAssignedLessonIndex = 5,
                         RemainingLessons = 15,
-                        PeriodAssignment = new PeriodAssignmentResource { Period = 1, CourseId = 1, LessonsPerWeek = 2 }
+                        PeriodAssignment = new PeriodAssignmentResource { Period = 1, CourseId = 1 }
                     },
                     new()
                     {
@@ -407,7 +405,7 @@ namespace LessonTree.Tests.Services
                         CourseTitle = "Science",
                         LastAssignedLessonIndex = 3,
                         RemainingLessons = 20,
-                        PeriodAssignment = new PeriodAssignmentResource { Period = 2, CourseId = 2, LessonsPerWeek = 1 }
+                        PeriodAssignment = new PeriodAssignmentResource { Period = 2, CourseId = 2 }
                     }
                 }
             };
@@ -456,7 +454,7 @@ namespace LessonTree.Tests.Services
 
             var mockCourses = new List<Course>
             {
-                new() { Id = 1, Title = "Mathematics", UserId = TestUserId, Lessons = CreateLessonsForCourse(1, 10) }
+                new() { Id = 1, Title = "Mathematics", UserId = TestUserId }
             };
 
             var mockConfiguration = new ScheduleConfiguration
@@ -465,7 +463,7 @@ namespace LessonTree.Tests.Services
                 UserId = TestUserId,
                 PeriodAssignments = new List<PeriodAssignment>
                 {
-                    new() { Period = 1, CourseId = 1, LessonsPerWeek = 2 }
+                    new() { Period = 1, CourseId = 1 }
                 }
             };
 
@@ -474,8 +472,8 @@ namespace LessonTree.Tests.Services
                 .ReturnsAsync(mockSchedule);
 
             _mockCourseRepository
-                .Setup(r => r.GetByUserIdAsync(TestUserId))
-                .ReturnsAsync(mockCourses);
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<Course>, IQueryable<Course>>>()))
+                .Returns(mockCourses.AsQueryable());
 
             _mockScheduleConfigurationRepository
                 .Setup(r => r.GetByIdAsync(1))
@@ -510,7 +508,7 @@ namespace LessonTree.Tests.Services
 
             var mockCourses = new List<Course>
             {
-                new() { Id = 1, Title = "Mathematics", UserId = TestUserId, Lessons = CreateLessonsForCourse(1, 10) }
+                new() { Id = 1, Title = "Mathematics", UserId = TestUserId }
             };
 
             var mockConfiguration = new ScheduleConfiguration
@@ -519,7 +517,7 @@ namespace LessonTree.Tests.Services
                 UserId = TestUserId,
                 PeriodAssignments = new List<PeriodAssignment>
                 {
-                    new() { Period = 1, CourseId = 1, LessonsPerWeek = 2 }
+                    new() { Period = 1, CourseId = 1 }
                 }
             };
 
@@ -528,8 +526,8 @@ namespace LessonTree.Tests.Services
                 .ReturnsAsync(mockSchedule);
 
             _mockCourseRepository
-                .Setup(r => r.GetByUserIdAsync(TestUserId))
-                .ReturnsAsync(mockCourses);
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<Course>, IQueryable<Course>>>()))
+                .Returns(mockCourses.AsQueryable());
 
             _mockScheduleConfigurationRepository
                 .Setup(r => r.GetByIdAsync(1))
@@ -559,7 +557,7 @@ namespace LessonTree.Tests.Services
                 {
                     Id = (courseId * 100) + i,
                     Title = $"Lesson {i}",
-                    CourseId = courseId,
+                    TopicId = courseId, // Use TopicId as course relationship
                     SortOrder = i,
                     UserId = TestUserId
                 });

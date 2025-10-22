@@ -16,6 +16,7 @@ namespace LessonTree.Tests.EdgeCases
         private readonly Mock<IScheduleRepository> _mockScheduleRepository;
         private readonly Mock<IScheduleGenerationService> _mockScheduleGenerationService;
         private readonly Mock<IScheduleConfigurationService> _mockScheduleConfigurationService;
+        private readonly Mock<IBackgroundScheduleService> _mockBackgroundScheduleService;
         private readonly ScheduleService _scheduleService;
         private const int TestUserId = 1;
         private const int TestScheduleId = 100;
@@ -25,14 +26,16 @@ namespace LessonTree.Tests.EdgeCases
             _mockScheduleRepository = new Mock<IScheduleRepository>();
             _mockScheduleGenerationService = new Mock<IScheduleGenerationService>();
             _mockScheduleConfigurationService = new Mock<IScheduleConfigurationService>();
+            _mockBackgroundScheduleService = new Mock<IBackgroundScheduleService>();
             var logger = CreateLogger<ScheduleService>();
 
             _scheduleService = new ScheduleService(
                 _mockScheduleRepository.Object,
-                logger,
                 Mapper,
+                logger,
                 _mockScheduleGenerationService.Object,
-                _mockScheduleConfigurationService.Object);
+                _mockScheduleConfigurationService.Object,
+                _mockBackgroundScheduleService.Object);
         }
 
         #region Date Range Edge Cases

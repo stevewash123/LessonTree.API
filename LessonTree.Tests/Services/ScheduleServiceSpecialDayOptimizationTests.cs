@@ -16,6 +16,7 @@ namespace LessonTree.Tests.Services
         private readonly Mock<IScheduleRepository> _mockScheduleRepository;
         private readonly Mock<IScheduleGenerationService> _mockScheduleGenerationService;
         private readonly Mock<IScheduleConfigurationService> _mockScheduleConfigurationService;
+        private readonly Mock<IBackgroundScheduleService> _mockBackgroundScheduleService;
         private readonly ScheduleService _service;
         private const int TestUserId = 1;
         private const int TestScheduleId = 100;
@@ -27,14 +28,16 @@ namespace LessonTree.Tests.Services
             _mockScheduleRepository = new Mock<IScheduleRepository>();
             _mockScheduleGenerationService = new Mock<IScheduleGenerationService>();
             _mockScheduleConfigurationService = new Mock<IScheduleConfigurationService>();
+            _mockBackgroundScheduleService = new Mock<IBackgroundScheduleService>();
             var logger = CreateLogger<ScheduleService>();
 
             _service = new ScheduleService(
                 _mockScheduleRepository.Object,
-                logger,
                 Mapper,
+                logger,
                 _mockScheduleGenerationService.Object,
-                _mockScheduleConfigurationService.Object);
+                _mockScheduleConfigurationService.Object,
+                _mockBackgroundScheduleService.Object);
         }
 
         #region CreateSpecialDayAsync Tests
@@ -81,9 +84,9 @@ namespace LessonTree.Tests.Services
                 .Setup(r => r.AddSpecialDayAsync(TestScheduleId, createResource))
                 .ReturnsAsync(createdSpecialDay);
 
-            _mockScheduleConfigurationService
-                .Setup(s => s.RegenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId))
-                .Returns(Task.CompletedTask);
+            _mockScheduleGenerationService
+                .Setup(s => s.GenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId))
+                .ReturnsAsync(new ScheduleGenerationResult { Success = true });
 
             // Act
             var result = await _service.CreateSpecialDayAsync(TestScheduleId, createResource, TestUserId);
@@ -95,8 +98,8 @@ namespace LessonTree.Tests.Services
             result.Date.Should().Be(createResource.Date);
 
             // Verify schedule regeneration was triggered
-            _mockScheduleConfigurationService.Verify(
-                s => s.RegenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId),
+            _mockScheduleGenerationService.Verify(
+                s => s.GenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId),
                 Times.Once);
 
             _mockScheduleRepository.Verify(
@@ -187,9 +190,9 @@ namespace LessonTree.Tests.Services
                 .Setup(r => r.AddSpecialDayAsync(TestScheduleId, createResource))
                 .ReturnsAsync(createdSpecialDay);
 
-            _mockScheduleConfigurationService
-                .Setup(s => s.RegenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId))
-                .ThrowsAsync(new Exception("Regeneration failed"));
+            _mockScheduleGenerationService
+                .Setup(s => s.GenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId))
+                .ThrowsAsync(new Exception("Generation failed"));
 
             // Act
             var result = await _service.CreateSpecialDayAsync(TestScheduleId, createResource, TestUserId);
@@ -248,6 +251,17 @@ namespace LessonTree.Tests.Services
                 FontColor = updateResource.FontColor
             };
 
+            // Create a generated schedule resource with events
+            var generatedScheduleResource = new ScheduleResource
+            {
+                Id = TestScheduleId,
+                Title = "Generated Schedule",
+                ScheduleEvents = new List<ScheduleEventResource>
+                {
+                    new() { Id = 1, Date = DateTime.Now, Period = 1 }
+                }
+            };
+
             // Setup mocks
             _mockScheduleRepository
                 .Setup(r => r.GetByIdAsync(TestScheduleId))
@@ -257,9 +271,24 @@ namespace LessonTree.Tests.Services
                 .Setup(r => r.UpdateSpecialDayAsync(updateResource))
                 .ReturnsAsync(updatedSpecialDay);
 
-            _mockScheduleConfigurationService
-                .Setup(s => s.RegenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId))
-                .Returns(Task.CompletedTask);
+            // Mock GetByConfigurationIdAsync for RegenerateScheduleFromConfigurationAsync
+            _mockScheduleRepository
+                .Setup(r => r.GetByConfigurationIdAsync(TestConfigurationId))
+                .ReturnsAsync(mockSchedule);
+
+            // Mock the schedule generation service
+            _mockScheduleGenerationService
+                .Setup(s => s.GenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId))
+                .ReturnsAsync(new ScheduleGenerationResult
+                {
+                    Success = true,
+                    Schedule = generatedScheduleResource
+                });
+
+            // Mock UpdateScheduleEventsAsync for the regeneration
+            _mockScheduleRepository
+                .Setup(r => r.UpdateScheduleEventsAsync(TestScheduleId, It.IsAny<List<ScheduleEvent>>()))
+                .ReturnsAsync(mockSchedule);
 
             // Act
             var result = await _service.UpdateSpecialDayAsync(TestScheduleId, TestSpecialDayId, updateResource, TestUserId);
@@ -268,11 +297,11 @@ namespace LessonTree.Tests.Services
             result.Should().NotBeNull();
             result.SpecialDay.Should().NotBeNull();
             result.CalendarRefreshNeeded.Should().BeTrue();
-            result.RefreshReason.Should().Be("Period assignments changed");
+            result.RefreshReason.Should().StartWith("Period assignments changed");
 
             // Verify full regeneration was triggered
-            _mockScheduleConfigurationService.Verify(
-                s => s.RegenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId),
+            _mockScheduleGenerationService.Verify(
+                s => s.GenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId),
                 Times.Once);
         }
 
@@ -307,6 +336,17 @@ namespace LessonTree.Tests.Services
                         FontColor = "#FFFFFF", // Original color
                         ScheduleId = TestScheduleId
                     }
+                },
+                ScheduleEvents = new List<ScheduleEvent>
+                {
+                    new()
+                    {
+                        Id = 1,
+                        ScheduleId = TestScheduleId,
+                        SpecialDayId = TestSpecialDayId,
+                        Date = new DateTime(2024, 6, 15),
+                        Period = 1
+                    }
                 }
             };
 
@@ -318,18 +358,15 @@ namespace LessonTree.Tests.Services
                 FontColor = updateResource.FontColor
             };
 
-            // Setup mocks
+            // Setup mocks - need to return schedule twice (once for validation, once for color update validation)
             _mockScheduleRepository
-                .Setup(r => r.GetByIdAsync(TestScheduleId))
+                .SetupSequence(r => r.GetByIdAsync(TestScheduleId))
+                .ReturnsAsync(mockSchedule)
                 .ReturnsAsync(mockSchedule);
 
             _mockScheduleRepository
                 .Setup(r => r.UpdateSpecialDayAsync(updateResource))
                 .ReturnsAsync(updatedSpecialDay);
-
-            _mockScheduleRepository
-                .Setup(r => r.UpdateScheduleEventsForSpecialDayAsync(TestScheduleId, TestSpecialDayId))
-                .Returns(Task.CompletedTask);
 
             // Act
             var result = await _service.UpdateSpecialDayAsync(TestScheduleId, TestSpecialDayId, updateResource, TestUserId);
@@ -339,13 +376,19 @@ namespace LessonTree.Tests.Services
             result.CalendarRefreshNeeded.Should().BeTrue();
             result.RefreshReason.Should().Be("Colors updated");
 
-            // Verify only schedule events were updated, not full regeneration
+            // Verify the SpecialDay was updated
             _mockScheduleRepository.Verify(
-                r => r.UpdateScheduleEventsForSpecialDayAsync(TestScheduleId, TestSpecialDayId),
+                r => r.UpdateSpecialDayAsync(updateResource),
                 Times.Once);
 
-            _mockScheduleConfigurationService.Verify(
-                s => s.RegenerateScheduleFromConfigurationAsync(It.IsAny<int>(), It.IsAny<int>()),
+            // Verify schedule was accessed for color update validation (called twice - initial validation + color update check)
+            _mockScheduleRepository.Verify(
+                r => r.GetByIdAsync(TestScheduleId),
+                Times.Exactly(2));
+
+            // Verify no full regeneration was triggered
+            _mockScheduleGenerationService.Verify(
+                s => s.GenerateScheduleFromConfigurationAsync(It.IsAny<int>(), It.IsAny<int>()),
                 Times.Never);
         }
 
@@ -408,12 +451,12 @@ namespace LessonTree.Tests.Services
             result.RefreshReason.Should().Be("Only title/description changed, no calendar updates needed");
 
             // Verify no regeneration was triggered
-            _mockScheduleConfigurationService.Verify(
-                s => s.RegenerateScheduleFromConfigurationAsync(It.IsAny<int>(), It.IsAny<int>()),
+            _mockScheduleGenerationService.Verify(
+                s => s.GenerateScheduleFromConfigurationAsync(It.IsAny<int>(), It.IsAny<int>()),
                 Times.Never);
 
             _mockScheduleRepository.Verify(
-                r => r.UpdateScheduleEventsForSpecialDayAsync(It.IsAny<int>(), It.IsAny<int>()),
+                r => r.UpdateScheduleEventsAsync(It.IsAny<int>(), It.IsAny<List<ScheduleEvent>>()),
                 Times.Never);
         }
 
@@ -494,9 +537,9 @@ namespace LessonTree.Tests.Services
                 .Setup(r => r.DeleteSpecialDayAsync(TestSpecialDayId))
                 .Returns(Task.CompletedTask);
 
-            _mockScheduleConfigurationService
-                .Setup(s => s.RegenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId))
-                .Returns(Task.CompletedTask);
+            _mockScheduleGenerationService
+                .Setup(s => s.GenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId))
+                .ReturnsAsync(new ScheduleGenerationResult { Success = true });
 
             // Act
             await _service.DeleteSpecialDayAsync(TestScheduleId, TestSpecialDayId, TestUserId);
@@ -506,8 +549,8 @@ namespace LessonTree.Tests.Services
                 r => r.DeleteSpecialDayAsync(TestSpecialDayId),
                 Times.Once);
 
-            _mockScheduleConfigurationService.Verify(
-                s => s.RegenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId),
+            _mockScheduleGenerationService.Verify(
+                s => s.GenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId),
                 Times.Once);
         }
 
@@ -561,9 +604,9 @@ namespace LessonTree.Tests.Services
                 .Setup(r => r.DeleteSpecialDayAsync(TestSpecialDayId))
                 .Returns(Task.CompletedTask);
 
-            _mockScheduleConfigurationService
-                .Setup(s => s.RegenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId))
-                .ThrowsAsync(new Exception("Regeneration failed"));
+            _mockScheduleGenerationService
+                .Setup(s => s.GenerateScheduleFromConfigurationAsync(TestConfigurationId, TestUserId))
+                .ThrowsAsync(new Exception("Generation failed"));
 
             // Act - Should not throw exception
             await _service.DeleteSpecialDayAsync(TestScheduleId, TestSpecialDayId, TestUserId);

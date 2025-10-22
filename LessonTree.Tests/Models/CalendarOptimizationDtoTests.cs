@@ -175,8 +175,7 @@ namespace LessonTree.Tests.Models
                 PeriodAssignment = new PeriodAssignmentResource
                 {
                     Period = 2,
-                    CourseId = 5,
-                    LessonsPerWeek = 3
+                    CourseId = 5
                 }
             };
 
@@ -189,7 +188,7 @@ namespace LessonTree.Tests.Models
             continuationPoint.RemainingLessons.Should().Be(25);
             continuationPoint.ContinuationDate.Should().Be(new DateTime(2024, 6, 15));
             continuationPoint.PeriodAssignment.Should().NotBeNull();
-            continuationPoint.PeriodAssignment.LessonsPerWeek.Should().Be(3);
+            continuationPoint.PeriodAssignment.Period.Should().Be(2);
         }
 
         [Fact]
@@ -497,14 +496,14 @@ namespace LessonTree.Tests.Models
                         CourseId = 1,
                         CourseTitle = "Mathematics",
                         RemainingLessons = 20,
-                        PeriodAssignment = new PeriodAssignmentResource { Period = 1, LessonsPerWeek = 2 }
+                        PeriodAssignment = new PeriodAssignmentResource { Period = 1 }
                     },
                     new()
                     {
                         CourseId = 2,
                         CourseTitle = "Science",
                         RemainingLessons = 15,
-                        PeriodAssignment = new PeriodAssignmentResource { Period = 2, LessonsPerWeek = 1 }
+                        PeriodAssignment = new PeriodAssignmentResource { Period = 2 }
                     }
                 }
             };
@@ -512,8 +511,7 @@ namespace LessonTree.Tests.Models
             var generationResult = new ScheduleGenerationResult
             {
                 Success = true,
-                TotalEventsGenerated = 35, // 20 + 15
-                ProcessingTime = TimeSpan.FromSeconds(2.5)
+                TotalEventsGenerated = 35 // 20 + 15
             };
 
             // Act & Assert - All DTOs should work together
