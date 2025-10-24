@@ -110,6 +110,26 @@ public class LessonService : ILessonService
             throw new ArgumentException("Lesson must be linked to either a SubTopic or a Topic");
         }
 
+        // Validate that the Topic/SubTopic exists
+        if (lessonCreateResource.SubTopicId.HasValue)
+        {
+            var subTopic = await _subTopicRepository.GetByIdAsync(lessonCreateResource.SubTopicId.Value);
+            if (subTopic == null)
+            {
+                _logger.LogError("SubTopic with ID {SubTopicId} not found", lessonCreateResource.SubTopicId);
+                throw new ArgumentException("SubTopic not found");
+            }
+        }
+        else if (lessonCreateResource.TopicId.HasValue)
+        {
+            var topic = await _topicRepository.GetByIdAsync(lessonCreateResource.TopicId.Value);
+            if (topic == null)
+            {
+                _logger.LogError("Topic with ID {TopicId} not found", lessonCreateResource.TopicId);
+                throw new ArgumentException("Topic not found");
+            }
+        }
+
         var lesson = _mapper.Map<Lesson>(lessonCreateResource);
         lesson.UserId = userId;
 
@@ -537,7 +557,22 @@ public class LessonService : ILessonService
             }
             lesson.SubTopicId = moveResource.NewSubTopicId;
             lesson.TopicId = null;
-            lesson.SortOrder = 0; // ✅ First position
+
+            // Shift existing lessons down to make room at position 0
+            var existingLessons = await _lessonRepository.GetBySubTopicId(moveResource.NewSubTopicId.Value)
+                .Where(l => l.Id != lesson.Id)
+                .ToListAsync();
+            if (existingLessons?.Any() == true)
+            {
+                foreach (var existingLesson in existingLessons)
+                {
+                    existingLesson.SortOrder++;
+                    await _lessonRepository.UpdateAsync(existingLesson);
+                }
+                _logger.LogInformation("MoveLessonAsync: Shifted {Count} existing lessons down in SubTopic", existingLessons.Count);
+            }
+
+            lesson.SortOrder = 0; // First position
 
             _logger.LogInformation("MoveLessonAsync: Moving to SubTopic - first position (SortOrder=0)");
         }
@@ -551,14 +586,29 @@ public class LessonService : ILessonService
             }
             lesson.TopicId = moveResource.NewTopicId;
             lesson.SubTopicId = null;
-            lesson.SortOrder = 0; // ✅ First position
+
+            // Shift existing lessons down to make room at position 0
+            var existingLessons = await _lessonRepository.GetByTopicId(moveResource.NewTopicId.Value)
+                .Where(l => l.Id != lesson.Id)
+                .ToListAsync();
+            if (existingLessons?.Any() == true)
+            {
+                foreach (var existingLesson in existingLessons)
+                {
+                    existingLesson.SortOrder++;
+                    await _lessonRepository.UpdateAsync(existingLesson);
+                }
+                _logger.LogInformation("MoveLessonAsync: Shifted {Count} existing lessons down in Topic", existingLessons.Count);
+            }
+
+            lesson.SortOrder = 0; // First position
 
             _logger.LogInformation("MoveLessonAsync: Moving to Topic - first position (SortOrder=0)");
         }
 
         await _lessonRepository.UpdateAsync(lesson);
 
-        _logger.LogInformation("MoveLessonAsync: SIMPLE MOVE completed - final SortOrder=0");
+        _logger.LogInformation("MoveLessonAsync: SIMPLE MOVE completed - final SortOrder=0 (first position)");
         
         // ✅ RESTORED: Update schedule events after lesson move
         await UpdateScheduleAfterLessonMoveAsync(moveResource.LessonId, userId);

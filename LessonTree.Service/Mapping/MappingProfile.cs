@@ -211,6 +211,21 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Archived, opt => opt.MapFrom(src => src.Archived))
             .ForMember(dest => dest.SortOrder, opt => opt.MapFrom(src => src.SortOrder));
 
+        // Missing mapping that was causing the error
+        CreateMap<LessonDetailResource, LessonResource>()
+            .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+            .ForMember(dest => dest.SubTopicId, opt => opt.MapFrom(src => src.SubTopicId))
+            .ForMember(dest => dest.TopicId, opt => opt.MapFrom(src => src.TopicId))
+            .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.CourseId))
+            .ForMember(dest => dest.NodeId, opt => opt.MapFrom(src => $"lesson-{src.Id}")) // Generate NodeId
+            .ForMember(dest => dest.SortOrder, opt => opt.MapFrom(src => src.SortOrder))
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
+            .ForMember(dest => dest.Objective, opt => opt.MapFrom(src => src.Objective))
+            .ForMember(dest => dest.Archived, opt => opt.MapFrom(src => src.Archived))
+            .ForMember(dest => dest.Visibility, opt => opt.MapFrom(src => src.Visibility))
+            .ForMember(dest => dest.UserId, opt => opt.Ignore()) // Will be set from context
+            .ForMember(dest => dest.EntityType, opt => opt.MapFrom(src => "Lesson"));
+
         // =============================================================================
         // USER MAPPINGS (SIMPLIFIED - NO PERIOD ASSIGNMENTS)
         // =============================================================================

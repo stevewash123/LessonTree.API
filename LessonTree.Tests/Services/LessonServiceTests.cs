@@ -125,7 +125,7 @@ namespace LessonTree.Tests.Services
             var mockQueryable = lessons.AsQueryable().BuildMock();
 
             _mockLessonRepository
-                .Setup(r => r.GetAll())
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<Lesson>, IQueryable<Lesson>>>()))
                 .Returns(mockQueryable);
 
             // Act
@@ -145,7 +145,7 @@ namespace LessonTree.Tests.Services
             var mockQueryable = lessons.AsQueryable().BuildMock();
 
             _mockLessonRepository
-                .Setup(r => r.GetAll())
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<Lesson>, IQueryable<Lesson>>>()))
                 .Returns(mockQueryable);
 
             // Act
@@ -165,7 +165,7 @@ namespace LessonTree.Tests.Services
             var mockQueryable = lessons.AsQueryable().BuildMock();
 
             _mockLessonRepository
-                .Setup(r => r.GetAll())
+                .Setup(r => r.GetAll(It.IsAny<Func<IQueryable<Lesson>, IQueryable<Lesson>>>()))
                 .Returns(mockQueryable);
 
             // Act
@@ -201,7 +201,7 @@ namespace LessonTree.Tests.Services
                 .ReturnsAsync(topic);
 
             _mockLessonRepository
-                .Setup(r => r.GetByTopicId(topicId, true))
+                .Setup(r => r.GetByTopicId(topicId, It.IsAny<bool>()))
                 .Returns(existingLessons.AsQueryable().BuildMock());
 
             _mockLessonRepository
@@ -241,7 +241,7 @@ namespace LessonTree.Tests.Services
                 .ReturnsAsync(subTopic);
 
             _mockLessonRepository
-                .Setup(r => r.GetBySubTopicId(subTopicId, true))
+                .Setup(r => r.GetBySubTopicId(subTopicId, It.IsAny<bool>()))
                 .Returns(existingLessons.AsQueryable().BuildMock());
 
             _mockLessonRepository
@@ -271,7 +271,7 @@ namespace LessonTree.Tests.Services
             // Mock empty lessons for sort order calculation
             var emptyLessons = new List<Lesson>();
             _mockLessonRepository
-                .Setup(r => r.GetByTopicId(topicId, true))
+                .Setup(r => r.GetByTopicId(topicId, It.IsAny<bool>()))
                 .Returns(emptyLessons.AsQueryable().BuildMock());
 
             _mockLessonRepository
