@@ -34,6 +34,14 @@ namespace LessonTree.API.Configuration
             var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
             var productionConnection = builder.Configuration.GetConnectionString("ProductionConnection");
 
+            Console.WriteLine($"=== DATABASE CONNECTION DEBUG ===");
+            Console.WriteLine($"DATABASE_URL exists: {!string.IsNullOrWhiteSpace(databaseUrl)}");
+            Console.WriteLine($"DATABASE_URL length: {databaseUrl?.Length ?? 0}");
+            Console.WriteLine($"DATABASE_URL value: '{databaseUrl ?? "NULL"}'");
+            Console.WriteLine($"ProductionConnection exists: {!string.IsNullOrWhiteSpace(productionConnection)}");
+            Console.WriteLine($"ProductionConnection length: {productionConnection?.Length ?? 0}");
+            Console.WriteLine($"ProductionConnection value: '{productionConnection ?? "NULL"}'");
+
             // Use PostgreSQL if we have a valid DATABASE_URL or ProductionConnection
             var usePostgreSQL = !string.IsNullOrWhiteSpace(databaseUrl) || !string.IsNullOrWhiteSpace(productionConnection);
 
@@ -44,7 +52,8 @@ namespace LessonTree.API.Configuration
 
                 Console.WriteLine($"Using PostgreSQL database");
                 Console.WriteLine($"Connection source: {(!string.IsNullOrWhiteSpace(databaseUrl) ? "DATABASE_URL env var" : "ProductionConnection config")}");
-                Console.WriteLine($"Connection string length: {connectionString?.Length ?? 0}");
+                Console.WriteLine($"Final connection string length: {connectionString?.Length ?? 0}");
+                Console.WriteLine($"Final connection string: '{connectionString ?? "NULL"}'");
 
                 builder.Services.AddEntityFrameworkNpgsql()
                     .AddDbContext<LessonTreeContext>(options =>
