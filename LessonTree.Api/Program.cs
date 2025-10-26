@@ -111,7 +111,7 @@ if (runMigrations == "true")
         var context = scope.ServiceProvider.GetRequiredService<LessonTreeContext>();
         try
         {
-            await context.Database.MigrateAsync();
+            context.Database.Migrate();
             logger.LogInformation("✅ Database migrations completed successfully.");
         }
         catch (Exception ex)
