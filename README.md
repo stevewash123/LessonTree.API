@@ -2,7 +2,7 @@
 
 A comprehensive .NET 8 Web API for managing educational content with dynamic lesson scheduling, drag-and-drop operations, and calendar integration.
 
-> **🔗 Related Repository**: This API powers the [LessonTree UI](https://github.com/stevewash123/LessonTree.UI) - a modern Angular 19 frontend with advanced drag-and-drop functionality and real-time calendar integration.
+> **🔗 Parent Project**: See [LessonTree README](../README.md) and [Full-Stack Setup Guide](../../FULL-STACK-SETUP-GUIDE.md) for complete project overview and standardized C#/Angular patterns.
 
 ## 🚀 Features
 
@@ -117,35 +117,23 @@ dotnet test --collect:"XPlat Code Coverage"
 
 ## 🚀 Getting Started
 
+**See [Full-Stack Setup Guide](../../FULL-STACK-SETUP-GUIDE.md)** for standardized C#/Angular setup patterns and **critical Windows/WSL debugging considerations**.
+
 ### Prerequisites
 - .NET 8 SDK
 - SQL Server (LocalDB or full instance)
 - Visual Studio 2022 or VS Code
 
-### Installation
+### Quick Start
 ```bash
-# Clone repository
-git clone https://github.com/stevewash123/LessonTree.API.git
-cd LessonTree.API
-
 # Restore packages
 dotnet restore
 
 # Update database
 dotnet ef database update --project LessonTree.Data
 
-# Run application
-dotnet run --project LessonTree.Api
-```
-
-### Configuration
-Update `appsettings.json` with your database connection:
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=LessonTreeDB;Trusted_Connection=true;"
-  }
-}
+# Run application (recommended port)
+dotnet run --project LessonTree.Api --urls=http://localhost:5000
 ```
 
 ## 🔧 Development

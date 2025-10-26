@@ -306,5 +306,6 @@ namespace LessonTree.DAL
         public DbSet<SpecialDay> SpecialDays { get; set; }
         public DbSet<ScheduleConfiguration> ScheduleConfigurations { get; set; }
         public DbSet<PeriodAssignment> PeriodAssignments { get; set; }
+        public DbSet<SystemConfig> SystemConfigs { get; set; }
     }
 }

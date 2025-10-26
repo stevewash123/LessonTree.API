@@ -21,6 +21,7 @@ using System.Text.Json.Serialization.Metadata;
 using System.Text.Json;
 using Microsoft.OpenApi.Models;
 using LessonTree.BLL.Services;
+using LessonTree.Service.Service.SystemConfig;
 using Hangfire;
 using Hangfire.Storage.SQLite;
 
@@ -101,6 +102,9 @@ namespace LessonTree.API.Configuration
 
             // === REPORT GENERATION SERVICE ===
             builder.Services.AddTransient<IReportGenerationService, ReportGenerationService>();
+
+            // === SYSTEM CONFIG SERVICE ===
+            builder.Services.AddTransient<ISystemConfigService, SystemConfigService>();
 
             // === EXISTING HEALTH CHECKS (unchanged) ===
             builder.Services.AddHealthChecks()

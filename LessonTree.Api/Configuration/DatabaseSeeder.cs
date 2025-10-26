@@ -2,6 +2,7 @@
 using LessonTree.DAL.Domain;
 using LessonTree.Models.Enums;
 using LessonTree.BLL.Services;
+using LessonTree.Service.Service.SystemConfig;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -12,6 +13,23 @@ namespace LessonTree.API.Configuration
 {
     public static class DatabaseSeeder
     {
+        public static async Task<bool> ShouldSeedDatabaseAsync(IServiceProvider serviceProvider, ILogger logger)
+        {
+            try
+            {
+                var systemConfigService = serviceProvider.GetRequiredService<ISystemConfigService>();
+                var shouldSeed = await systemConfigService.ShouldReseedAsync();
+
+                logger.LogInformation("Should seed database: {ShouldSeed}", shouldSeed);
+                return shouldSeed;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error checking if should seed database. Defaulting to not seed.");
+                return false;
+            }
+        }
+
         public static async Task SeedDatabaseAsync(
             LessonTreeContext context,
             UserManager<User> userManager,
@@ -35,6 +53,9 @@ namespace LessonTree.API.Configuration
 
                 // ✅ PHASE 2: Generate schedules using real ScheduleGenerationService
                 await GenerateSchedulesFromConfigurationsAsync(serviceProvider, logger);
+
+                // ✅ PHASE 3: Update last seed date
+                await UpdateLastSeedDateAsync(serviceProvider, logger);
 
                 logger.LogInformation("🎉 Comprehensive test data seeding completed successfully!");
             }
@@ -405,6 +426,23 @@ namespace LessonTree.API.Configuration
 
             logger.LogInformation($"✅ Seeded {courses.Count} courses with {totalLessons} lessons");
             return courses;
+        }
+
+        // ✅ PHASE 3: Update last seed date
+        private static async Task UpdateLastSeedDateAsync(IServiceProvider serviceProvider, ILogger logger)
+        {
+            try
+            {
+                var systemConfigService = serviceProvider.GetRequiredService<ISystemConfigService>();
+                await systemConfigService.SetLastSeedDateAsync(DateTime.UtcNow);
+
+                logger.LogInformation("✅ Updated last seed date to current time");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "❌ Failed to update last seed date");
+                // Don't throw - seeding was successful even if we can't update the date
+            }
         }
     }
 }

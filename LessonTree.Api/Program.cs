@@ -73,6 +73,7 @@ var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
+// Check if manual seeding is requested
 if (args.Contains("--seed"))
 {
     using (var scope = app.Services.CreateScope())
@@ -81,14 +82,13 @@ if (args.Contains("--seed"))
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
         var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
-        var serviceProvider = scope.ServiceProvider; // ✅ Pass entire service provider
+        var serviceProvider = scope.ServiceProvider;
 
-        logger.LogInformation("🌱 Starting database seeding with schedule generation...");
+        logger.LogInformation("🌱 Manual database seeding requested...");
         try
         {
-            // ✅ Updated call with service provider for schedule generation
             await DatabaseSeeder.SeedDatabaseAsync(context, userManager, roleManager, logger, env, serviceProvider);
-            logger.LogInformation("🎉 Database seeding completed successfully.");
+            logger.LogInformation("🎉 Manual database seeding completed successfully.");
         }
         catch (Exception ex)
         {
@@ -98,7 +98,35 @@ if (args.Contains("--seed"))
 }
 else
 {
-    logger.LogInformation("Starting API without seeding...");
+    // Check if automatic seeding should occur (every 24 hours)
+    using (var scope = app.Services.CreateScope())
+    {
+        try
+        {
+            var serviceProvider = scope.ServiceProvider;
+            var shouldSeed = await DatabaseSeeder.ShouldSeedDatabaseAsync(serviceProvider, logger);
+
+            if (shouldSeed)
+            {
+                var context = scope.ServiceProvider.GetRequiredService<LessonTreeContext>();
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+                var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
+                var env = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+
+                logger.LogInformation("🌱 Automatic database seeding triggered (24+ hours since last seed)...");
+                await DatabaseSeeder.SeedDatabaseAsync(context, userManager, roleManager, logger, env, serviceProvider);
+                logger.LogInformation("🎉 Automatic database seeding completed successfully.");
+            }
+            else
+            {
+                logger.LogInformation("⏭️ Skipping seeding - last seed was within 24 hours");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "❌ Failed to check/perform automatic seeding: {Message}", ex.Message);
+        }
+    }
 }
 
 // Manual migration approach: Run migrations via Render console
