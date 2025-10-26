@@ -36,7 +36,10 @@ namespace LessonTree.API.Configuration
 
             if (usePostgreSQL)
             {
-                Console.WriteLine("Using PostgreSQL database from DATABASE_URL environment variable");
+                Console.WriteLine($"Using PostgreSQL database from DATABASE_URL environment variable");
+                Console.WriteLine($"DATABASE_URL length: {databaseUrl?.Length ?? 0}");
+                Console.WriteLine($"DATABASE_URL starts with: {(string.IsNullOrEmpty(databaseUrl) ? "NULL/EMPTY" : databaseUrl.Substring(0, Math.Min(20, databaseUrl.Length)))}...");
+
                 builder.Services.AddEntityFrameworkNpgsql()
                     .AddDbContext<LessonTreeContext>(options =>
                     {
