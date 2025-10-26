@@ -3,6 +3,7 @@ using LessonTree.DAL;
 using LessonTree.DAL.Domain;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using System.Text.Json.Serialization;
