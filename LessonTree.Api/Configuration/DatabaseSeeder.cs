@@ -156,6 +156,37 @@ namespace LessonTree.API.Configuration
                 await context.SaveChangesAsync();
             }
 
+            // Seed Guest User for demo environment
+            var guestUser = await userManager.FindByNameAsync("guest");
+            if (guestUser == null)
+            {
+                logger.LogInformation("Creating guest user");
+                guestUser = new User
+                {
+                    UserName = "guest",
+                    FirstName = "Demo",
+                    LastName = "User",
+                    DistrictId = district.Id,
+                    SchoolId = school.Id
+                };
+                var result = await userManager.CreateAsync(guestUser, "Guest123!");
+                if (!result.Succeeded)
+                {
+                    logger.LogError("Failed to create guest user: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                    throw new Exception("Guest user creation failed.");
+                }
+
+                result = await userManager.AddToRoleAsync(guestUser, "freeUser");
+                if (!result.Succeeded)
+                {
+                    logger.LogError("Failed to assign freeUser role to guest: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                    throw new Exception("Guest role assignment failed.");
+                }
+
+                guestUser.Departments.Add(department);
+                await context.SaveChangesAsync();
+            }
+
             // Seed Courses with Topics and Lessons (existing code - all the complex course structure)
             var courses = await SeedCoursesAsync(context, adminUser, logger);
 
@@ -280,63 +311,71 @@ namespace LessonTree.API.Configuration
         }
 
         // ✅ Helper method for course seeding (extract existing course creation logic)
-        // Fixed SeedCoursesAsync method with correct SortOrder logic
+        // Updated SeedCoursesAsync method to create 5 high school level courses with 20 lessons each
         private static async Task<List<Course>> SeedCoursesAsync(LessonTreeContext context, User adminUser, ILogger logger)
         {
-            logger.LogInformation("📚 Seeding courses with topics and lessons");
+            logger.LogInformation("📚 Seeding 5 high school level courses with 20 lessons each");
 
             var courses = new List<Course>();
             var userId = adminUser.Id;
             var globalLessonCounter = 1;
 
-            for (int courseIndex = 1; courseIndex <= 2; courseIndex++)
+            // Define high school subjects
+            var subjects = new[]
             {
+                new { Title = "Algebra II", Description = "Advanced algebraic concepts including polynomials, exponential and logarithmic functions" },
+                new { Title = "American History", Description = "Comprehensive study of American history from colonial times to present" },
+                new { Title = "Biology", Description = "Introduction to biological sciences including cell biology, genetics, and ecology" },
+                new { Title = "English Literature", Description = "Analysis of classic and contemporary literature with focus on critical thinking" },
+                new { Title = "Chemistry", Description = "Fundamental principles of chemistry including atomic structure and chemical reactions" }
+            };
+
+            for (int courseIndex = 0; courseIndex < subjects.Length; courseIndex++)
+            {
+                var subject = subjects[courseIndex];
                 var course = new Course
                 {
-                    Title = $"Course {courseIndex}",
-                    Description = $"Test course {courseIndex} for comprehensive testing",
+                    Title = subject.Title,
+                    Description = subject.Description,
                     UserId = userId,
                     Archived = false,
                     Visibility = VisibilityType.Private,
                     Topics = new List<Topic>()
                 };
 
-                // Create 2 topics per course
-                for (int topicIndex = 1; topicIndex <= 2; topicIndex++)
+                // Create 4 topics per course (5 lessons each = 20 total)
+                for (int topicIndex = 1; topicIndex <= 4; topicIndex++)
                 {
                     var topic = new Topic
                     {
-                        Title = $"Course {courseIndex} - Topic {topicIndex}",
-                        Description = $"Topic {topicIndex} for course {courseIndex}",
+                        Title = $"{subject.Title} - Unit {topicIndex}",
+                        Description = $"Unit {topicIndex} covering key concepts in {subject.Title}",
                         CourseId = 0,
                         UserId = userId,
-                        SortOrder = topicIndex, // Topics: 1, 2 (within course)
+                        SortOrder = topicIndex,
                         Archived = false,
                         Visibility = VisibilityType.Private,
                         Lessons = new List<Lesson>(),
                         SubTopics = new List<SubTopic>()
                     };
 
-                    // ✅ TRACK SORT ORDER WITHIN TOPIC (mixed space for lessons + subtopics)
-                    int topicSortOrder = 0;
-
-                    // Create 3 direct lessons per topic FIRST
-                    for (int lessonIndex = 1; lessonIndex <= 3; lessonIndex++)
+                    // Create 5 lessons per topic (total 20 per course)
+                    for (int lessonIndex = 1; lessonIndex <= 5; lessonIndex++)
                     {
                         var lesson = new Lesson
                         {
-                            Title = $"Lesson {globalLessonCounter}",
-                            Objective = $"C{courseIndex}T{topicIndex}L{lessonIndex}",
-                            Methods = "Instruction, Practice, Assessment",
-                            Materials = "Textbook, Worksheets, Digital tools",
-                            Assessment = "Quiz, Discussion, Homework",
-                            ClassTime = "45 minutes",
-                            SpecialNeeds = "Visual aids available",
-                            Level = "Beginner",
+                            Title = $"{subject.Title} - Lesson {globalLessonCounter}",
+                            Objective = GenerateLessonObjective(subject.Title, topicIndex, lessonIndex),
+                            Methods = GenerateTeachingMethods(subject.Title),
+                            Materials = GenerateMaterials(subject.Title),
+                            Assessment = GenerateAssessment(subject.Title),
+                            ClassTime = "50 minutes",
+                            SpecialNeeds = "Accommodations available for diverse learners",
+                            Level = "High School",
                             TopicId = 0,
                             SubTopicId = null,
                             UserId = userId,
-                            SortOrder = topicSortOrder++, // ✅ 0, 1, 2 (within topic)
+                            SortOrder = lessonIndex - 1,
                             Archived = false,
                             Visibility = VisibilityType.Private
                         };
@@ -345,46 +384,6 @@ namespace LessonTree.API.Configuration
                         globalLessonCounter++;
                     }
 
-                    // ✅ CREATE SUBTOPIC AFTER DIRECT LESSONS
-                    var subTopic = new SubTopic
-                    {
-                        Title = $"Course {courseIndex} - Topic {topicIndex} - SubTopic A",
-                        Description = $"SubTopic A for topic {topicIndex}",
-                        TopicId = 0,
-                        UserId = userId,
-                        SortOrder = topicSortOrder++, // ✅ NEXT POSITION: 3 (after direct lessons)
-                        IsDefault = false,
-                        Archived = false,
-                        Visibility = VisibilityType.Private,
-                        Lessons = new List<Lesson>()
-                    };
-
-                    // Create 2 lessons per subtopic
-                    for (int subLessonIndex = 1; subLessonIndex <= 2; subLessonIndex++)
-                    {
-                        var subLesson = new Lesson
-                        {
-                            Title = $"Lesson {globalLessonCounter}",
-                            Objective = $"C{courseIndex}T{topicIndex}S1L{subLessonIndex}",
-                            Methods = "Guided practice, Independent work",
-                            Materials = "Manipulatives, Digital resources",
-                            Assessment = "Formative assessment, Peer review",
-                            ClassTime = "30 minutes",
-                            SpecialNeeds = "Differentiated instruction",
-                            Level = "Intermediate",
-                            TopicId = null,
-                            SubTopicId = 0,
-                            UserId = userId,
-                            SortOrder = subLessonIndex - 1, // ✅ 0, 1 (within subtopic)
-                            Archived = false,
-                            Visibility = VisibilityType.Private
-                        };
-
-                        subTopic.Lessons.Add(subLesson);
-                        globalLessonCounter++;
-                    }
-
-                    topic.SubTopics.Add(subTopic);
                     course.Topics.Add(topic);
                 }
 
@@ -394,39 +393,101 @@ namespace LessonTree.API.Configuration
             context.Courses.AddRange(courses);
             await context.SaveChangesAsync();
 
-            // Log the corrected structure
-            logger.LogInformation("✅ CORRECTED SORT ORDER STRUCTURE:");
-            foreach (var course in courses.Take(1)) // Just log first course for verification
-            {
-                foreach (var topic in course.Topics.Take(1)) // Just log first topic
-                {
-                    logger.LogInformation($"  Topic {topic.Id} '{topic.Title}' (SortOrder: {topic.SortOrder}):");
-
-                    // Direct lessons
-                    foreach (var lesson in topic.Lessons.OrderBy(l => l.SortOrder))
-                    {
-                        logger.LogInformation($"    Lesson {lesson.Id} '{lesson.Title}' (SortOrder: {lesson.SortOrder}) [DIRECT]");
-                    }
-
-                    // SubTopics
-                    foreach (var subtopic in topic.SubTopics.OrderBy(st => st.SortOrder))
-                    {
-                        logger.LogInformation($"    SubTopic {subtopic.Id} '{subtopic.Title}' (SortOrder: {subtopic.SortOrder}):");
-                        foreach (var subLesson in subtopic.Lessons.OrderBy(l => l.SortOrder))
-                        {
-                            logger.LogInformation($"      Lesson {subLesson.Id} '{subLesson.Title}' (SortOrder: {subLesson.SortOrder}) [SUB]");
-                        }
-                    }
-                }
-            }
-
             var totalLessons = courses.SelectMany(c => c.Topics)
-                .SelectMany(t => t.Lessons.Concat(t.SubTopics.SelectMany(st => st.Lessons)))
+                .SelectMany(t => t.Lessons)
                 .Count();
 
-            logger.LogInformation($"✅ Seeded {courses.Count} courses with {totalLessons} lessons");
+            logger.LogInformation($"✅ Seeded {courses.Count} high school courses with {totalLessons} lessons total");
             return courses;
         }
+
+        private static string GenerateLessonObjective(string subject, int unit, int lesson)
+        {
+            return subject switch
+            {
+                "Algebra II" => $"Students will master {GetAlgebraTopics(unit, lesson)}",
+                "American History" => $"Students will analyze {GetHistoryTopics(unit, lesson)}",
+                "Biology" => $"Students will understand {GetBiologyTopics(unit, lesson)}",
+                "English Literature" => $"Students will examine {GetLiteratureTopics(unit, lesson)}",
+                "Chemistry" => $"Students will explore {GetChemistryTopics(unit, lesson)}",
+                _ => $"Students will learn key concepts in Unit {unit}, Lesson {lesson}"
+            };
+        }
+
+        private static string GetAlgebraTopics(int unit, int lesson) => unit switch
+        {
+            1 => lesson switch { 1 => "polynomial operations", 2 => "factoring techniques", 3 => "synthetic division", 4 => "polynomial graphs", 5 => "polynomial applications", _ => "algebraic concepts" },
+            2 => lesson switch { 1 => "exponential functions", 2 => "logarithmic functions", 3 => "exponential equations", 4 => "logarithmic equations", 5 => "exponential models", _ => "exponential concepts" },
+            3 => lesson switch { 1 => "rational functions", 2 => "rational equations", 3 => "partial fractions", 4 => "rational inequalities", 5 => "rational models", _ => "rational concepts" },
+            4 => lesson switch { 1 => "conic sections", 2 => "parabolas and circles", 3 => "ellipses and hyperbolas", 4 => "systems with conics", 5 => "conic applications", _ => "geometric concepts" },
+            _ => "mathematical concepts"
+        };
+
+        private static string GetHistoryTopics(int unit, int lesson) => unit switch
+        {
+            1 => lesson switch { 1 => "colonial foundations", 2 => "revolutionary causes", 3 => "Declaration of Independence", 4 => "Revolutionary War", 5 => "Articles of Confederation", _ => "early American history" },
+            2 => lesson switch { 1 => "Constitutional Convention", 2 => "federalism debates", 3 => "Bill of Rights", 4 => "early presidencies", 5 => "party system emergence", _ => "constitutional period" },
+            3 => lesson switch { 1 => "westward expansion", 2 => "slavery debates", 3 => "sectional tensions", 4 => "Civil War causes", 5 => "Civil War outcomes", _ => "Civil War era" },
+            4 => lesson switch { 1 => "Reconstruction policies", 2 => "industrial revolution", 3 => "immigration patterns", 4 => "progressive reforms", 5 => "World War I impact", _ => "modern America" },
+            _ => "historical developments"
+        };
+
+        private static string GetBiologyTopics(int unit, int lesson) => unit switch
+        {
+            1 => lesson switch { 1 => "cell structure", 2 => "cell membrane function", 3 => "cellular respiration", 4 => "photosynthesis", 5 => "cell division", _ => "cellular biology" },
+            2 => lesson switch { 1 => "DNA structure", 2 => "DNA replication", 3 => "protein synthesis", 4 => "genetic variation", 5 => "inheritance patterns", _ => "genetics" },
+            3 => lesson switch { 1 => "evolution theory", 2 => "natural selection", 3 => "speciation", 4 => "phylogeny", 5 => "biogeography", _ => "evolution" },
+            4 => lesson switch { 1 => "ecosystem structure", 2 => "energy flow", 3 => "nutrient cycles", 4 => "population dynamics", 5 => "conservation biology", _ => "ecology" },
+            _ => "biological concepts"
+        };
+
+        private static string GetLiteratureTopics(int unit, int lesson) => unit switch
+        {
+            1 => lesson switch { 1 => "literary elements", 2 => "character analysis", 3 => "plot structure", 4 => "theme development", 5 => "point of view", _ => "narrative elements" },
+            2 => lesson switch { 1 => "poetic devices", 2 => "meter and rhyme", 3 => "figurative language", 4 => "poetic forms", 5 => "contemporary poetry", _ => "poetry analysis" },
+            3 => lesson switch { 1 => "dramatic structure", 2 => "character motivation", 3 => "tragic elements", 4 => "dramatic irony", 5 => "theatrical techniques", _ => "drama analysis" },
+            4 => lesson switch { 1 => "critical theories", 2 => "historical context", 3 => "author's purpose", 4 => "comparative analysis", 5 => "literary criticism", _ => "literary criticism" },
+            _ => "literary concepts"
+        };
+
+        private static string GetChemistryTopics(int unit, int lesson) => unit switch
+        {
+            1 => lesson switch { 1 => "atomic structure", 2 => "electron configuration", 3 => "periodic trends", 4 => "ionic bonding", 5 => "covalent bonding", _ => "atomic concepts" },
+            2 => lesson switch { 1 => "molecular geometry", 2 => "intermolecular forces", 3 => "phase changes", 4 => "solution properties", 5 => "colligative properties", _ => "molecular concepts" },
+            3 => lesson switch { 1 => "reaction types", 2 => "stoichiometry", 3 => "limiting reactants", 4 => "percent yield", 5 => "energy changes", _ => "chemical reactions" },
+            4 => lesson switch { 1 => "gas laws", 2 => "kinetic theory", 3 => "equilibrium", 4 => "acids and bases", 5 => "oxidation-reduction", _ => "chemical principles" },
+            _ => "chemical concepts"
+        };
+
+        private static string GenerateTeachingMethods(string subject) => subject switch
+        {
+            "Algebra II" => "Direct instruction, guided practice, problem-solving activities, graphing calculator use",
+            "American History" => "Document analysis, timeline activities, group discussions, multimedia presentations",
+            "Biology" => "Laboratory investigations, microscopy, data analysis, scientific method practice",
+            "English Literature" => "Close reading, literary analysis, creative writing, group discussions",
+            "Chemistry" => "Laboratory experiments, molecular modeling, calculations, safety procedures",
+            _ => "Interactive instruction, hands-on activities, collaborative learning"
+        };
+
+        private static string GenerateMaterials(string subject) => subject switch
+        {
+            "Algebra II" => "Graphing calculators, algebra tiles, coordinate grids, function tables",
+            "American History" => "Primary sources, maps, timelines, historical documents, multimedia resources",
+            "Biology" => "Microscopes, specimens, lab equipment, models, data collection tools",
+            "English Literature" => "Literary texts, annotation tools, writing materials, discussion guides",
+            "Chemistry" => "Lab equipment, periodic tables, molecular models, safety equipment",
+            _ => "Textbooks, worksheets, digital resources, manipulatives"
+        };
+
+        private static string GenerateAssessment(string subject) => subject switch
+        {
+            "Algebra II" => "Problem sets, graphing exercises, unit tests, project presentations",
+            "American History" => "Document-based questions, timeline projects, research papers, discussions",
+            "Biology" => "Lab reports, data analysis, scientific drawings, unit assessments",
+            "English Literature" => "Literary essays, creative projects, reading comprehension, discussions",
+            "Chemistry" => "Lab reports, calculations, concept maps, practical assessments",
+            _ => "Quizzes, projects, presentations, formative assessments"
+        };
 
         // ✅ PHASE 3: Update last seed date
         private static async Task UpdateLastSeedDateAsync(IServiceProvider serviceProvider, ILogger logger)

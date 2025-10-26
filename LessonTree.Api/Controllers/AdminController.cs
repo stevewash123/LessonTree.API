@@ -52,6 +52,25 @@ namespace LessonTree.API.Controllers
             return Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
         }
 
+        [HttpGet("config")]
+        public async Task<IActionResult> GetConfig()
+        {
+            try
+            {
+                var lastSeededDate = await _systemConfigService.GetLastSeedDateAsync();
+                return Ok(new
+                {
+                    lastSeededDate = lastSeededDate,
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get system config");
+                return StatusCode(500, new { message = "Failed to get system config" });
+            }
+        }
+
         [HttpPost("reset-and-reseed")]
         public async Task<IActionResult> ResetAndReseed()
         {
