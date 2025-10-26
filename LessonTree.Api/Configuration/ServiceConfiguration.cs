@@ -30,17 +30,40 @@ namespace LessonTree.API.Configuration
     {
         public static void ConfigureServices(WebApplicationBuilder builder)
         {
-            builder.Services.AddEntityFrameworkSqlite()
-                .AddDbContext<LessonTreeContext>(options =>
-                {
-                    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+            // Check for production database URL first, fallback to SQLite for local development
+            var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+            var usePostgreSQL = !string.IsNullOrEmpty(databaseUrl);
 
-                    if (builder.Environment.IsDevelopment())
+            if (usePostgreSQL)
+            {
+                Console.WriteLine("Using PostgreSQL database from DATABASE_URL environment variable");
+                builder.Services.AddEntityFrameworkNpgsql()
+                    .AddDbContext<LessonTreeContext>(options =>
                     {
-                        options.EnableSensitiveDataLogging();
-                        options.EnableDetailedErrors();
-                    }
-                });
+                        options.UseNpgsql(databaseUrl);
+
+                        if (builder.Environment.IsDevelopment())
+                        {
+                            options.EnableSensitiveDataLogging();
+                            options.EnableDetailedErrors();
+                        }
+                    });
+            }
+            else
+            {
+                Console.WriteLine("Using SQLite database for local development");
+                builder.Services.AddEntityFrameworkSqlite()
+                    .AddDbContext<LessonTreeContext>(options =>
+                    {
+                        options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+
+                        if (builder.Environment.IsDevelopment())
+                        {
+                            options.EnableSensitiveDataLogging();
+                            options.EnableDetailedErrors();
+                        }
+                    });
+            }
 
             builder.Services.AddIdentity<User, IdentityRole<int>>()
                 .AddEntityFrameworkStores<LessonTreeContext>()
