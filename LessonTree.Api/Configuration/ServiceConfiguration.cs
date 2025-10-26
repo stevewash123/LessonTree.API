@@ -47,11 +47,12 @@ namespace LessonTree.API.Configuration
 
             if (usePostgreSQL)
             {
-                // Prefer DATABASE_URL if available, otherwise use ProductionConnection
-                var connectionString = !string.IsNullOrWhiteSpace(databaseUrl) ? databaseUrl : productionConnection;
+                // FORCE use ProductionConnection since DATABASE_URL is missing port
+                // Prefer ProductionConnection (fixed), fallback to DATABASE_URL only if ProductionConnection missing
+                var connectionString = !string.IsNullOrWhiteSpace(productionConnection) ? productionConnection : databaseUrl;
 
                 Console.WriteLine($"Using PostgreSQL database");
-                Console.WriteLine($"Connection source: {(!string.IsNullOrWhiteSpace(databaseUrl) ? "DATABASE_URL env var" : "ProductionConnection config")}");
+                Console.WriteLine($"Connection source: {(!string.IsNullOrWhiteSpace(productionConnection) ? "ProductionConnection config (fixed)" : "DATABASE_URL env var (fallback)")}");
                 Console.WriteLine($"Final connection string length: {connectionString?.Length ?? 0}");
                 Console.WriteLine($"Final connection string: '{connectionString ?? "NULL"}'");
 
