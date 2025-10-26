@@ -30,36 +30,17 @@ namespace LessonTree.API.Configuration
     {
         public static void ConfigureServices(WebApplicationBuilder builder)
         {
-            // Check for production database URL first, fallback to SQLite for local development
-            var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+            // Check for production database configuration, fallback to SQLite for local development
             var productionConnection = builder.Configuration.GetConnectionString("ProductionConnection");
-
-            Console.WriteLine($"=== DATABASE CONNECTION DEBUG ===");
-            Console.WriteLine($"DATABASE_URL exists: {!string.IsNullOrWhiteSpace(databaseUrl)}");
-            Console.WriteLine($"DATABASE_URL length: {databaseUrl?.Length ?? 0}");
-            Console.WriteLine($"DATABASE_URL value: '{databaseUrl ?? "NULL"}'");
-            Console.WriteLine($"ProductionConnection exists: {!string.IsNullOrWhiteSpace(productionConnection)}");
-            Console.WriteLine($"ProductionConnection length: {productionConnection?.Length ?? 0}");
-            Console.WriteLine($"ProductionConnection value: '{productionConnection ?? "NULL"}'");
-
-            // Use PostgreSQL if we have a valid DATABASE_URL or ProductionConnection
-            var usePostgreSQL = !string.IsNullOrWhiteSpace(databaseUrl) || !string.IsNullOrWhiteSpace(productionConnection);
+            var usePostgreSQL = !string.IsNullOrWhiteSpace(productionConnection);
 
             if (usePostgreSQL)
             {
-                // FORCE use ProductionConnection since DATABASE_URL is missing port
-                // Prefer ProductionConnection (fixed), fallback to DATABASE_URL only if ProductionConnection missing
-                var connectionString = !string.IsNullOrWhiteSpace(productionConnection) ? productionConnection : databaseUrl;
-
-                Console.WriteLine($"Using PostgreSQL database");
-                Console.WriteLine($"Connection source: {(!string.IsNullOrWhiteSpace(productionConnection) ? "ProductionConnection config (fixed)" : "DATABASE_URL env var (fallback)")}");
-                Console.WriteLine($"Final connection string length: {connectionString?.Length ?? 0}");
-                Console.WriteLine($"Final connection string: '{connectionString ?? "NULL"}'");
-
+                Console.WriteLine("Using PostgreSQL database (production)");
                 builder.Services.AddEntityFrameworkNpgsql()
                     .AddDbContext<LessonTreeContext>(options =>
                     {
-                        options.UseNpgsql(connectionString);
+                        options.UseNpgsql(productionConnection);
 
                         if (builder.Environment.IsDevelopment())
                         {
@@ -70,7 +51,7 @@ namespace LessonTree.API.Configuration
             }
             else
             {
-                Console.WriteLine("Using SQLite database for local development");
+                Console.WriteLine("Using SQLite database (local development)");
                 builder.Services.AddEntityFrameworkSqlite()
                     .AddDbContext<LessonTreeContext>(options =>
                     {
