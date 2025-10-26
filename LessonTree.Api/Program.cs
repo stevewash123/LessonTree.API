@@ -100,6 +100,32 @@ else
     logger.LogInformation("Starting API without seeding...");
 }
 
+// Only run migrations if environment variable is explicitly set
+// This prevents automatic migrations on every startup in production
+var runMigrations = Environment.GetEnvironmentVariable("RUN_MIGRATIONS");
+if (runMigrations == "true")
+{
+    logger.LogInformation("🔄 RUN_MIGRATIONS=true detected. Running database migrations...");
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<LessonTreeContext>();
+        try
+        {
+            await context.Database.MigrateAsync();
+            logger.LogInformation("✅ Database migrations completed successfully.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "❌ Failed to run database migrations: {Message}", ex.Message);
+            throw; // Fail startup if migrations fail
+        }
+    }
+}
+else
+{
+    logger.LogInformation("RUN_MIGRATIONS not set to 'true'. Skipping automatic migrations.");
+}
+
 MiddlewareConfiguration.ConfigureMiddleware(app);
 
 app.Run();
