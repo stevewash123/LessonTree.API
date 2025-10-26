@@ -32,18 +32,24 @@ namespace LessonTree.API.Configuration
         {
             // Check for production database URL first, fallback to SQLite for local development
             var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-            var usePostgreSQL = !string.IsNullOrEmpty(databaseUrl);
+            var productionConnection = builder.Configuration.GetConnectionString("ProductionConnection");
+
+            // Use PostgreSQL if we have a valid DATABASE_URL or ProductionConnection
+            var usePostgreSQL = !string.IsNullOrWhiteSpace(databaseUrl) || !string.IsNullOrWhiteSpace(productionConnection);
 
             if (usePostgreSQL)
             {
-                Console.WriteLine($"Using PostgreSQL database from DATABASE_URL environment variable");
-                Console.WriteLine($"DATABASE_URL length: {databaseUrl?.Length ?? 0}");
-                Console.WriteLine($"DATABASE_URL starts with: {(string.IsNullOrEmpty(databaseUrl) ? "NULL/EMPTY" : databaseUrl.Substring(0, Math.Min(20, databaseUrl.Length)))}...");
+                // Prefer DATABASE_URL if available, otherwise use ProductionConnection
+                var connectionString = !string.IsNullOrWhiteSpace(databaseUrl) ? databaseUrl : productionConnection;
+
+                Console.WriteLine($"Using PostgreSQL database");
+                Console.WriteLine($"Connection source: {(!string.IsNullOrWhiteSpace(databaseUrl) ? "DATABASE_URL env var" : "ProductionConnection config")}");
+                Console.WriteLine($"Connection string length: {connectionString?.Length ?? 0}");
 
                 builder.Services.AddEntityFrameworkNpgsql()
                     .AddDbContext<LessonTreeContext>(options =>
                     {
-                        options.UseNpgsql(databaseUrl);
+                        options.UseNpgsql(connectionString);
 
                         if (builder.Environment.IsDevelopment())
                         {
