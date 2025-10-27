@@ -74,14 +74,9 @@ namespace LessonTree.API.Controllers
         [HttpPost("reset-and-reseed")]
         public async Task<IActionResult> ResetAndReseed()
         {
-            if (!_env.IsDevelopment())
-            {
-                _logger.LogWarning("Attempted to reset and reseed database in non-Development environment: {Environment}", _env.EnvironmentName);
-                return Forbid("Reset and reseed is only allowed in Development environment.");
-            }
-
+            // DEMO ENVIRONMENT: Allow reset-and-reseed in production for demo purposes
             var currentUser = User.Identity?.Name ?? "Unknown";
-            _logger.LogWarning("Admin {AdminUser} is resetting database in Development environment", currentUser);
+            _logger.LogWarning("Admin {AdminUser} is resetting database in {Environment} environment", currentUser, _env.EnvironmentName);
 
             try
             {
