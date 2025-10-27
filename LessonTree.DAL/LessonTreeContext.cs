@@ -302,17 +302,28 @@ namespace LessonTree.DAL
                     {
                         property.SetColumnType("bytea");
                     }
+
+                    // Force all column names to lowercase for PostgreSQL consistency
+                    var columnName = property.GetColumnName().ToLowerInvariant();
+                    property.SetColumnName(columnName);
+                }
+
+                // Force all table names to lowercase for PostgreSQL consistency
+                var tableName = entityType.GetTableName()?.ToLowerInvariant();
+                if (!string.IsNullOrEmpty(tableName))
+                {
+                    entityType.SetTableName(tableName);
                 }
             }
 
-            // Ensure Identity tables use proper PostgreSQL naming
-            modelBuilder.Entity<User>().ToTable("AspNetUsers");
-            modelBuilder.Entity<IdentityRole<int>>().ToTable("AspNetRoles");
-            modelBuilder.Entity<IdentityUserRole<int>>().ToTable("AspNetUserRoles");
-            modelBuilder.Entity<IdentityUserClaim<int>>().ToTable("AspNetUserClaims");
-            modelBuilder.Entity<IdentityUserLogin<int>>().ToTable("AspNetUserLogins");
-            modelBuilder.Entity<IdentityUserToken<int>>().ToTable("AspNetUserTokens");
-            modelBuilder.Entity<IdentityRoleClaim<int>>().ToTable("AspNetRoleClaims");
+            // Ensure Identity tables use proper PostgreSQL naming (lowercase)
+            modelBuilder.Entity<User>().ToTable("aspnetusers");
+            modelBuilder.Entity<IdentityRole<int>>().ToTable("aspnetroles");
+            modelBuilder.Entity<IdentityUserRole<int>>().ToTable("aspnetuserroles");
+            modelBuilder.Entity<IdentityUserClaim<int>>().ToTable("aspnetuserclaims");
+            modelBuilder.Entity<IdentityUserLogin<int>>().ToTable("aspnetuserlogins");
+            modelBuilder.Entity<IdentityUserToken<int>>().ToTable("aspnetusertokens");
+            modelBuilder.Entity<IdentityRoleClaim<int>>().ToTable("aspnetroleclaims");
         }
 
         public DbSet<Course> Courses { get; set; }

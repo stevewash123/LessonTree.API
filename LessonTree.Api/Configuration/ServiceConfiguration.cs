@@ -95,7 +95,11 @@ namespace LessonTree.API.Configuration
                 builder.Services.AddEntityFrameworkNpgsql()
                     .AddDbContext<LessonTreeContext>(options =>
                     {
-                        options.UseNpgsql(connectionString);
+                        options.UseNpgsql(connectionString, npgsqlOptions =>
+                        {
+                            // Configure for case-insensitive PostgreSQL operations
+                            npgsqlOptions.CommandTimeout(120);
+                        });
 
                         if (builder.Environment.IsDevelopment())
                         {
