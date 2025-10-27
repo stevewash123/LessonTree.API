@@ -109,7 +109,7 @@ namespace LessonTree.DAL
             modelBuilder.Entity<User>()
                 .HasMany(u => u.Departments)
                 .WithMany(d => d.Members)
-                .UsingEntity(j => j.ToTable("UserDepartments"));
+                .UsingEntity(j => j.ToTable("userdepartments"));
 
             modelBuilder.Entity<Standard>()
                 .HasOne(s => s.Course)
@@ -179,23 +179,23 @@ namespace LessonTree.DAL
                       .IsUnique();
 
                 entity.ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_ExclusiveAssignment",
-                    "(CourseId IS NOT NULL AND SpecialPeriodType IS NULL) OR (CourseId IS NULL AND SpecialPeriodType IS NOT NULL)"));
+                    "(courseid IS NOT NULL AND specialperiodtype IS NULL) OR (courseid IS NULL AND specialperiodtype IS NOT NULL)"));
 
                 entity.ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_CourseId_Positive",
-                    "CourseId IS NULL OR CourseId > 0"));
+                    "courseid IS NULL OR courseid > 0"));
 
                 entity.ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_NotEmpty",
-                    "TeachingDays IS NOT NULL AND LENGTH(TRIM(TeachingDays)) > 0"));
+                    "teachingdays IS NOT NULL AND LENGTH(TRIM(teachingdays)) > 0"));
 
                 entity.ToTable(t => t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_ValidDays",
-                    @"TeachingDays NOT LIKE '%[^MondayTueswdhFrig,]%' AND 
-                        (TeachingDays LIKE '%Monday%' OR 
-                        TeachingDays LIKE '%Tuesday%' OR 
-                        TeachingDays LIKE '%Wednesday%' OR 
-                        TeachingDays LIKE '%Thursday%' OR 
-                        TeachingDays LIKE '%Friday%' OR
-                        TeachingDays LIKE '%Saturday%' OR
-                        TeachingDays LIKE '%Sunday%')"));
+                    @"teachingdays NOT LIKE '%[^MondayTueswdhFrig,]%' AND
+                        (teachingdays LIKE '%Monday%' OR
+                        teachingdays LIKE '%Tuesday%' OR
+                        teachingdays LIKE '%Wednesday%' OR
+                        teachingdays LIKE '%Thursday%' OR
+                        teachingdays LIKE '%Friday%' OR
+                        teachingdays LIKE '%Saturday%' OR
+                        teachingdays LIKE '%Sunday%')"));
             });
 
             // Schedule with ScheduleConfiguration relationship
