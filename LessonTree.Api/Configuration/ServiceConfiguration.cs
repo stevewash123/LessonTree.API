@@ -37,7 +37,7 @@ namespace LessonTree.API.Configuration
             var usePostgreSQL = !string.IsNullOrWhiteSpace(connectionString);
 
             // Debug logging
-            Console.WriteLine($"Raw connection string: {connectionString ?? "NULL"}");
+            Console.WriteLine($"Raw connection string length: {connectionString?.Length ?? 0}");
             Console.WriteLine($"Using PostgreSQL: {usePostgreSQL}");
 
             if (usePostgreSQL)
@@ -47,6 +47,10 @@ namespace LessonTree.API.Configuration
                 {
                     try
                     {
+                        // Clean the connection string of any whitespace/newlines
+                        connectionString = connectionString.Trim().Replace("\n", "").Replace("\r", "");
+                        Console.WriteLine($"Cleaned connection string: {connectionString}");
+
                         var databaseUri = new Uri(connectionString);
                         var userInfo = databaseUri.UserInfo.Split(':');
 
@@ -57,11 +61,12 @@ namespace LessonTree.API.Configuration
                                          $"Password={userInfo[1]};" +
                                          "SSL Mode=Require;Trust Server Certificate=true";
 
-                        Console.WriteLine($"Converted to Npgsql format: {connectionString}");
+                        Console.WriteLine($"Converted to Npgsql format successfully");
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Error parsing PostgreSQL URL: {ex.Message}");
+                        Console.WriteLine($"Connection string was: '{connectionString}'");
                         throw;
                     }
                 }
