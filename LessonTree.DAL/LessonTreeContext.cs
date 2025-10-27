@@ -24,6 +24,15 @@ namespace LessonTree.DAL
         {
             base.OnModelCreating(modelBuilder);
 
+            // ✅ CRITICAL: Configure Identity tables FIRST for PostgreSQL compatibility
+            modelBuilder.Entity<User>().ToTable("aspnetusers");
+            modelBuilder.Entity<IdentityRole<int>>().ToTable("aspnetroles");
+            modelBuilder.Entity<IdentityUserRole<int>>().ToTable("aspnetuserroles");
+            modelBuilder.Entity<IdentityUserClaim<int>>().ToTable("aspnetuserclaims");
+            modelBuilder.Entity<IdentityUserLogin<int>>().ToTable("aspnetuserlogins");
+            modelBuilder.Entity<IdentityUserToken<int>>().ToTable("aspnetusertokens");
+            modelBuilder.Entity<IdentityRoleClaim<int>>().ToTable("aspnetroleclaims");
+
             // PostgreSQL compatibility: Override SQLite types with PostgreSQL equivalents
             ConfigureForPostgreSQL(modelBuilder);
 
@@ -315,15 +324,6 @@ namespace LessonTree.DAL
                     entityType.SetTableName(tableName);
                 }
             }
-
-            // Ensure Identity tables use proper PostgreSQL naming (lowercase)
-            modelBuilder.Entity<User>().ToTable("aspnetusers");
-            modelBuilder.Entity<IdentityRole<int>>().ToTable("aspnetroles");
-            modelBuilder.Entity<IdentityUserRole<int>>().ToTable("aspnetuserroles");
-            modelBuilder.Entity<IdentityUserClaim<int>>().ToTable("aspnetuserclaims");
-            modelBuilder.Entity<IdentityUserLogin<int>>().ToTable("aspnetuserlogins");
-            modelBuilder.Entity<IdentityUserToken<int>>().ToTable("aspnetusertokens");
-            modelBuilder.Entity<IdentityRoleClaim<int>>().ToTable("aspnetroleclaims");
         }
 
         public DbSet<Course> Courses { get; set; }
