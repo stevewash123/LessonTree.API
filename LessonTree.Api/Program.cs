@@ -73,6 +73,25 @@ var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
+// Drop and recreate database on startup (demo environment)
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var context = scope.ServiceProvider.GetRequiredService<LessonTreeContext>();
+        logger.LogInformation("🗑️ Dropping existing database...");
+        await context.Database.EnsureDeletedAsync();
+        logger.LogInformation("🔄 Creating fresh database...");
+        await context.Database.EnsureCreatedAsync();
+        logger.LogInformation("✅ Database recreated successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "❌ Failed to recreate database: {Message}", ex.Message);
+        // Don't throw here - let the app continue even if recreation fails
+    }
+}
+
 // Check if manual seeding is requested
 if (args.Contains("--seed"))
 {
