@@ -1,5 +1,21 @@
 # LessonTree API (ASP.NET Core)
 
+## 🌟 Git Branching Convention
+
+**⚠️ IMPORTANT: Legacy Branch Usage**
+
+- **LessonTree Exception**: Uses `master` branch (predates current conventions)
+- **Standard Convention**: New projects should use `main` branch
+- **Reason**: This project was created before the industry-wide shift to `main` as default
+
+**LessonTree-Specific Commands:**
+```bash
+git push origin master    # Note: Uses master, not main
+git pull origin master    # Note: Uses master, not main
+```
+
+---
+
 ## Repository Context
 - **This is the API repository** - separate from UI
 - **GitHub**: https://github.com/stevewash123/LessonTree.API.git
