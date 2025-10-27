@@ -48,12 +48,15 @@ namespace LessonTree.API.Configuration
                     try
                     {
                         // Aggressively clean the connection string of all possible whitespace issues
+                        // This will remove ALL spaces, including those breaking the hostname
                         connectionString = connectionString?.Trim()
                                                           ?.Replace("\n", "")
                                                           ?.Replace("\r", "")
                                                           ?.Replace("\t", "")
-                                                          ?.Replace(" ", "")
+                                                          ?.Replace(" ", "")  // This removes ALL spaces
                                                           ?? "";
+
+                        Console.WriteLine($"After aggressive cleaning: {connectionString}");
 
                         Console.WriteLine($"Cleaned connection string length: {connectionString.Length}");
 

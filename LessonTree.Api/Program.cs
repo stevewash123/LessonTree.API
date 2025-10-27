@@ -73,6 +73,9 @@ var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
+// Deployment marker for log identification
+logger.LogInformation("🚀 DEPLOYMENT MARKER: {Timestamp} - Starting LessonTree API", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
+
 // Drop and recreate database on startup (demo environment)
 using (var scope = app.Services.CreateScope())
 {
