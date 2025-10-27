@@ -47,7 +47,7 @@ namespace LessonTree.API.Configuration
                 //     return;
                 // }
 
-                logger.LogInformation("🌱 Starting comprehensive test data seeding...");
+                logger.LogInformation("🌱 Starting optimized test data seeding (PostgreSQL performance optimized)...");
 
                 // ✅ PHASE 1: Seed base data (users, courses, configurations)
                 await SeedBaseDataAsync(context, userManager, roleManager, logger);
@@ -264,41 +264,61 @@ namespace LessonTree.API.Configuration
                 var context = serviceProvider.GetRequiredService<LessonTreeContext>();
                 var scheduleGenerationService = serviceProvider.GetRequiredService<IScheduleGenerationService>();
 
-                // Find all configurations that don't have schedules yet
+                // ✅ OPTIMIZED: Use LEFT JOIN instead of subquery for better PostgreSQL performance
+                var existingScheduleConfigIds = await context.Schedules
+                    .Select(s => s.ScheduleConfigurationId)
+                    .Distinct()
+                    .ToListAsync();
+
                 var configurationsWithoutSchedules = await context.ScheduleConfigurations
-                    .Where(config => !context.Schedules.Any(schedule => schedule.ScheduleConfigurationId == config.Id))
+                    .Where(config => !existingScheduleConfigIds.Contains(config.Id))
                     .ToListAsync();
 
                 logger.LogInformation($"📋 Found {configurationsWithoutSchedules.Count} configurations that need schedule generation");
 
-                foreach (var config in configurationsWithoutSchedules)
+                // ✅ SAFETY: Limit to max 3 configurations to prevent hangs
+                var configsToProcess = configurationsWithoutSchedules.Take(3).ToList();
+                if (configurationsWithoutSchedules.Count > 3)
+                {
+                    logger.LogWarning($"⚠️ Limited processing to first 3 configurations (out of {configurationsWithoutSchedules.Count}) to prevent timeouts");
+                }
+
+                foreach (var config in configsToProcess)
                 {
                     logger.LogInformation($"🔄 Generating schedule for configuration {config.Id} ('{config.Title}') for user {config.UserId}");
 
-                    // ✅ SIMPLIFIED: Just call the service - it now handles persistence internally
-                    var generationResult = await scheduleGenerationService.GenerateScheduleFromConfigurationAsync(
-                        config.Id,
-                        config.UserId
-                    );
-
-                    if (generationResult.Success && generationResult.Schedule != null)
+                    try
                     {
-                        logger.LogInformation($"✅ Generated and saved schedule {generationResult.Schedule.Id} with {generationResult.TotalEventsGenerated} events");
-                        logger.LogInformation($"   📊 Event breakdown across {generationResult.EventsByPeriod.Count} periods");
+                        // ✅ SIMPLIFIED: Just call the service - it now handles persistence internally
+                        var generationResult = await scheduleGenerationService.GenerateScheduleFromConfigurationAsync(
+                            config.Id,
+                            config.UserId
+                        );
 
-                        // Log warnings if any
-                        if (generationResult.Warnings.Any())
+                        if (generationResult.Success && generationResult.Schedule != null)
                         {
-                            logger.LogWarning($"⚠️ Generation warnings: {string.Join(", ", generationResult.Warnings)}");
+                            logger.LogInformation($"✅ Generated and saved schedule {generationResult.Schedule.Id} with {generationResult.TotalEventsGenerated} events");
+                            logger.LogInformation($"   📊 Event breakdown across {generationResult.EventsByPeriod.Count} periods");
+
+                            // Log warnings if any
+                            if (generationResult.Warnings.Any())
+                            {
+                                logger.LogWarning($"⚠️ Generation warnings: {string.Join(", ", generationResult.Warnings)}");
+                            }
+                        }
+                        else
+                        {
+                            logger.LogError($"❌ Schedule generation failed for configuration {config.Id}: {string.Join(", ", generationResult.Errors)}");
+                            if (generationResult.Warnings.Any())
+                            {
+                                logger.LogWarning($"⚠️ Generation warnings: {string.Join(", ", generationResult.Warnings)}");
+                            }
                         }
                     }
-                    else
+                    catch (Exception configEx)
                     {
-                        logger.LogError($"❌ Schedule generation failed for configuration {config.Id}: {string.Join(", ", generationResult.Errors)}");
-                        if (generationResult.Warnings.Any())
-                        {
-                            logger.LogWarning($"⚠️ Generation warnings: {string.Join(", ", generationResult.Warnings)}");
-                        }
+                        logger.LogError(configEx, $"❌ Exception generating schedule for configuration {config.Id}: {configEx.Message}");
+                        // Continue with next configuration
                     }
                 }
 
@@ -315,20 +335,18 @@ namespace LessonTree.API.Configuration
         // Updated SeedCoursesAsync method to create 5 high school level courses with 20 lessons each
         private static async Task<List<Course>> SeedCoursesAsync(LessonTreeContext context, User adminUser, ILogger logger)
         {
-            logger.LogInformation("📚 Seeding 5 high school level courses with 20 lessons each");
+            logger.LogInformation("📚 Seeding 3 high school level courses with 10 lessons each (optimized for faster seeding)");
 
             var courses = new List<Course>();
             var userId = adminUser.Id;
             var globalLessonCounter = 1;
 
-            // Define high school subjects
+            // Define high school subjects (reduced for faster seeding)
             var subjects = new[]
             {
                 new { Title = "Algebra II", Description = "Advanced algebraic concepts including polynomials, exponential and logarithmic functions" },
                 new { Title = "American History", Description = "Comprehensive study of American history from colonial times to present" },
-                new { Title = "Biology", Description = "Introduction to biological sciences including cell biology, genetics, and ecology" },
-                new { Title = "English Literature", Description = "Analysis of classic and contemporary literature with focus on critical thinking" },
-                new { Title = "Chemistry", Description = "Fundamental principles of chemistry including atomic structure and chemical reactions" }
+                new { Title = "Biology", Description = "Introduction to biological sciences including cell biology, genetics, and ecology" }
             };
 
             for (int courseIndex = 0; courseIndex < subjects.Length; courseIndex++)
@@ -344,8 +362,8 @@ namespace LessonTree.API.Configuration
                     Topics = new List<Topic>()
                 };
 
-                // Create 4 topics per course (5 lessons each = 20 total)
-                for (int topicIndex = 1; topicIndex <= 4; topicIndex++)
+                // Create 2 topics per course (5 lessons each = 10 total)
+                for (int topicIndex = 1; topicIndex <= 2; topicIndex++)
                 {
                     var topic = new Topic
                     {
@@ -360,7 +378,7 @@ namespace LessonTree.API.Configuration
                         SubTopics = new List<SubTopic>()
                     };
 
-                    // Create 5 lessons per topic (total 20 per course)
+                    // Create 5 lessons per topic (total 10 per course)
                     for (int lessonIndex = 1; lessonIndex <= 5; lessonIndex++)
                     {
                         var lesson = new Lesson
