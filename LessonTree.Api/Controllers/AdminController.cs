@@ -82,7 +82,12 @@ namespace LessonTree.API.Controllers
             {
                 _logger.LogInformation("Resetting and reseeding database...");
 
-                // Ensure database exists first
+                // Drop existing database completely to avoid schema conflicts
+                _logger.LogInformation("Dropping existing database...");
+                await _context.Database.EnsureDeletedAsync();
+
+                // Create fresh database
+                _logger.LogInformation("Creating fresh database...");
                 await _context.Database.EnsureCreatedAsync();
 
                 // Clear all dependent tables in proper order (only if they exist)

@@ -95,12 +95,7 @@ namespace LessonTree.API.Configuration
                 builder.Services.AddEntityFrameworkNpgsql()
                     .AddDbContext<LessonTreeContext>(options =>
                     {
-                        options.UseNpgsql(connectionString, npgsqlOptions =>
-                        {
-                            // Fix PostgreSQL case sensitivity by using quoted identifiers
-                            npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                        })
-                        .UseSnakeCaseNamingConvention(); // This ensures consistent column naming
+                        options.UseNpgsql(connectionString);
 
                         if (builder.Environment.IsDevelopment())
                         {
