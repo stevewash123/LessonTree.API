@@ -33,9 +33,16 @@ namespace LessonTree.API.Configuration
         {
             // Check for production database configuration, fallback to SQLite for local development
             // First check for DATABASE_URL environment variable (Render provides this)
-            var productionConnection = Environment.GetEnvironmentVariable("DATABASE_URL")
-                                     ?? builder.Configuration.GetConnectionString("ProductionConnection");
+            var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+            var configConnection = builder.Configuration.GetConnectionString("ProductionConnection");
+            var productionConnection = databaseUrl ?? configConnection;
             var usePostgreSQL = !string.IsNullOrWhiteSpace(productionConnection);
+
+            // Debug logging to understand what's happening
+            Console.WriteLine($"DATABASE_URL environment variable: {databaseUrl ?? "NULL"}");
+            Console.WriteLine($"ProductionConnection from config: {configConnection ?? "NULL"}");
+            Console.WriteLine($"Final connection string: {productionConnection ?? "NULL"}");
+            Console.WriteLine($"Using PostgreSQL: {usePostgreSQL}");
 
             if (usePostgreSQL)
             {
