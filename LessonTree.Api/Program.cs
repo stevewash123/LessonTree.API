@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 using System.Text.Json.Serialization;
 
-// Test comment for git push verification
+// Test comment for git push verification - trigger deployment
 var builder = WebApplication.CreateBuilder(args);
 #if DEBUG
 try
