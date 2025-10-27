@@ -40,11 +40,12 @@ namespace LessonTree.API.Configuration
         {
             try
             {
-                if (!env.IsDevelopment())
-                {
-                    logger.LogInformation("Skipping test data seeding: not in Development mode.");
-                    return;
-                }
+                // Allow seeding in all environments for demo purposes
+                // if (!env.IsDevelopment())
+                // {
+                //     logger.LogInformation("Skipping test data seeding: not in Development mode.");
+                //     return;
+                // }
 
                 logger.LogInformation("🌱 Starting comprehensive test data seeding...");
 
