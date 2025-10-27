@@ -2,7 +2,7 @@
 
 ## Repository Context
 - **This is the API repository** - separate from UI
-- **GitLab**: https://gitlab.com/stevewash123/lessontree-api.git
+- **GitHub**: https://github.com/stevewash123/LessonTree.API.git
 - **Working Directory**: `C:/Users/steve/LessonTree/LessonTree_API/`
 - **Main Project**: `LessonTree.Api/` (startup project)
 
