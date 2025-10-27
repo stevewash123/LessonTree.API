@@ -197,8 +197,8 @@ namespace LessonTree.API.Configuration
                 UserId = adminUser.Id,
                 Title = "Test Schedule Configuration",
                 SchoolYear = "2025-2026",
-                StartDate = DateTime.Today.AddDays(7), // Start next week
-                EndDate = DateTime.Today.AddDays(21),   // End in 3 weeks
+                StartDate = DateTime.UtcNow.Date.AddDays(7), // Start next week (UTC)
+                EndDate = DateTime.UtcNow.Date.AddDays(21),   // End in 3 weeks (UTC)
                 PeriodsPerDay = 2,
                 TeachingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
                 Status = ScheduleStatus.Active,
