@@ -286,6 +286,13 @@ namespace LessonTree.DAL
                 entity.HasIndex(st => new { st.TopicId, st.SortOrder })
                       .HasDatabaseName("IX_SubTopics_Topic_SortOrder");
             });
+
+            // Configure Attachment.Blob for PostgreSQL compatibility
+            modelBuilder.Entity<Attachment>(entity =>
+            {
+                entity.Property(e => e.Blob)
+                      .HasColumnType("bytea"); // Use PostgreSQL bytea instead of SQLite BLOB
+            });
         }
 
         public DbSet<Course> Courses { get; set; }
