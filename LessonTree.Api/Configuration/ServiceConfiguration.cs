@@ -32,30 +32,45 @@ namespace LessonTree.API.Configuration
         public static void ConfigureServices(WebApplicationBuilder builder)
         {
             // Check for production database configuration, fallback to SQLite for local development
-            // First check for DATABASE_URL environment variable (Render provides this)
-            var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-            var configConnection = builder.Configuration.GetConnectionString("ProductionConnection");
-            var productionConnection = databaseUrl ?? configConnection;
-            var usePostgreSQL = !string.IsNullOrWhiteSpace(productionConnection);
+            var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+                                  ?? builder.Configuration.GetConnectionString("ProductionConnection");
+            var usePostgreSQL = !string.IsNullOrWhiteSpace(connectionString);
 
-            // Temporary debug logging for DATABASE_URL investigation
-            var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-            Console.WriteLine($"DATABASE_URL exists: {!string.IsNullOrEmpty(dbUrl)}");
-            Console.WriteLine($"DATABASE_URL first 30 chars: {dbUrl?.Substring(0, Math.Min(30, dbUrl?.Length ?? 0))}");
-
-            // Debug logging to understand what's happening
-            Console.WriteLine($"DATABASE_URL environment variable: {databaseUrl ?? "NULL"}");
-            Console.WriteLine($"ProductionConnection from config: {configConnection ?? "NULL"}");
-            Console.WriteLine($"Final connection string: {productionConnection ?? "NULL"}");
+            // Debug logging
+            Console.WriteLine($"Raw connection string: {connectionString ?? "NULL"}");
             Console.WriteLine($"Using PostgreSQL: {usePostgreSQL}");
 
             if (usePostgreSQL)
             {
+                // Convert PostgreSQL URL format to Npgsql connection string format
+                if (connectionString.StartsWith("postgres://") || connectionString.StartsWith("postgresql://"))
+                {
+                    try
+                    {
+                        var databaseUri = new Uri(connectionString);
+                        var userInfo = databaseUri.UserInfo.Split(':');
+
+                        connectionString = $"Host={databaseUri.Host};" +
+                                         $"Port={databaseUri.Port};" +
+                                         $"Database={databaseUri.LocalPath.TrimStart('/')};" +
+                                         $"Username={userInfo[0]};" +
+                                         $"Password={userInfo[1]};" +
+                                         "SSL Mode=Require;Trust Server Certificate=true";
+
+                        Console.WriteLine($"Converted to Npgsql format: {connectionString}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error parsing PostgreSQL URL: {ex.Message}");
+                        throw;
+                    }
+                }
+
                 Console.WriteLine("Using PostgreSQL database (production)");
                 builder.Services.AddEntityFrameworkNpgsql()
                     .AddDbContext<LessonTreeContext>(options =>
                     {
-                        options.UseNpgsql(productionConnection);
+                        options.UseNpgsql(connectionString);
 
                         if (builder.Environment.IsDevelopment())
                         {
