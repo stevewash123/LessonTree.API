@@ -38,6 +38,11 @@ namespace LessonTree.API.Configuration
             var productionConnection = databaseUrl ?? configConnection;
             var usePostgreSQL = !string.IsNullOrWhiteSpace(productionConnection);
 
+            // Temporary debug logging for DATABASE_URL investigation
+            var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+            Console.WriteLine($"DATABASE_URL exists: {!string.IsNullOrEmpty(dbUrl)}");
+            Console.WriteLine($"DATABASE_URL first 30 chars: {dbUrl?.Substring(0, Math.Min(30, dbUrl?.Length ?? 0))}");
+
             // Debug logging to understand what's happening
             Console.WriteLine($"DATABASE_URL environment variable: {databaseUrl ?? "NULL"}");
             Console.WriteLine($"ProductionConnection from config: {configConnection ?? "NULL"}");
