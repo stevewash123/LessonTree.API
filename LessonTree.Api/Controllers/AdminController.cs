@@ -86,9 +86,9 @@ namespace LessonTree.API.Controllers
                 _logger.LogInformation("Dropping existing database...");
                 await _context.Database.EnsureDeletedAsync();
 
-                // Create fresh database
-                _logger.LogInformation("Creating fresh database...");
-                await _context.Database.EnsureCreatedAsync();
+                // Create fresh database using migrations (better PostgreSQL compatibility)
+                _logger.LogInformation("Running database migrations...");
+                await _context.Database.MigrateAsync();
 
                 // Clear all dependent tables in proper order (only if they exist)
                 if (_context.Database.CanConnect())
