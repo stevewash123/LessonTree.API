@@ -47,12 +47,29 @@ namespace LessonTree.API.Configuration
                 {
                     try
                     {
-                        // Clean the connection string of any whitespace/newlines
-                        connectionString = connectionString.Trim().Replace("\n", "").Replace("\r", "");
-                        Console.WriteLine($"Cleaned connection string: {connectionString}");
+                        // Aggressively clean the connection string of all possible whitespace issues
+                        connectionString = connectionString?.Trim()
+                                                          ?.Replace("\n", "")
+                                                          ?.Replace("\r", "")
+                                                          ?.Replace("\t", "")
+                                                          ?.Replace(" ", "")
+                                                          ?? "";
+
+                        Console.WriteLine($"Cleaned connection string length: {connectionString.Length}");
+
+                        // Extra validation
+                        if (string.IsNullOrWhiteSpace(connectionString))
+                        {
+                            throw new InvalidOperationException("Connection string is empty after cleaning");
+                        }
 
                         var databaseUri = new Uri(connectionString);
                         var userInfo = databaseUri.UserInfo.Split(':');
+
+                        if (userInfo.Length < 2)
+                        {
+                            throw new InvalidOperationException("Invalid user info in connection string");
+                        }
 
                         connectionString = $"Host={databaseUri.Host};" +
                                          $"Port={databaseUri.Port};" +
