@@ -24,6 +24,9 @@ namespace LessonTree.DAL
         {
             base.OnModelCreating(modelBuilder);
 
+            // PostgreSQL compatibility: Override SQLite types with PostgreSQL equivalents
+            ConfigureForPostgreSQL(modelBuilder);
+
             // LessonStandard many-to-many
             modelBuilder.Entity<LessonStandard>()
                 .HasKey(ls => new { ls.LessonId, ls.StandardId });
@@ -286,13 +289,30 @@ namespace LessonTree.DAL
                 entity.HasIndex(st => new { st.TopicId, st.SortOrder })
                       .HasDatabaseName("IX_SubTopics_Topic_SortOrder");
             });
+        }
 
-            // Configure Attachment.Blob for PostgreSQL compatibility
-            modelBuilder.Entity<Attachment>(entity =>
+        private void ConfigureForPostgreSQL(ModelBuilder modelBuilder)
+        {
+            // Configure all byte[] properties to use PostgreSQL bytea instead of SQLite BLOB
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
-                entity.Property(e => e.Blob)
-                      .HasColumnType("bytea"); // Use PostgreSQL bytea instead of SQLite BLOB
-            });
+                foreach (var property in entityType.GetProperties())
+                {
+                    if (property.ClrType == typeof(byte[]))
+                    {
+                        property.SetColumnType("bytea");
+                    }
+                }
+            }
+
+            // Ensure Identity tables use proper PostgreSQL naming
+            modelBuilder.Entity<User>().ToTable("AspNetUsers");
+            modelBuilder.Entity<IdentityRole<int>>().ToTable("AspNetRoles");
+            modelBuilder.Entity<IdentityUserRole<int>>().ToTable("AspNetUserRoles");
+            modelBuilder.Entity<IdentityUserClaim<int>>().ToTable("AspNetUserClaims");
+            modelBuilder.Entity<IdentityUserLogin<int>>().ToTable("AspNetUserLogins");
+            modelBuilder.Entity<IdentityUserToken<int>>().ToTable("AspNetUserTokens");
+            modelBuilder.Entity<IdentityRoleClaim<int>>().ToTable("AspNetRoleClaims");
         }
 
         public DbSet<Course> Courses { get; set; }
