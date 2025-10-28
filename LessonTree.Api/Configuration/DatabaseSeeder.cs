@@ -134,6 +134,7 @@ namespace LessonTree.API.Configuration
                 adminUser = new User
                 {
                     UserName = "admin",
+                    Email = "admin@example.com",
                     FirstName = "Test",
                     LastName = "Teacher",
                     DistrictId = district.Id,
@@ -165,6 +166,7 @@ namespace LessonTree.API.Configuration
                 guestUser = new User
                 {
                     UserName = "guest",
+                    Email = "guest@example.com",
                     FirstName = "Demo",
                     LastName = "User",
                     DistrictId = district.Id,
