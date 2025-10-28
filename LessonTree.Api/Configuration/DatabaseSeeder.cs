@@ -240,6 +240,82 @@ namespace LessonTree.API.Configuration
 
             logger.LogInformation($"✅ Seeded ScheduleConfiguration {scheduleConfig.Id} with 2 periods and 2 course assignments");
 
+            // ✅ Seed Guest User Schedule Configuration with 4 periods including Study Hall
+            var guestScheduleConfig = new ScheduleConfiguration
+            {
+                UserId = guestUser.Id,
+                Title = "Guest Demo Schedule",
+                SchoolYear = "2025-2026",
+                StartDate = DateTime.UtcNow.Date.AddDays(7), // Start next week (UTC)
+                EndDate = DateTime.UtcNow.Date.AddDays(21),   // End in 3 weeks (UTC)
+                PeriodsPerDay = 4,
+                TeachingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
+                Status = ScheduleStatus.Active,
+                IsTemplate = false,
+                CreatedDate = DateTime.UtcNow,
+                PeriodAssignments = new List<PeriodAssignment>()
+            };
+
+            // All 3 courses for guest user
+            var course3 = courses[2]; // Biology
+
+            // Period 1: Course 1 (Algebra II)
+            guestScheduleConfig.PeriodAssignments.Add(new PeriodAssignment
+            {
+                Period = 1,
+                CourseId = course1.Id,
+                SpecialPeriodType = null,
+                TeachingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
+                Room = "Room 201",
+                Notes = "Algebra II - Advanced Mathematics",
+                BackgroundColor = "#e8f5e8",
+                FontColor = "#2e7d2e"
+            });
+
+            // Period 2: Study Hall (Special Period)
+            guestScheduleConfig.PeriodAssignments.Add(new PeriodAssignment
+            {
+                Period = 2,
+                CourseId = null,
+                SpecialPeriodType = "Study Hall",
+                TeachingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
+                Room = "Library",
+                Notes = "Study Hall - Independent Study Time",
+                BackgroundColor = "#fff3e0",
+                FontColor = "#e65100"
+            });
+
+            // Period 3: Course 2 (American History)
+            guestScheduleConfig.PeriodAssignments.Add(new PeriodAssignment
+            {
+                Period = 3,
+                CourseId = course2.Id,
+                SpecialPeriodType = null,
+                TeachingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
+                Room = "Room 202",
+                Notes = "American History - Historical Analysis",
+                BackgroundColor = "#f3e5f5",
+                FontColor = "#7b1fa2"
+            });
+
+            // Period 4: Course 3 (Biology)
+            guestScheduleConfig.PeriodAssignments.Add(new PeriodAssignment
+            {
+                Period = 4,
+                CourseId = course3.Id,
+                SpecialPeriodType = null,
+                TeachingDays = "Monday,Tuesday,Wednesday,Thursday,Friday",
+                Room = "Science Lab",
+                Notes = "Biology - Life Sciences",
+                BackgroundColor = "#e1f5fe",
+                FontColor = "#0277bd"
+            });
+
+            context.ScheduleConfigurations.Add(guestScheduleConfig);
+            await context.SaveChangesAsync();
+
+            logger.LogInformation($"✅ Seeded Guest ScheduleConfiguration {guestScheduleConfig.Id} with 4 periods including Study Hall");
+
             // Seed User Configuration
             var userConfig = new UserConfiguration
             {
@@ -249,9 +325,19 @@ namespace LessonTree.API.Configuration
             };
 
             context.UserConfigurations.Add(userConfig);
+
+            // Seed Guest User Configuration
+            var guestUserConfig = new UserConfiguration
+            {
+                UserId = guestUser.Id,
+                SettingsJson = "{\"theme\":\"light\"}",
+                LastUpdated = DateTime.UtcNow
+            };
+
+            context.UserConfigurations.Add(guestUserConfig);
             await context.SaveChangesAsync();
 
-            logger.LogInformation("✅ Phase 1 completed: Base data seeded successfully");
+            logger.LogInformation("✅ Phase 1 completed: Base data seeded successfully (Admin + Guest users with schedules)");
         }
 
         // ✅ PHASE 2: Generate schedules using real service (SIMPLIFIED - no duplicate persistence)
