@@ -31,8 +31,8 @@ namespace LessonTree.API.Configuration
         public static void ConfigureServices(WebApplicationBuilder builder)
         {
             // Always use PostgreSQL - migrated from SQLite
-            // Check for Render DATABASE_URL environment variable first (production)
-            var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
+            // Check for Render DATABASE_URL via .NET Configuration system (production)
+            var connectionString = builder.Configuration["DATABASE_URL"];
 
             if (!string.IsNullOrEmpty(connectionString))
             {
