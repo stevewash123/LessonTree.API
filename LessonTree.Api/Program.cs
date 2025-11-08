@@ -76,22 +76,20 @@ var logger = app.Services.GetRequiredService<ILogger<Program>>();
 // Deployment marker for log identification
 logger.LogInformation("🚀 DEPLOYMENT MARKER: {Timestamp} - Starting LessonTree API", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
 
-// Drop and recreate database on startup (demo environment)
+// Verify database connection (no dropping/recreating for cloud databases)
 using (var scope = app.Services.CreateScope())
 {
     try
     {
         var context = scope.ServiceProvider.GetRequiredService<LessonTreeContext>();
-        logger.LogInformation("🗑️ Dropping existing database...");
-        await context.Database.EnsureDeletedAsync();
-        logger.LogInformation("🔄 Creating fresh database...");
-        await context.Database.EnsureCreatedAsync();
-        logger.LogInformation("✅ Database recreated successfully.");
+        logger.LogInformation("🔍 Verifying database connection...");
+        await context.Database.CanConnectAsync();
+        logger.LogInformation("✅ Database connection verified successfully.");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "❌ Failed to recreate database: {Message}", ex.Message);
-        // Don't throw here - let the app continue even if recreation fails
+        logger.LogError(ex, "❌ Failed to connect to database: {Message}", ex.Message);
+        // Don't throw here - let the app continue even if connection test fails
     }
 }
 
