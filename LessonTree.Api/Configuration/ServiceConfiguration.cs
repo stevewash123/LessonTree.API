@@ -34,7 +34,12 @@ namespace LessonTree.API.Configuration
             // Check for Render DATABASE_URL environment variable first (production)
             var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
 
-            if (string.IsNullOrEmpty(connectionString))
+            if (!string.IsNullOrEmpty(connectionString))
+            {
+                // Convert PostgreSQL URI format to Npgsql connection string format
+                connectionString = ConvertPostgresUriToConnectionString(connectionString);
+            }
+            else
             {
                 // Fall back to appsettings.json connection string (development)
                 connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -144,9 +149,8 @@ namespace LessonTree.API.Configuration
             builder.Services.AddMemoryCache(); // Keep MemoryCache for other uses
 
             // === HANGFIRE CONFIGURATION ===
-            // Use PostgreSQL for Hangfire - can use same connection as main app
-            var hangfireConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL") ??
-                                          builder.Configuration.GetConnectionString("DefaultConnection");
+            // Use PostgreSQL for Hangfire - use same processed connection string
+            var hangfireConnectionString = connectionString;
 
             Console.WriteLine($"Hangfire using PostgreSQL database: {hangfireConnectionString}");
 
@@ -197,6 +201,59 @@ namespace LessonTree.API.Configuration
             });
 
             builder.Services.AddAutoMapper(typeof(MappingProfile)); // Specify the type containing mappings
+        }
+
+        /// <summary>
+        /// Converts PostgreSQL URI format to Npgsql connection string format
+        /// Example: postgres://user:pass@host:port/db?sslmode=require
+        /// Becomes: Host=host;Port=port;Database=db;Username=user;Password=pass;SSL Mode=Require;
+        /// </summary>
+        private static string ConvertPostgresUriToConnectionString(string databaseUrl)
+        {
+            try
+            {
+                var uri = new Uri(databaseUrl);
+                var userInfo = uri.UserInfo.Split(':');
+                var username = userInfo[0];
+                var password = userInfo.Length > 1 ? userInfo[1] : "";
+
+                var connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.LocalPath.TrimStart('/')};Username={username};Password={password};";
+
+                // Parse query parameters
+                if (!string.IsNullOrEmpty(uri.Query))
+                {
+                    var queryParams = uri.Query.TrimStart('?').Split('&');
+                    foreach (var param in queryParams)
+                    {
+                        var keyValue = param.Split('=');
+                        if (keyValue.Length == 2)
+                        {
+                            var key = keyValue[0].ToLower();
+                            var value = keyValue[1];
+
+                            if (key == "sslmode")
+                            {
+                                connectionString += $"SSL Mode={value.Replace("require", "Require")};";
+                            }
+                            else if (key == "channel_binding")
+                            {
+                                // Skip channel_binding as it's not supported by Npgsql connection string format
+                            }
+                            else
+                            {
+                                connectionString += $"{key}={value};";
+                            }
+                        }
+                    }
+                }
+
+                return connectionString;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error converting DATABASE_URL: {ex.Message}");
+                return databaseUrl; // Return original if conversion fails
+            }
         }
     }
 }
