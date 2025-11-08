@@ -5,206 +5,262 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
 namespace LessonTree.DAL.Migrations
 {
     [DbContext(typeof(LessonTreeContext))]
-    [Migration("20250823145608_RemoveScheduleEventsFromLesson")]
-    partial class RemoveScheduleEventsFromLesson
+    [Migration("20251107173525_PostgreSQLInitialMigration")]
+    partial class PostgreSQLInitialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "8.0.2");
+            modelBuilder
+                .HasAnnotation("ProductVersion", "8.0.4")
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
+
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("DepartmentUser", b =>
                 {
                     b.Property<int>("DepartmentsId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("departmentsid");
 
                     b.Property<int>("MembersId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("membersid");
 
                     b.HasKey("DepartmentsId", "MembersId");
 
                     b.HasIndex("MembersId");
 
-                    b.ToTable("UserDepartments", (string)null);
+                    b.ToTable("userdepartments", (string)null);
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Attachment", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<byte[]>("Blob")
                         .IsRequired()
-                        .HasColumnType("BLOB");
+                        .HasColumnType("bytea")
+                        .HasColumnName("blob");
 
                     b.Property<string>("ContentType")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("contenttype");
 
                     b.Property<string>("Description")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<string>("FileName")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("filename");
 
                     b.Property<int>("FileSize")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("filesize");
 
                     b.Property<string>("GoogleDocId")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("googledocid");
 
                     b.Property<string>("GoogleDocUrl")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("googledocurl");
 
                     b.Property<string>("Name")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("name");
 
                     b.Property<bool>("Shared")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean")
+                        .HasColumnName("shared");
 
                     b.Property<int>("Type")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Attachments");
+                    b.ToTable("attachments");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Course", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("Archived")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean")
+                        .HasColumnName("archived");
 
                     b.Property<string>("Description")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("title");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
 
                     b.Property<int>("Visibility")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("visibility");
 
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Courses");
+                    b.ToTable("courses");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Department", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Description")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("name");
 
                     b.Property<int>("SchoolId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("schoolid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("SchoolId");
 
-                    b.ToTable("Departments");
+                    b.ToTable("departments");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.District", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Description")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("name");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Districts");
+                    b.ToTable("districts");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Lesson", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("Archived")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean")
+                        .HasColumnName("archived");
 
                     b.Property<string>("Assessment")
                         .HasMaxLength(250)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("assessment");
 
                     b.Property<string>("ClassTime")
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("classtime");
 
                     b.Property<string>("Level")
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("level");
 
                     b.Property<string>("Materials")
                         .HasMaxLength(200)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("materials");
 
                     b.Property<string>("Methods")
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("methods");
 
                     b.Property<string>("Objective")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("objective");
 
                     b.Property<int>("SortOrder")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("sortorder");
 
                     b.Property<string>("SpecialNeeds")
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("specialneeds");
 
                     b.Property<int?>("SubTopicId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("subtopicid");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
 
                     b.Property<int?>("TopicId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("topicid");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
 
                     b.Property<int>("Visibility")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("visibility");
 
                     b.HasKey("Id");
 
@@ -216,69 +272,84 @@ namespace LessonTree.DAL.Migrations
                     b.HasIndex("UserId", "TopicId", "SubTopicId")
                         .HasDatabaseName("IX_Lessons_UserId_TopicId_SubTopicId");
 
-                    b.ToTable("Lessons");
+                    b.ToTable("lessons");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.LessonAttachment", b =>
                 {
                     b.Property<int>("LessonId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("lessonid");
 
                     b.Property<int>("AttachmentId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("attachmentid");
 
                     b.HasKey("LessonId", "AttachmentId");
 
                     b.HasIndex("AttachmentId");
 
-                    b.ToTable("LessonAttachments");
+                    b.ToTable("lessonattachments");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.LessonStandard", b =>
                 {
                     b.Property<int>("LessonId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("lessonid");
 
                     b.Property<int>("StandardId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("standardid");
 
                     b.HasKey("LessonId", "StandardId");
 
                     b.HasIndex("StandardId");
 
-                    b.ToTable("LessonStandards");
+                    b.ToTable("lessonstandards");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Note", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("content");
 
                     b.Property<int?>("CourseId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("courseid");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("createddate");
 
                     b.Property<int?>("LessonId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("lessonid");
 
                     b.Property<int?>("SubTopicId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("subtopicid");
 
                     b.Property<int?>("TopicId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("topicid");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
 
                     b.Property<int>("Visibility")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("visibility");
 
                     b.HasKey("Id");
 
@@ -292,65 +363,77 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Notes");
+                    b.ToTable("notes");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.PeriodAssignment", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("BackgroundColor")
                         .IsRequired()
                         .HasMaxLength(7)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(7)")
+                        .HasColumnName("backgroundcolor");
 
                     b.Property<int?>("CourseId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("courseid");
 
                     b.Property<string>("FontColor")
                         .IsRequired()
                         .HasMaxLength(7)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(7)")
+                        .HasColumnName("fontcolor");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
 
                     b.Property<int>("Period")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("period");
 
                     b.Property<string>("Room")
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("room");
 
                     b.Property<int>("ScheduleConfigurationId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("scheduleconfigurationid");
 
                     b.Property<string>("SpecialPeriodType")
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("specialperiodtype");
 
                     b.Property<string>("TeachingDays")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("teachingdays");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ScheduleConfigurationId", "Period")
                         .IsUnique();
 
-                    b.ToTable("PeriodAssignments", t =>
+                    b.ToTable("periodassignments", t =>
                         {
-                            t.HasCheckConstraint("CK_PeriodAssignment_CourseId_Positive", "CourseId IS NULL OR CourseId > 0");
+                            t.HasCheckConstraint("CK_PeriodAssignment_CourseId_Positive", "courseid IS NULL OR courseid > 0");
 
-                            t.HasCheckConstraint("CK_PeriodAssignment_ExclusiveAssignment", "(CourseId IS NOT NULL AND SpecialPeriodType IS NULL) OR (CourseId IS NULL AND SpecialPeriodType IS NOT NULL)");
+                            t.HasCheckConstraint("CK_PeriodAssignment_ExclusiveAssignment", "(courseid IS NOT NULL AND specialperiodtype IS NULL) OR (courseid IS NULL AND specialperiodtype IS NOT NULL)");
 
-                            t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_NotEmpty", "TeachingDays IS NOT NULL AND LENGTH(TRIM(TeachingDays)) > 0");
+                            t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_NotEmpty", "teachingdays IS NOT NULL AND LENGTH(TRIM(teachingdays)) > 0");
 
-                            t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_ValidDays", "TeachingDays NOT LIKE '%[^MondayTueswdhFrig,]%' AND \r\n                        (TeachingDays LIKE '%Monday%' OR \r\n                        TeachingDays LIKE '%Tuesday%' OR \r\n                        TeachingDays LIKE '%Wednesday%' OR \r\n                        TeachingDays LIKE '%Thursday%' OR \r\n                        TeachingDays LIKE '%Friday%' OR\r\n                        TeachingDays LIKE '%Saturday%' OR\r\n                        TeachingDays LIKE '%Sunday%')");
+                            t.HasCheckConstraint("CK_PeriodAssignment_TeachingDays_ValidDays", "teachingdays NOT LIKE '%[^MondayTueswdhFrig,]%' AND\n                        (teachingdays LIKE '%Monday%' OR\n                        teachingdays LIKE '%Tuesday%' OR\n                        teachingdays LIKE '%Wednesday%' OR\n                        teachingdays LIKE '%Thursday%' OR\n                        teachingdays LIKE '%Friday%' OR\n                        teachingdays LIKE '%Saturday%' OR\n                        teachingdays LIKE '%Sunday%')");
                         });
                 });
 
@@ -358,27 +441,36 @@ namespace LessonTree.DAL.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("CourseId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("courseid");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("createddate");
 
                     b.Property<bool>("IsLocked")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean")
+                        .HasColumnName("islocked");
 
                     b.Property<int>("ScheduleConfigurationId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("scheduleconfigurationid");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("title");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
 
                     b.HasKey("Id");
 
@@ -388,104 +480,140 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Schedules");
+                    b.ToTable("schedules");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.ScheduleConfiguration", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ArchivedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("archiveddate");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("createddate");
 
                     b.Property<DateTime>("EndDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enddate");
 
                     b.Property<bool>("IsTemplate")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean")
+                        .HasColumnName("istemplate");
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lastupdated");
 
                     b.Property<int>("PeriodsPerDay")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("periodsperday");
 
                     b.Property<string>("SchoolYear")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("schoolyear");
 
                     b.Property<DateTime>("StartDate")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("startdate");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
 
                     b.Property<string>("TeachingDays")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("teachingdays");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("title");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "IsActive");
-
                     b.HasIndex("UserId", "SchoolYear");
 
-                    b.ToTable("ScheduleConfigurations");
+                    b.HasIndex("UserId", "Status");
+
+                    b.ToTable("scheduleconfigurations");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.ScheduleEvent", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Comment")
                         .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("comment");
 
                     b.Property<int?>("CourseId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("courseid");
 
                     b.Property<DateTime>("Date")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date");
 
                     b.Property<string>("EventCategory")
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("eventcategory");
 
                     b.Property<string>("EventType")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("eventtype");
 
                     b.Property<int?>("LessonId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("lessonid");
 
                     b.Property<int>("Period")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("period");
 
                     b.Property<int>("ScheduleId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("scheduleid");
 
                     b.Property<int>("ScheduleSort")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("schedulesort");
+
+                    b.Property<int?>("SpecialDayId")
+                        .HasColumnType("integer")
+                        .HasColumnName("specialdayid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("LessonId")
                         .HasDatabaseName("IX_ScheduleEvents_LessonId");
+
+                    b.HasIndex("SpecialDayId");
 
                     b.HasIndex("ScheduleId", "LessonId")
                         .HasDatabaseName("IX_ScheduleEvents_Schedule_Lesson");
@@ -497,93 +625,131 @@ namespace LessonTree.DAL.Migrations
                     b.HasIndex(new[] { "ScheduleId", "Date", "Period" }, "IX_ScheduleEvents_Schedule_Date_Period")
                         .IsUnique();
 
-                    b.ToTable("ScheduleEvents");
+                    b.ToTable("scheduleevents");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.School", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Description")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<int>("DistrictId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("districtid");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("name");
 
                     b.HasKey("Id");
 
                     b.HasIndex("DistrictId");
 
-                    b.ToTable("Schools");
+                    b.ToTable("schools");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.SpecialDay", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BackgroundColor")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("backgroundcolor");
 
                     b.Property<DateTime>("Date")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
 
                     b.Property<string>("EventType")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("eventtype");
+
+                    b.Property<string>("FontColor")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("fontcolor");
 
                     b.Property<string>("Periods")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("periods");
 
                     b.Property<int>("ScheduleId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("scheduleid");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ScheduleId", "Date")
                         .HasDatabaseName("IX_SpecialDays_Schedule_Date");
 
-                    b.ToTable("SpecialDays");
+                    b.ToTable("specialdays");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Standard", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("CourseId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("courseid");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
 
                     b.Property<int?>("DistrictId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("districtid");
 
                     b.Property<string>("StandardType")
                         .HasMaxLength(20)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("standardtype");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("title");
 
                     b.Property<int?>("TopicId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("topicid");
 
                     b.HasKey("Id");
 
@@ -593,39 +759,50 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasIndex("TopicId");
 
-                    b.ToTable("Standards");
+                    b.ToTable("standards");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.SubTopic", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("Archived")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean")
+                        .HasColumnName("archived");
 
                     b.Property<string>("Description")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<bool>("IsDefault")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean")
+                        .HasColumnName("isdefault");
 
                     b.Property<int>("SortOrder")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("sortorder");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("title");
 
                     b.Property<int>("TopicId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("topicid");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
 
                     b.Property<int>("Visibility")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("visibility");
 
                     b.HasKey("Id");
 
@@ -634,36 +811,74 @@ namespace LessonTree.DAL.Migrations
                     b.HasIndex("TopicId", "SortOrder")
                         .HasDatabaseName("IX_SubTopics_Topic_SortOrder");
 
-                    b.ToTable("SubTopics");
+                    b.ToTable("subtopics");
+                });
+
+            modelBuilder.Entity("LessonTree.DAL.Domain.SystemConfig", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasColumnType("text")
+                        .HasColumnName("key");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("createddate");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime>("UpdatedDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updateddate");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("value");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("systemconfigs");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.Topic", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("Archived")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean")
+                        .HasColumnName("archived");
 
                     b.Property<int>("CourseId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("courseid");
 
                     b.Property<string>("Description")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<int>("SortOrder")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("sortorder");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("title");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
 
                     b.Property<int>("Visibility")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("visibility");
 
                     b.HasKey("Id");
 
@@ -672,75 +887,96 @@ namespace LessonTree.DAL.Migrations
                     b.HasIndex("CourseId", "SortOrder")
                         .HasDatabaseName("IX_Topics_Course_SortOrder");
 
-                    b.ToTable("Topics");
+                    b.ToTable("topics");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.User", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("AccessFailedCount")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("accessfailedcount");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("concurrencystamp");
 
                     b.Property<int?>("DistrictId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("districtid");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("email");
 
                     b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean")
+                        .HasColumnName("emailconfirmed");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("firstname");
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("lastname");
 
                     b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean")
+                        .HasColumnName("lockoutenabled");
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lockoutend");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("normalizedemail");
 
                     b.Property<string>("NormalizedUserName")
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("normalizedusername");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("passwordhash");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("phonenumber");
 
                     b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean")
+                        .HasColumnName("phonenumberconfirmed");
 
                     b.Property<int?>("SchoolId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("schoolid");
 
                     b.Property<string>("SecurityStamp")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("securitystamp");
 
                     b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("boolean")
+                        .HasColumnName("twofactorenabled");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("username");
 
                     b.HasKey("Id");
 
@@ -755,49 +991,61 @@ namespace LessonTree.DAL.Migrations
 
                     b.HasIndex("SchoolId");
 
-                    b.ToTable("AspNetUsers", (string)null);
+                    b.ToTable("aspnetusers", (string)null);
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.UserConfiguration", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lastupdated");
 
                     b.Property<string>("SettingsJson")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("settingsjson");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("UserConfigurations");
+                    b.ToTable("userconfigurations");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<int>", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("concurrencystamp");
 
                     b.Property<string>("Name")
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("name");
 
                     b.Property<string>("NormalizedName")
                         .HasMaxLength(256)
-                        .HasColumnType("TEXT");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("normalizedname");
 
                     b.HasKey("Id");
 
@@ -805,106 +1053,128 @@ namespace LessonTree.DAL.Migrations
                         .IsUnique()
                         .HasDatabaseName("RoleNameIndex");
 
-                    b.ToTable("AspNetRoles", (string)null);
+                    b.ToTable("aspnetroles", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("claimtype");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("claimvalue");
 
                     b.Property<int>("RoleId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("roleid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("AspNetRoleClaims", (string)null);
+                    b.ToTable("aspnetroleclaims", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("claimtype");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("claimvalue");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("AspNetUserClaims", (string)null);
+                    b.ToTable("aspnetuserclaims", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
                 {
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("loginprovider");
 
                     b.Property<string>("ProviderKey")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("providerkey");
 
                     b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("providerdisplayname");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
 
                     b.HasKey("LoginProvider", "ProviderKey");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("AspNetUserLogins", (string)null);
+                    b.ToTable("aspnetuserlogins", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<int>", b =>
                 {
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
 
                     b.Property<int>("RoleId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("roleid");
 
                     b.HasKey("UserId", "RoleId");
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("AspNetUserRoles", (string)null);
+                    b.ToTable("aspnetuserroles", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
                 {
                     b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
+                        .HasColumnType("integer")
+                        .HasColumnName("userid");
 
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("loginprovider");
 
                     b.Property<string>("Name")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("name");
 
                     b.Property<string>("Value")
-                        .HasColumnType("TEXT");
+                        .HasColumnType("text")
+                        .HasColumnName("value");
 
                     b.HasKey("UserId", "LoginProvider", "Name");
 
-                    b.ToTable("AspNetUserTokens", (string)null);
+                    b.ToTable("aspnetusertokens", (string)null);
                 });
 
             modelBuilder.Entity("DepartmentUser", b =>
@@ -1100,9 +1370,16 @@ namespace LessonTree.DAL.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("LessonTree.DAL.Domain.SpecialDay", "SpecialDay")
+                        .WithMany()
+                        .HasForeignKey("SpecialDayId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Lesson");
 
                     b.Navigation("Schedule");
+
+                    b.Navigation("SpecialDay");
                 });
 
             modelBuilder.Entity("LessonTree.DAL.Domain.School", b =>

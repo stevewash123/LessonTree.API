@@ -8,7 +8,7 @@ namespace LessonTree.DAL
         public LessonTreeContext CreateDbContext(string[] args)
         {
             var optionsBuilder = new DbContextOptionsBuilder<LessonTreeContext>();
-            optionsBuilder.UseSqlite("Data Source=LessonTree.db"); // Match your connection string
+            optionsBuilder.UseNpgsql("Host=db.xrgfutvuqijtggtrjswx.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=\"bVKvBTCjsON9Zn1O\";SSL Mode=Require;");
             return new LessonTreeContext(optionsBuilder.Options);
         }
     }

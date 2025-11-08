@@ -3,7 +3,6 @@ using LessonTree.DAL.Repositories;
 using LessonTree.BLL.Service;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Sqlite;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -23,7 +22,7 @@ using Microsoft.OpenApi.Models;
 using LessonTree.BLL.Services;
 using LessonTree.Service.Service.SystemConfig;
 using Hangfire;
-using Hangfire.Storage.SQLite;
+using Hangfire.PostgreSql;
 
 namespace LessonTree.API.Configuration
 {
@@ -31,98 +30,27 @@ namespace LessonTree.API.Configuration
     {
         public static void ConfigureServices(WebApplicationBuilder builder)
         {
-            // Check for production database configuration, fallback to SQLite for local development
-            var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
-                                  ?? builder.Configuration.GetConnectionString("ProductionConnection");
-            var usePostgreSQL = !string.IsNullOrWhiteSpace(connectionString);
+            // Always use PostgreSQL - migrated from SQLite
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-            // Debug logging
-            Console.WriteLine($"Raw connection string length: {connectionString?.Length ?? 0}");
-            Console.WriteLine($"Using PostgreSQL: {usePostgreSQL}");
+            Console.WriteLine($"Using PostgreSQL database");
+            Console.WriteLine($"Connection string configured: {!string.IsNullOrEmpty(connectionString)}");
 
-            if (usePostgreSQL)
-            {
-                // Convert PostgreSQL URL format to Npgsql connection string format
-                if (connectionString.StartsWith("postgres://") || connectionString.StartsWith("postgresql://"))
+            builder.Services.AddEntityFrameworkNpgsql()
+                .AddDbContext<LessonTreeContext>(options =>
                 {
-                    try
+                    options.UseNpgsql(connectionString, npgsqlOptions =>
                     {
-                        // Aggressively clean the connection string of all possible whitespace issues
-                        // This will remove ALL spaces, including those breaking the hostname
-                        connectionString = connectionString?.Trim()
-                                                          ?.Replace("\n", "")
-                                                          ?.Replace("\r", "")
-                                                          ?.Replace("\t", "")
-                                                          ?.Replace(" ", "")  // This removes ALL spaces
-                                                          ?? "";
-
-                        Console.WriteLine($"After aggressive cleaning: {connectionString}");
-
-                        Console.WriteLine($"Cleaned connection string length: {connectionString.Length}");
-
-                        // Extra validation
-                        if (string.IsNullOrWhiteSpace(connectionString))
-                        {
-                            throw new InvalidOperationException("Connection string is empty after cleaning");
-                        }
-
-                        var databaseUri = new Uri(connectionString);
-                        var userInfo = databaseUri.UserInfo.Split(':');
-
-                        if (userInfo.Length < 2)
-                        {
-                            throw new InvalidOperationException("Invalid user info in connection string");
-                        }
-
-                        connectionString = $"Host={databaseUri.Host};" +
-                                         $"Port={databaseUri.Port};" +
-                                         $"Database={databaseUri.LocalPath.TrimStart('/')};" +
-                                         $"Username={userInfo[0]};" +
-                                         $"Password={userInfo[1]};" +
-                                         "SSL Mode=Require;Trust Server Certificate=true";
-
-                        Console.WriteLine($"Converted to Npgsql format successfully");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error parsing PostgreSQL URL: {ex.Message}");
-                        Console.WriteLine($"Connection string was: '{connectionString}'");
-                        throw;
-                    }
-                }
-
-                Console.WriteLine("Using PostgreSQL database (production)");
-                builder.Services.AddEntityFrameworkNpgsql()
-                    .AddDbContext<LessonTreeContext>(options =>
-                    {
-                        options.UseNpgsql(connectionString, npgsqlOptions =>
-                        {
-                            // Configure for case-insensitive PostgreSQL operations
-                            npgsqlOptions.CommandTimeout(120);
-                        });
-
-                        if (builder.Environment.IsDevelopment())
-                        {
-                            options.EnableSensitiveDataLogging();
-                            options.EnableDetailedErrors();
-                        }
+                        // Configure for PostgreSQL operations
+                        npgsqlOptions.CommandTimeout(120);
                     });
-            }
-            else
-            {
-                Console.WriteLine("Using SQLite database (local development)");
-                builder.Services.AddEntityFrameworkSqlite()
-                    .AddDbContext<LessonTreeContext>(options =>
-                    {
-                        options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
 
-                        if (builder.Environment.IsDevelopment())
-                        {
-                            options.EnableSensitiveDataLogging();
-                            options.EnableDetailedErrors();
-                        }
-                    });
-            }
+                    if (builder.Environment.IsDevelopment())
+                    {
+                        options.EnableSensitiveDataLogging();
+                        options.EnableDetailedErrors();
+                    }
+                });
 
             builder.Services.AddIdentity<User, IdentityRole<int>>()
                 .AddEntityFrameworkStores<LessonTreeContext>()
@@ -209,14 +137,14 @@ namespace LessonTree.API.Configuration
             builder.Services.AddMemoryCache(); // Keep MemoryCache for other uses
 
             // === HANGFIRE CONFIGURATION ===
-            // ✅ PROPER FIX: Always use separate database file for Hangfire to avoid conflicts
-            var hangfireConnectionString = "Data Source=LessonTree-Hangfire.db";
+            // Use PostgreSQL for Hangfire - can use same connection as main app
+            var hangfireConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-            Console.WriteLine($"Hangfire using database: {hangfireConnectionString}");
+            Console.WriteLine($"Hangfire using PostgreSQL database: {hangfireConnectionString}");
 
             builder.Services.AddHangfire(configuration => configuration
                 .UseRecommendedSerializerSettings()
-                .UseSQLiteStorage(hangfireConnectionString));
+                .UsePostgreSqlStorage(hangfireConnectionString));
 
             builder.Services.AddHangfireServer();
 

@@ -5,7 +5,6 @@
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Sqlite;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using LessonTree.DAL.Domain;
