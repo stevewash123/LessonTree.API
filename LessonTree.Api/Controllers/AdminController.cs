@@ -82,13 +82,14 @@ namespace LessonTree.API.Controllers
             {
                 _logger.LogInformation("Resetting and reseeding database...");
 
-                // Drop existing database completely to avoid schema conflicts
-                _logger.LogInformation("Dropping existing database...");
-                await _context.Database.EnsureDeletedAsync();
+                // Clear existing data (don't drop database in cloud environments)
+                _logger.LogInformation("Clearing existing data from tables...");
 
-                // Create fresh database with PostgreSQL-compatible schema
-                _logger.LogInformation("Creating fresh database with PostgreSQL schema...");
-                await _context.Database.EnsureCreatedAsync();
+                // Verify database connection exists
+                if (!await _context.Database.CanConnectAsync())
+                {
+                    throw new InvalidOperationException("Cannot connect to database");
+                }
 
                 // Clear all dependent tables in proper order (only if they exist)
                 if (_context.Database.CanConnect())
@@ -172,8 +173,11 @@ namespace LessonTree.API.Controllers
                     }
                 }
 
-                // Ensure database exists first
-                await _context.Database.EnsureCreatedAsync();
+                // Verify database connection exists
+                if (!await _context.Database.CanConnectAsync())
+                {
+                    throw new InvalidOperationException("Cannot connect to database for demo reset");
+                }
 
                 // Clear all dependent tables in proper order (only if they exist)
                 if (_context.Database.CanConnect())
