@@ -31,7 +31,14 @@ namespace LessonTree.API.Configuration
         public static void ConfigureServices(WebApplicationBuilder builder)
         {
             // Always use PostgreSQL - migrated from SQLite
-            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+            // Check for Render DATABASE_URL environment variable first (production)
+            var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
+
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                // Fall back to appsettings.json connection string (development)
+                connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+            }
 
             Console.WriteLine($"Using PostgreSQL database");
             Console.WriteLine($"Connection string configured: {!string.IsNullOrEmpty(connectionString)}");
@@ -138,7 +145,8 @@ namespace LessonTree.API.Configuration
 
             // === HANGFIRE CONFIGURATION ===
             // Use PostgreSQL for Hangfire - can use same connection as main app
-            var hangfireConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+            var hangfireConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL") ??
+                                          builder.Configuration.GetConnectionString("DefaultConnection");
 
             Console.WriteLine($"Hangfire using PostgreSQL database: {hangfireConnectionString}");
 
